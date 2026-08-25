@@ -47,10 +47,13 @@ echo "[ci-watch] repo=$REPO sha=${FULL_SHA:0:12} timeout=${TIMEOUT_MIN}m interva
 # stdin: JSON array of runs; stdout (tab-separated): "PENDING\t<n>" or
 # "DONE\t<id>\t<name>\t<conclusion>\t<url>"
 summarize_runs() {
-  ONCE_FLAG="$ONCE" python3 -c '
+  ONCE_FLAG="$ONCE" EXPECTED_SHA="$FULL_SHA" python3 -c '
 import json, sys, os
 runs = json.load(sys.stdin)
 once = os.environ.get("ONCE_FLAG") == "1"
+expected = os.environ.get("EXPECTED_SHA", "")
+# Defensive: drop any run whose headSha mismatches (server-side filters can lag).
+runs = [r for r in runs if not expected or r.get("headSha") == expected]
 pending = sum(1 for r in runs if r.get("status") != "completed")
 done = [r for r in runs if r.get("status") == "completed"]
 if pending and not (once or not done):
@@ -68,7 +71,13 @@ else:
 DEADLINE=$(( $(date +%s) + TIMEOUT_MIN * 60 ))
 while :; do
   RUNS_JSON=$(gh run list --repo "$REPO" --commit "$FULL_SHA" \
-                --json databaseId,name,status,conclusion,event,url --limit 20 2>/dev/null || echo '[]')
+                --json databaseId,name,status,conclusion,event,url,headSha --limit 20 2>/dev/null || echo '[]')
+  # GitHub's per-commit run index can lag for many minutes after a push; when
+  # the filtered query yields nothing, fall back to an unfiltered scan.
+  if [ "$(printf '%s' "$RUNS_JSON" | python3 -c 'import json,sys; print(len(json.load(sys.stdin)))')" = "0" ]; then
+    RUNS_JSON=$(gh run list --repo "$REPO" \
+                  --json databaseId,name,status,conclusion,event,url,headSha --limit 40 2>/dev/null || echo '[]')
+  fi
 
   STATE=$(printf '%s' "$RUNS_JSON" | summarize_runs)
 
