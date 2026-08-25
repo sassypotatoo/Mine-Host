@@ -17,3 +17,6 @@ local.properties
 .env
 debug.keystore
 minehost-debug-signing.properties
+
+# Claude Code local settings are personal, never commit them
+.claude/settings.local.json
