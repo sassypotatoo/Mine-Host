@@ -71,6 +71,10 @@ android {
             authRedirectPath
 
         buildConfigField("String", "PAPERMC_CONTACT", "\"$paperMcContact\"")
+
+        ndk {
+            abiFilters += listOf("arm64-v8a")
+        }
     }
 
   signingConfigs {
@@ -106,20 +110,28 @@ android {
     compose = true
     buildConfig = true
   }
-  testOptions { unitTests { isIncludeAndroidResources = true } }
+  testOptions {
+    unitTests {
+      isIncludeAndroidResources = true
+      all { test ->
+        test.testLogging {
+          events("started", "passed", "skipped", "failed")
+          setExceptionFormat("full")
+        }
+      }
+    }
+  }
   packaging {
     jniLibs {
       useLegacyPackaging = true
     }
   }
-/*
   externalNativeBuild {
     cmake {
       path = file("src/main/cpp/minehost_jvm_launcher/CMakeLists.txt")
       version = "3.22.1"
     }
   }
-*/
 }
 
 secrets {

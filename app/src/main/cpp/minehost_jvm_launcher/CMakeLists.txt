@@ -1,6 +1,10 @@
 cmake_minimum_required(VERSION 3.22.1)
 project("minehost_jvm_launcher")
 
+# AGP packages only artifacts under the library output directory; placing the
+# executable there (with its lib*.so name) lets it ship inside the APK.
+set(CMAKE_RUNTIME_OUTPUT_DIRECTORY "${CMAKE_LIBRARY_OUTPUT_DIRECTORY}")
+
 add_executable(
     minehost_jvm_launcher
     main.cpp
