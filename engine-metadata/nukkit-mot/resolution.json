@@ -1,0 +1,9 @@
+{
+  "schemaVersion": 2,
+  "status": "runtime_resolved_with_exact_identity",
+  "catalogBaseId": "nukkit-mot:1361",
+  "officialJob": "https://motci.cn/job/Nukkit-MOT/job/master",
+  "artifactRelativePath": "target/Nukkit-MOT-SNAPSHOT.jar",
+  "packagedLastKnownGood": false,
+  "requiresActualArtifactSha256": true
+}

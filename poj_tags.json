@@ -1,0 +1,42 @@
+[
+  {
+    "name": "jre17-ec28559",
+    "zipball_url": "https://api.github.com/repos/PojavLauncherTeam/android-openjdk-build-multiarch/zipball/refs/tags/jre17-ec28559",
+    "tarball_url": "https://api.github.com/repos/PojavLauncherTeam/android-openjdk-build-multiarch/tarball/refs/tags/jre17-ec28559",
+    "commit": {
+      "sha": "b7f85b9399ac66a795ac9aa78a46a002be47388f",
+      "url": "https://api.github.com/repos/PojavLauncherTeam/android-openjdk-build-multiarch/commits/b7f85b9399ac66a795ac9aa78a46a002be47388f"
+    },
+    "node_id": "MDM6UmVmMjgxMDg3MTk0OnJlZnMvdGFncy9qcmUxNy1lYzI4NTU5"
+  },
+  {
+    "name": "jre17-ca01427",
+    "zipball_url": "https://api.github.com/repos/PojavLauncherTeam/android-openjdk-build-multiarch/zipball/refs/tags/jre17-ca01427",
+    "tarball_url": "https://api.github.com/repos/PojavLauncherTeam/android-openjdk-build-multiarch/tarball/refs/tags/jre17-ca01427",
+    "commit": {
+      "sha": "aa3031316d30b299f46fd77da4ec70123b96e65d",
+      "url": "https://api.github.com/repos/PojavLauncherTeam/android-openjdk-build-multiarch/commits/aa3031316d30b299f46fd77da4ec70123b96e65d"
+    },
+    "node_id": "MDM6UmVmMjgxMDg3MTk0OnJlZnMvdGFncy9qcmUxNy1jYTAxNDI3"
+  },
+  {
+    "name": "jre8-99f3f8b",
+    "zipball_url": "https://api.github.com/repos/PojavLauncherTeam/android-openjdk-build-multiarch/zipball/refs/tags/jre8-99f3f8b",
+    "tarball_url": "https://api.github.com/repos/PojavLauncherTeam/android-openjdk-build-multiarch/tarball/refs/tags/jre8-99f3f8b",
+    "commit": {
+      "sha": "90dae526f0794d55202cd31384fc9141581688b6",
+      "url": "https://api.github.com/repos/PojavLauncherTeam/android-openjdk-build-multiarch/commits/90dae526f0794d55202cd31384fc9141581688b6"
+    },
+    "node_id": "MDM6UmVmMjgxMDg3MTk0OnJlZnMvdGFncy9qcmU4LTk5ZjNmOGI="
+  },
+  {
+    "name": "jre8-40df388",
+    "zipball_url": "https://api.github.com/repos/PojavLauncherTeam/android-openjdk-build-multiarch/zipball/refs/tags/jre8-40df388",
+    "tarball_url": "https://api.github.com/repos/PojavLauncherTeam/android-openjdk-build-multiarch/tarball/refs/tags/jre8-40df388",
+    "commit": {
+      "sha": "65e4d699bf1981ab63b2ab39d70157596ca7def4",
+      "url": "https://api.github.com/repos/PojavLauncherTeam/android-openjdk-build-multiarch/commits/65e4d699bf1981ab63b2ab39d70157596ca7def4"
+    },
+    "node_id": "MDM6UmVmMjgxMDg3MTk0OnJlZnMvdGFncy9qcmU4LTQwZGYzODg="
+  }
+]

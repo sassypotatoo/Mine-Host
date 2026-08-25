@@ -1,0 +1,12 @@
+--- build.gradle.kts
++++ build.gradle.kts
+@@ -9,6 +9,9 @@
+ buildscript {
+     repositories {
+         mavenCentral()
++    }
++    dependencies {
++        classpath("com.google.code.gson:gson:2.10.1")
+     }
+ }
+ 

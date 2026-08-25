@@ -1,0 +1,20 @@
+package com.example.server
+
+enum class ServerStatus {
+    STOPPED,
+    PREPARING,
+    DOWNLOADING,
+    STARTING,
+    PROCESS_STARTED,
+    NETWORK_READY,
+    ENGINE_READY,
+    WORLD_PROVISIONALLY_LOADED,
+    WORLD_VERIFIED,
+    ONLINE,
+    STOPPING,
+    CRASHED,
+    FAILED,
+    WORLD_LOAD_FAILED,
+    PORT_MISMATCH,
+    PROTOCOL_MISMATCH,
+}

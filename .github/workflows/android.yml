@@ -1,0 +1,77 @@
+name: Android CI
+
+on:
+  push:
+    branches: ["**"]
+  pull_request:
+    branches: ["**"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: android-ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+
+    env:
+      CI: "true"
+      PAPERMC_CONTACT: "${{ github.server_url }}/${{ github.repository }}"
+
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@v5
+        with:
+          java-version: "21"
+          distribution: temurin
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v6
+        with:
+          validate-wrappers: true
+          cache-provider: basic
+
+      - name: Make Gradle wrapper executable and verify wrapper
+        run: |
+          chmod +x ./gradlew
+          python3 -c "import zipfile; zipfile.ZipFile('gradle/wrapper/gradle-wrapper.jar')"
+
+      - name: Run Unit & Regression Tests
+        shell: bash
+        run: |
+          set -euo pipefail
+          ./gradlew :app:compileDebugKotlin :app:compileDebugUnitTestKotlin
+          ./gradlew :app:testDebugUnitTest
+
+      - name: Assemble debug APK
+        shell: bash
+        run: |
+          set -euo pipefail
+          ./gradlew :app:assembleDebug \
+            --stacktrace \
+            --warning-mode all \
+            --no-configuration-cache \
+            --no-parallel
+
+      - name: Verify Native Launcher in APK
+        shell: bash
+        run: |
+          set -euo pipefail
+          bash tools/verify_native_launcher_apk.sh app/build/outputs/apk/debug/app-debug.apk
+
+      - name: Upload debug APK
+        if: success()
+        uses: actions/upload-artifact@v4
+        with:
+          name: minehost-debug
+          if-no-files-found: error
+          retention-days: 14
+          path: app/build/outputs/apk/debug/app-debug.apk

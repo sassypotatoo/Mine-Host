@@ -1,0 +1,16 @@
+package com.example.server.engine
+
+enum class TerminationCause {
+    NONE,
+    USER_GRACEFUL_STOP,
+    USER_SIGTERM,
+    USER_FORCE_KILL,
+    STARTUP_FAILURE_STOP,
+    RUNTIME_FAILURE_STOP,
+    STARTUP_TIMEOUT,
+    UNEXPECTED_EXIT,
+    WORLD_INCOMPATIBLE_STOP,
+    PORT_MISMATCH_STOP,
+    PROTOCOL_MISMATCH_STOP,
+    NORMAL_STOP
+}

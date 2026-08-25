@@ -1,0 +1,15 @@
+================================================================================
+DEVICE TEST CHECKLIST (MINEHOST NATIVE LAUNCHER & RAKNET FIXES)
+================================================================================
+*Note: The Gradle wrapper remains corrupt and untouched. Real build executed via installed Gradle.*
+
+1. Build APK.
+2. Run the canonical launcher-in-APK verification script.
+3. Install.
+4. Confirm launcher exists in nativeLibraryDir.
+5. Run Java 17 -version.
+6. Start an engine-generated Nukkit-MOT world.
+7. Confirm real engine-ready + bound port + accepted RakNet + ONLINE.
+8. Join.
+9. Stop.
+10. Restart and rejoin.
