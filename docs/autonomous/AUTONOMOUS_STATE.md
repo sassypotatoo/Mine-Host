@@ -5,9 +5,28 @@
 
 ## Current task
 
-- **Task:** Autonomous infrastructure bootstrap (this file's own creation)
-- **Status:** COMPLETED (infrastructure validated end-to-end; app-level work not started)
-- **Date closed:** 2026-08-25
+- **Task:** Production-readiness loop — Phase A: P0 blockers
+- **Status:** IN_PROGRESS (2026-08-25)
+- **Plan (P0–P4, audit-derived 2026-08-25):**
+  - **P0#1 corrupt gradle-wrapper.jar** — sha256 `a5e75118...` (78783 B), BadZipFile
+    confirmed locally. Fix: fetch official wrapper jar for v9.3.1 from
+    gradle/gradle tag v9.3.1, verify zip integrity, replace, gated push, monitor.
+  - **P0#2 native launcher absent from build** — externalNativeBuild cmake block is
+    COMMENTED OUT in app/build.gradle.kts (~lines 116–121); zero .so files in repo;
+    `PackageMineHostLauncherTask` claimed in PATCH_REPORT.md does NOT exist anywhere
+    (grep across *.kts/*.kt/*.gradle = no match) => PATCH_REPORT claim stale. APK will
+    lack lib/arm64-v8a/libminehost_jvm_launcher.so => CI verify script fails AND
+    JavaRuntimeManager (strict launcher requirement) cannot launch any server. Fix:
+    re-enable cmake block as smallest change; iterate on CI evidence (NDK/cmake
+    availability under AGP 9).
+  - **P1** broken-core: JavaRuntimeManager/PaperEngine/BedrockJavaEngineBase launch-
+    contract consistency vs launcher env vars; TermuxPackageResolver.kt contradicts
+    documented no-Termux principle (investigate usage, remove/gate); empty
+    verified_remote_versions.json catalog bootstrap; engine-metadata resolution.json
+    requires actual artifact SHA-256 at runtime.
+  - **P2** app features per master context (console, lifecycle UI, downloads, tunneling,
+    version management UX), P3 reliability/error-handling polish, P4 docs-follow-reality
+    (README empty; PATCH_REPORT corrections).
 
 ## Iteration counters (reset per task)
 
