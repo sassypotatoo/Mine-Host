@@ -29,7 +29,6 @@ class EngineVersionTransactionManagerTest {
         org.robolectric.util.ReflectionHelpers.setStaticField(android.os.Build::class.java, "SUPPORTED_ABIS", arrayOf("arm64-v8a"))
         context = org.robolectric.RuntimeEnvironment.getApplication()
         val catalog = EngineVersionCatalogRepository(context)
-        runBlocking { catalog.refresh(false) }
         profiles = ServerProfileRepository(context, catalog)
         serverManager = ServerManager(context, catalog)
         serverManager.setProfileRepositoryProvider { profiles.profiles.value }
