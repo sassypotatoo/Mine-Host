@@ -18,7 +18,7 @@ Execute this task under the **minehost-autonomous** workflow. Follow these steps
 
 ## 1. Plan
 
-State what you will change and why, scoped to the smallest safe change. Protected systems (native JVM launcher, runtime extraction/validation, CMake config, engine launch commands, engine download system) are off-limits unless a confirmed defect requires intervention.
+State what you will change and why, scoped to the smallest safe change. Formerly-protected systems (native JVM launcher, runtime extraction/validation, CMake config, engine launch commands, engine download system) may be modified only with documented evidence from investigation or CI output identifying a concrete defect; prefer the smallest safe fix over rewrites.
 
 ## 2. Implement
 
@@ -36,7 +36,7 @@ This Termux device has **no JDK/Gradle**: local compile/test gates are UNAVAILAB
 
 - On PASS: record run id/conclusion in `docs/autonomous/AUTONOMOUS_STATE.md`.
 - On FAIL: `ci-watch.sh` prints real failed-step logs and annotations. Diagnose the ROOT CAUSE, apply the smallest fix, repeat from step 2.
-- Baseline failure: `gradle/wrapper/gradle-wrapper.jar` fails setup-gradle wrapper validation (unknown checksum). If your run fails ONLY at "Set up Gradle" with that annotation and your change cannot have caused it, compare against this baseline and STOP per protocol rather than retrying — repairing the wrapper requires explicit human approval.
+- Baseline failure: `gradle/wrapper/gradle-wrapper.jar` fails setup-gradle wrapper validation (checksum `a5e75118...`). If a run fails ONLY at "Set up Gradle" with that annotation and your change cannot have caused it, record it against this baseline. You are AUTHORIZED to repair the wrapper autonomously once evidence confirms root cause: verify the failing checksum against official Gradle distribution checksums, regenerate/replace the wrapper jar properly, rerun gates, push.
 - Retry limits remain MAX_BUILD_FIX_ITERATIONS=5, MAX_TEST_FIX_ITERATIONS=5, MAX_RUNTIME_FIX_ITERATIONS=5, MAX_TOTAL_ITERATIONS=15. Hitting any limit means hard STOP: report exact failure with quoted output and stop.
 
 ## 5. Runtime/device gate

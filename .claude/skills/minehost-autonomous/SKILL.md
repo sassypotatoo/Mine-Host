@@ -18,7 +18,7 @@ Use for ANY autonomous implementation task in the MineHost repo. Do not use for 
 ## Context Sources
 
 1. Read `MineHost_MASTER_PROJECT_CONTEXT.md` at the repo root if present; otherwise try `~/storage/downloads/MineHost_MASTER_PROJECT_CONTEXT.md`. Treat it as project specification/context. Its Appendix B rule applies: current verified source/build/test state wins over historical notes.
-2. Honor its protected-systems list (native JVM launcher, Java runtime extraction/validation, CMake config, engine launch commands, engine download system): **no modifications unless a confirmed defect requires it**, and then the smallest safe change.
+2. Honor its evidence-gated systems list (native JVM launcher, Java runtime extraction/validation, CMake config, engine launch commands, engine download system): modifications require documented evidence from investigation or CI output identifying a concrete defect or requirement, and the change must be the smallest safe fix addressing that evidence.
 
 ## Core Loop
 
@@ -68,7 +68,7 @@ If the Gradle wrapper jar is invalid (known historical defect: `BadZipFile` on `
 | "Tests probably pass, same as before" | Probably is not evidence. Run them and quote real output. |
 | "No device attached, skip runtime gate silently" | Allowed to skip ONLY by stating `Runtime Verification: UNVERIFIED` explicitly. |
 | "Just this once, push now, CI later" | Push happens strictly after all applicable gates pass. |
-| "The protected component would be cleaner rewritten" | Protected means protected. Confirmed defect or hands off. |
+| "The launcher/wrapper would be cleaner rewritten" | Rewrite requires documented evidence of a concrete defect; prefer the smallest safe fix over replacement. |
 | "Retry limit reached, one more attempt won't hurt" | One more attempt is how 5 becomes 10. Limits are hard. |
 
 ## Retry Limits and Stop Protocol
@@ -144,6 +144,6 @@ Gate applicability: a gate is applicable unless structurally impossible for the 
 - Writing "should work" instead of quoting captured output
 - Device testing claimed without a device
 - Fix iteration count approaching the limit without a root cause identified
-- Editing a protected component on a hunch
+- Editing formerly-protected components without documented evidence
 
 All of these mean: stop, reassess against the Core Loop, report honestly.

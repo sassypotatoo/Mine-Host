@@ -17,10 +17,11 @@ No fake state, no PRoot/Termux dependency in the product, protected systems stay
 
 ## Non-negotiables
 
-- Protected systems (native JVM launcher, runtime extraction/validation, CMake config, engine launch commands, engine download system): no modifications without a confirmed defect; smallest safe change only.
+- Formerly-protected systems (native JVM launcher, runtime extraction/validation, CMake config, engine launch commands, engine download system): modify only with documented evidence of a concrete defect; smallest safe change only.
 - Push only via `./tools/push-gated.sh`; monitor CI with `./tools/ci-watch.sh`. Never force-push; never overwrite remote work.
 - This Termux device has NO JDK/Gradle/adb: local compile/test/device gates are UNAVAILABLE — say so, rely on CI, keep Runtime Verification `UNVERIFIED` without real device evidence.
-- Known baseline CI failure: gradle-wrapper.jar validation at "Set up Gradle" (see AUTONOMOUS_STATE.md). Do not repair without human approval.
+- Known baseline CI failure: gradle-wrapper.jar validation at "Set up Gradle" (see AUTONOMOUS_STATE.md). Autonomous repair is authorized once CI evidence confirms root cause; retry limits still hard.
+- Completed successful tasks are committed and pushed through `tools/push-gated.sh` automatically — do not ask the operator for routine confirmation (standing instruction 2026-08-25).
 
 ## Environment notes
 

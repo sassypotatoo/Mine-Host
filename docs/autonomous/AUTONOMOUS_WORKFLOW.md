@@ -41,7 +41,7 @@ setup as its own gated task with evidence, not a silent workaround.
 [0] Load context: SKILL.md + MASTER_PROJECT_CONTEXT.md + this file + AUTONOMOUS_STATE.md
    |    (if STATE records IN_PROGRESS work -> resume from recorded phase)
    v
-[1] Plan (smallest safe change; protected systems frozen)
+[1] Plan (smallest safe change; formerly-protected systems require documented evidence)
    v
 [2] Implement
    v
@@ -69,10 +69,12 @@ setup as its own gated task with evidence, not a silent workaround.
 
 `gradle/wrapper/gradle-wrapper.jar` has checksum `a5e75118d96b4eac...`, rejected by
 `gradle/actions/setup-gradle@v6` wrapper validation ("Found unknown Gradle Wrapper
-JAR files"). Every push therefore fails CI at the **Set up Gradle** step until a human
-approves wrapper repair. If a run fails ONLY there, compare against this baseline,
-record it, and STOP — it is not caused by your change and fixing it is out of scope
-without explicit approval.
+JAR files"). Every push fails CI at the **Set up Gradle** step until the wrapper is
+repaired. Per the 2026-08-25 policy update the agent is AUTHORIZED to repair it
+autonomously once a run's output re-confirms this root cause: verify the failing
+checksum against official Gradle distribution checksums, regenerate/replace the
+wrapper jar properly, then rerun all gates. If a run fails ONLY at Set up Gradle for
+an unrelated change, record it against this baseline and move on — it is pre-existing.
 
 ---
 
@@ -89,6 +91,8 @@ without explicit approval.
 4. Never push before gates pass; never push known-broken code to `main`
    (exception documented above: baseline red CI predates infra work).
 5. No generated artifacts, keystores, `local.properties`, or `.env` ever committed.
+6. Completed successful tasks are committed and pushed automatically through the
+   gate without asking the operator (standing instruction, 2026-08-25).
 
 ## 4. State persistence (survives session/restart loss)
 

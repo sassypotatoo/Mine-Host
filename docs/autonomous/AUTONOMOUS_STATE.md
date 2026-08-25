@@ -31,8 +31,10 @@
 ## Known blockers
 
 1. **Wrapper-jar validation (BASELINE, pre-existing).** Every push fails CI at
-   "Set up Gradle" until repaired. Repair is explicitly deferred pending human
-   approval (protected build-system area). First task of any future session:
+   "Set up Gradle" until repaired. 2026-08-25 policy update: autonomous repair is
+   now AUTHORIZED once a run's evidence re-confirms root cause (compare failing
+   checksum `a5e75118...` against official Gradle distribution checksums, replace
+   the jar properly, rerun gates). First task of any future session:
    confirm this blocker still reproduces via `./tools/ci-watch.sh --sha HEAD --once`.
 
 ## History (append-only, newest last)
@@ -46,3 +48,11 @@
   identical wrapper checksum `a5e75118...`. Change cannot have caused it (no build
   inputs touched) => BASELINE BLOCKER reconfirmed on new HEAD. Fix iterations used: 0
   (repair requires human approval). Hard STOP recorded per protocol.
+- 2026-08-25 — POLICY UPDATE by operator: full-autonomy mandate. Edit denies on
+  formerly-protected paths (cpp/, gradle/wrapper/, JavaRuntimeInstaller/Manager,
+  JvmServerEngineBase) removed from project settings; those systems are now
+  EVIDENCE-GATED instead of hands-off. Successful completed tasks auto-commit and
+  auto-push via gate without asking confirmation. Safety boundaries unchanged:
+  no force-push/--force-with-lease, no remote branch deletion, no reset --hard,
+  no clean -fd, no amend/published-history rewrite, gated push only, retry limits
+  5/5/5/15 hard, UNVERIFIED device honesty intact.
