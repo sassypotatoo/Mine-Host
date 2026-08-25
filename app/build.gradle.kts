@@ -147,6 +147,12 @@ kotlin {
 
 // Some unused dependencies are commented out below instead of being removed.
 // This makes it easy to add them back in the future if needed.
+tasks.withType<Test>().configureEach {
+  // CI runners expose no mid-step logs; a hung test must fail fast with the
+  // streaming started-events naming the culprit class instead of blocking ~1h.
+  timeout.set(java.time.Duration.ofMinutes(35))
+}
+
 dependencies {
   implementation(platform(libs.androidx.compose.bom))
   // implementation(libs.accompanist.permissions)
