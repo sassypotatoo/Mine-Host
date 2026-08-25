@@ -32,10 +32,10 @@
 
 | Counter | Used | Limit |
 |---|---|---|
-| MAX_BUILD_FIX_ITERATIONS | 1 | 5 |
+| MAX_BUILD_FIX_ITERATIONS | 2 | 5 |
 | MAX_TEST_FIX_ITERATIONS | 1 | 5 |
 | MAX_RUNTIME_FIX_ITERATIONS | 0 | 5 |
-| MAX_TOTAL_ITERATIONS | 2 | 15 |
+| MAX_TOTAL_ITERATIONS | 3 | 15 |
 
 ## Gate status (last verified 2026-08-26)
 
@@ -52,16 +52,32 @@
 
 1. ~~Wrapper-jar validation~~ **RESOLVED 2026-08-26**: corrupt jar (78783 B,
    sha256 `a5e75118...`, BadZipFile) replaced with official gradle/gradle v9.3.1
-   wrapper jar (46175 B, sha256 `b3a875dd...`). Run 32889978741 passed
-   "Set up Gradle" and Kotlin compilation — root cause confirmed and closed.
-2. **P0#2 native launcher absent from build (NEXT).** externalNativeBuild cmake
-   block commented out in app/build.gradle.kts (~116–121); zero .so files in repo;
-   PATCH_REPORT's `PackageMineHostLauncherTask` does not exist anywhere. Even once
-   tests pass, assembleDebug will produce an APK without
-   lib/arm64-v8a/libminehost_jvm_launcher.so → verify_native_launcher_apk.sh fails
-   and JavaRuntimeManager cannot launch any server. Plan: re-enable cmake block,
-   iterate on CI NDK/cmake evidence.
-3. ci-watch.sh per-SHA index lag worked around client-side (64514ae).
+   wrapper jar (46175 B, sha256 `b3a875dd...`). Runs 32889978741 and 32892864131
+   passed "Set up Gradle" and wrapper validation — root cause confirmed and closed.
+2. **P0#2 native launcher build** — pushed dfc43f5 (externalNativeBuild
+   re-enabled + abiFilters arm64-v8a + CMAKE_RUNTIME_OUTPUT_DIRECTORY redirect;
+   AGP packages only artifacts under the library output dir). Verification run
+   was auto-cancelled by a later push before reaching assembleDebug; must be
+   re-verified on the next green-through-tests run ("Verify Native Launcher
+   in APK" step).
+3. **Test-suite deadlock ROOT-CAUSED 2026-08-26** (was misread as slow
+   Robolectric): BedrockEngineHardeningTest >
+   staleProcessExitStillRunsItsCleanup STARTED, never completed (runs
+   32892864131: 46+ min silent; 32897642446: same signature). Cause:
+   JvmServerEngineBase.handleProcessExit does withContext(Dispatchers.Main);
+   Robolectric runs tests ON the main-looper thread, so the Main task queues
+   behind the blocked runTest/runBlocking thread forever; neither looper nor
+   coroutine timeout can preempt. Fix: shared MainDispatcherRule
+   (UnconfinedTestDispatcher) applied to the five engine/manager test classes.
+4. Watchdog tooling: ci-watch.sh rewritten progress-aware (step transitions +
+   best-effort live-log tails; REST live logs are BlobNotFound mid-step —
+   known endpoint limitation; INVESTIGATING at 20m without observable change,
+   never auto-cancels). Gradle Test tasks get a hard 35m timeout so a future
+   hang fails fast with per-class started-events in the log.
+5. P1 findings parked: TermuxPackageResolver is the OpenJDK .deb acquisition
+   path (apt mirror over HTTPS; no Termux app dependency — principle intact,
+   document reality later); verified_remote_versions.json ships empty
+   (`{"catalogVersion": 1, "versions": []}`) by design pending runtime resolution.
 
 ## History (append-only, newest last)
 
@@ -82,3 +98,15 @@
   no force-push/--force-with-lease, no remote branch deletion, no reset --hard,
   no clean -fd, no amend/published-history rewrite, gated push only, retry limits
   5/5/5/15 hard, UNVERIFIED device honesty intact.
+- 2026-08-26 — Wrapper fix d5d26d7: CI passed Set up Gradle + main compile for the
+  first time (run 32889978741), then failed at :app:compileDebugUnitTestKotlin
+  (stale catalog.refresh call) -> fixed b42b3c1. ci-watch hardened vs per-SHA
+  index lag (64514ae). Native launcher build re-enabled + per-test streaming
+  logging pushed dfc43f5. Runs 32892864131/32897642446 stalled silently in test
+  step at BedrockEngineHardeningTest > staleProcessExitStillRunsItsCleanup;
+  root cause identified as Dispatchers.Main deadlock under Robolectric (no
+  setMain override anywhere). Fixed via shared MainDispatcherRule in five test
+  classes; Gradle Test task timeout 35m added; ci-watch.sh rewritten into a
+  progress-aware watchdog (20m no-observable-progress INVESTIGATING, never
+  auto-cancels; REST live logs confirmed BlobNotFound mid-step — endpoint
+  limitation, fallback = step transitions).
