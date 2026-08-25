@@ -32,29 +32,36 @@
 
 | Counter | Used | Limit |
 |---|---|---|
-| MAX_BUILD_FIX_ITERATIONS | 0 | 5 |
-| MAX_TEST_FIX_ITERATIONS | 0 | 5 |
+| MAX_BUILD_FIX_ITERATIONS | 1 | 5 |
+| MAX_TEST_FIX_ITERATIONS | 1 | 5 |
 | MAX_RUNTIME_FIX_ITERATIONS | 0 | 5 |
-| MAX_TOTAL_ITERATIONS | 0 | 15 |
+| MAX_TOTAL_ITERATIONS | 2 | 15 |
 
-## Gate status (last verified)
+## Gate status (last verified 2026-08-26)
 
 | Gate | State | Evidence |
 |---|---|---|
 | Local compile (Termux) | UNAVAILABLE | no JDK/Gradle installed (see AUTONOMOUS_WORKFLOW.md §1) |
 | Local unit tests | UNAVAILABLE | same |
-| CI compile+test | FAILING (baseline) | runs 32850125139 and 32874750765: setup-gradle wrapper validation rejects `gradle-wrapper.jar` sha256 `a5e75118...` |
-| CI APK artifact | NOT PRODUCED | blocked by baseline failure above |
+| CI Set up Gradle + main compile | **PASSING** | run 32889978741: official v9.3.1 wrapper jar accepted; :app:compileDebugKotlin succeeded (first green stages ever) |
+| CI unit-test compile+run | FAILING | run 32889978741: `:app:compileDebugUnitTestKotlin` — EngineVersionTransactionManagerTest.kt:32 called nonexistent `catalog.refresh(false)`; fixed in b42b3c1 (awaiting CI) |
+| CI APK artifact | NOT PRODUCED | blocked by test stage above |
 | Device/runtime verification | UNVERIFIED | no adb/android-tools; no device evidence yet |
 
 ## Known blockers
 
-1. **Wrapper-jar validation (BASELINE, pre-existing).** Every push fails CI at
-   "Set up Gradle" until repaired. 2026-08-25 policy update: autonomous repair is
-   now AUTHORIZED once a run's evidence re-confirms root cause (compare failing
-   checksum `a5e75118...` against official Gradle distribution checksums, replace
-   the jar properly, rerun gates). First task of any future session:
-   confirm this blocker still reproduces via `./tools/ci-watch.sh --sha HEAD --once`.
+1. ~~Wrapper-jar validation~~ **RESOLVED 2026-08-26**: corrupt jar (78783 B,
+   sha256 `a5e75118...`, BadZipFile) replaced with official gradle/gradle v9.3.1
+   wrapper jar (46175 B, sha256 `b3a875dd...`). Run 32889978741 passed
+   "Set up Gradle" and Kotlin compilation — root cause confirmed and closed.
+2. **P0#2 native launcher absent from build (NEXT).** externalNativeBuild cmake
+   block commented out in app/build.gradle.kts (~116–121); zero .so files in repo;
+   PATCH_REPORT's `PackageMineHostLauncherTask` does not exist anywhere. Even once
+   tests pass, assembleDebug will produce an APK without
+   lib/arm64-v8a/libminehost_jvm_launcher.so → verify_native_launcher_apk.sh fails
+   and JavaRuntimeManager cannot launch any server. Plan: re-enable cmake block,
+   iterate on CI NDK/cmake evidence.
+3. ci-watch.sh per-SHA index lag worked around client-side (64514ae).
 
 ## History (append-only, newest last)
 
