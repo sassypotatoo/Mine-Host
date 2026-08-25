@@ -13,6 +13,7 @@ import com.example.server.version.ResolvedEngineVersion
 import com.example.server.version.VersionSourceType
 import io.mockk.mockk
 import kotlinx.coroutines.runBlocking
+import org.junit.Rule
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
