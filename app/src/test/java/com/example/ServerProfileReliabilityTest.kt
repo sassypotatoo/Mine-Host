@@ -25,6 +25,9 @@ import org.robolectric.RobolectricTestRunner
  */
 @RunWith(RobolectricTestRunner::class)
 class ServerProfileReliabilityTest {
+
+    @get:Rule
+    val mainDispatcherRule = com.example.testutil.MainDispatcherRule()
     private lateinit var context: Context
     private lateinit var serversDir: File
 

@@ -86,6 +86,9 @@ class BedrockEngineHardeningTest {
     @get:Rule
     val tempFolder = TemporaryFolder()
 
+    @get:Rule
+    val mainDispatcherRule = com.example.testutil.MainDispatcherRule()
+
     private lateinit var context: Context
     private lateinit var serverDir: File
     private lateinit var engineVersion: EngineVersion

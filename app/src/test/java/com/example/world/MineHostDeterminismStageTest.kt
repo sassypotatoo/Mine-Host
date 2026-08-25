@@ -26,6 +26,9 @@ import java.io.File
 class MineHostDeterminismStageTest {
 
     @get:Rule
+    val mainDispatcherRule = com.example.testutil.MainDispatcherRule()
+
+    @get:Rule
     val tempFolder = TemporaryFolder()
 
     private lateinit var context: Context

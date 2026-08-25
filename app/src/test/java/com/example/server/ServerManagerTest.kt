@@ -23,6 +23,9 @@ import java.io.File
 @RunWith(RobolectricTestRunner::class)
 class ServerManagerTest {
 
+    @get:Rule
+    val mainDispatcherRule = com.example.testutil.MainDispatcherRule()
+
     private val context: Context get() = ApplicationProvider.getApplicationContext()
 
     @Test

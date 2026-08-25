@@ -19,6 +19,9 @@ import java.io.File
 @Config(sdk = [33])
 class EngineVersionTransactionManagerTest {
 
+    @get:Rule
+    val mainDispatcherRule = com.example.testutil.MainDispatcherRule()
+
     private lateinit var context: Context
     private lateinit var profiles: ServerProfileRepository
     private lateinit var serverManager: ServerManager
