@@ -1,4 +1,5 @@
 import java.net.URI
+import java.time.Duration
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 
 plugins {
@@ -150,7 +151,7 @@ kotlin {
 tasks.withType<Test>().configureEach {
   // CI runners expose no mid-step logs; a hung test must fail fast with the
   // streaming started-events naming the culprit class instead of blocking ~1h.
-  timeout.set(java.time.Duration.ofMinutes(35))
+  timeout.set(Duration.ofMinutes(35))
 }
 
 dependencies {
