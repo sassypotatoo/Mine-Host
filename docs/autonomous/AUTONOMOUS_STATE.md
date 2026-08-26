@@ -6,9 +6,14 @@
 ## Current task
 
 - **Task:** Production-readiness loop — Phase A COMPLETE; Phase B underway
-  (P1 core-consistency sweep DONE 2026-08-26, no defects; next: P2 app features)
-- **Status:** P0 CLOSED 2026-08-26 — first fully green CI run 32932710800;
-  P1 sweep CLOSED same day (audit-only, zero code changes required)
+  (P1 sweep DONE clean; P2 RE-SCOPED 2026-08-26: all five feature areas already
+  implemented and service-wired — console 316-line screen + MainViewModel send/
+  lifecycle fns, versions manager 616 lines, frp TunnelManager w/ status machine,
+  downloads via EVTM; remaining = device verification only. Now executing P4
+  docs-follow-reality: README rewritten from placeholder, PATCH_REPORT stale
+  claims corrected.)
+- **Status:** P0 CLOSED (run 32932710800); P1 sweep CLOSED clean;
+  P2 re-scoped to verification-only; P4 docs corrections in flight
 - **Plan (P0–P4, audit-derived 2026-08-25):**
   - **P0#1 corrupt gradle-wrapper.jar** — sha256 `a5e75118...` (78783 B), BadZipFile
     confirmed locally. Fix: fetch official wrapper jar for v9.3.1 from
@@ -152,6 +157,20 @@
     (watchdog exit 0) — confirms green baseline stable on docs changes too.
 14. Phase B opened: P1 sweep closed clean; proceeding to P2 app features
     (console UI, lifecycle UI, downloads, tunneling UX, version management).
+15. **P2 RE-SCOPED 2026-08-26 (audit):** the 2026-08-25 plan overestimated the
+    P2 gap — it was derived from doc goals before full code mapping. Reality:
+    console/lifecycle/downloads/tunneling/version-management are all implemented
+    and wired to real services (no fake state): ServerConsoleScreen(316L)→
+    MainViewModel.sendCommand/clearAndExportLogs; startServer/stopServer/
+    restartServer at MainViewModel:1034/1105/1116; VersionManagerScreen(616L)→
+    catalogRepository+EVTM; TunnelManager frp process w/ STOPPED/STARTING/
+    RUNNING/RECONNECTING + per-server status; zero TODO/FIXME stubs in ui/.
+    Remaining P2 substance = device/runtime verification (blocked: no adb —
+    stays UNVERIFIED). P4 docs-follow-reality executed same day: README.md
+    rewritten from "Updated README" placeholder to real project description;
+    PATCH_REPORT stale claims corrected (phantom PackageMineHostLauncherTask
+    annotated with the true dfc43f5 mechanism + CI run evidence; wrapper-jar
+    historical note appended).
 
 ## History (append-only, newest last)
 
