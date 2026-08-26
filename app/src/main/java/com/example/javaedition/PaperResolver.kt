@@ -321,6 +321,16 @@ object PaperResolver {
 
         val host = url.host.lowercase()
 
+        // Loopback mirrors isTrustedPaperHost's test allowance; hermetic
+        // MockWebServer tests speak plain HTTP on localhost.
+        require(
+            url.scheme == "https" ||
+                host == "localhost" ||
+                host == "127.0.0.1"
+        ) {
+            "Paper artifact URL must use HTTPS"
+        }
+
         require(
             PaperUserAgentProvider.isTrustedPaperHost(host)
         ) {

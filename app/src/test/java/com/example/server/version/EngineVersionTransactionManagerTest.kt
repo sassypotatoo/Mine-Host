@@ -99,13 +99,14 @@ class EngineVersionTransactionManagerTest {
                 serverManager = serverManager,
                 onProgress = {}
             )
-            if (res19 is EngineVersionTransactionManager.Result.Failure) {
-                println("DEBUG: install 19 failed: ${res19.message}")
-            }
-            
+
             val metadata19 = InstalledEngineVersionRepository.read(dir19)
-            assertEquals(17, metadata19?.runtimeJavaVersion)
-            assertEquals("1.19.4", metadata19?.bedrockVersion)
+            if (metadata19 == null) {
+                val msg = (res19 as? EngineVersionTransactionManager.Result.Failure)?.message ?: "install reported: $res19"
+                throw AssertionError("install(1.19.4) produced no installation metadata; failure: $msg")
+            }
+            assertEquals(17, metadata19.runtimeJavaVersion)
+            assertEquals("1.19.4", metadata19.bedrockVersion)
 
             // Case 26.2 -> Java 25
             val draft26 = com.example.data.ServerCreationDraft(
@@ -122,17 +123,21 @@ class EngineVersionTransactionManagerTest {
             val dir26 = java.io.File(profile26.serverDirectory)
             mockPaperDownload("26.2", dir26)
 
-            manager.install(
+            val res26 = manager.install(
                 profile = profile26,
                 target = paperVersion,
                 profiles = profiles,
                 serverManager = serverManager,
                 onProgress = {}
             )
-            
+
             val metadata26 = InstalledEngineVersionRepository.read(dir26)
-            assertEquals(25, metadata26?.runtimeJavaVersion)
-            assertEquals("26.2", metadata26?.bedrockVersion)
+            if (metadata26 == null) {
+                val msg = (res26 as? EngineVersionTransactionManager.Result.Failure)?.message ?: "install reported: $res26"
+                throw AssertionError("install(26.2) produced no installation metadata; failure: $msg")
+            }
+            assertEquals(25, metadata26.runtimeJavaVersion)
+            assertEquals("26.2", metadata26.bedrockVersion)
             
         } finally {
             tempDir.deleteRecursively()
