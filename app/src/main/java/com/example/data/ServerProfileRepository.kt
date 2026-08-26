@@ -72,7 +72,13 @@ class ServerProfileRepository(
             }
 
             val current = ensureLoadedLocked()
-            val transport = draft.networkType.portTransport()
+            // Allocation must use the network type that will be STORED, not
+            // the raw draft: java_paper profiles persist as JAVA_TCP, so
+            // allocating on a UDP draft view lets two paper profiles collide
+            // on the same TCP port (surfaced by updateProfile's conflict guard).
+            val storedNetworkType =
+                if (draft.engineId == "java_paper") ServerNetworkType.JAVA_TCP else draft.networkType
+            val transport = storedNetworkType.portTransport()
             val usedPorts = current.asSequence()
                 .filter { it.networkType.portTransport() == transport }
                 .mapTo(linkedSetOf()) { it.port }
@@ -111,7 +117,7 @@ class ServerProfileRepository(
                 autoRestart = draft.autoRestart,
                 autoBackup = draft.autoBackup,
                 edition = if (draft.engineId == "java_paper") ServerEdition.JAVA else draft.edition,
-                networkType = if (draft.engineId == "java_paper") ServerNetworkType.JAVA_TCP else draft.networkType,
+                networkType = storedNetworkType,
                 minecraftVersion = draft.minecraftVersion ?: draft.bedrockVersion,
                 minecraftEulaAccepted = draft.minecraftEulaAccepted,
             )

@@ -109,7 +109,10 @@ class PaperHardeningTest {
         val result = Downloader.downloadServerJar(context, engine, dest, minecraftVersion = "1.21.4") {}
 
         assertTrue("result: $result", result is ServerJarDownloadResult.Failure)
-        assertTrue((result as ServerJarDownloadResult.Failure).message.contains("size mismatch"))
+        assertTrue(
+            "result: $result",
+            (result as ServerJarDownloadResult.Failure).message.contains("size mismatch"),
+        )
         assertFalse(dest.exists())
     }
 
@@ -142,15 +145,21 @@ class PaperHardeningTest {
         val result = Downloader.downloadServerJar(context, engine, dest, minecraftVersion = "1.21.4") {}
 
         assertTrue("result: $result", result is ServerJarDownloadResult.Failure)
-        assertTrue((result as ServerJarDownloadResult.Failure).message.contains("checksum mismatch"))
+        assertTrue(
+            "result: $result",
+            (result as ServerJarDownloadResult.Failure).message.contains("checksum mismatch"),
+        )
         assertFalse(dest.exists())
     }
 
     private fun fakeJarBytes(): ByteArray {
+        // Incompressible payload: deflate must not shrink the archive below
+        // validateGenericJar's 1024-byte floor.
+        val noise = ByteArray(2048).also { java.util.Random(0x5EED).nextBytes(it) }
         val bytes = java.io.ByteArrayOutputStream()
         java.util.zip.ZipOutputStream(bytes).use { zos ->
             zos.putNextEntry(java.util.zip.ZipEntry("org/bukkit/craftbukkit/Main.class"))
-            zos.write(ByteArray(4096))
+            zos.write(noise)
             zos.closeEntry()
             zos.putNextEntry(java.util.zip.ZipEntry("META-INF/MANIFEST.MF"))
             zos.write("Manifest-Version: 1.0\n".toByteArray())
