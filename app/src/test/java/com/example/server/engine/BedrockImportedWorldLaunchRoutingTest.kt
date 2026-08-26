@@ -80,7 +80,11 @@ class BedrockImportedWorldLaunchRoutingTest {
 
     private val launchHook: java.lang.reflect.Method by lazy {
         BedrockJavaEngineBase::class.java
-            .getDeclaredMethod("onPrepareWorldAndLaunchJar", File::class.java)
+            .getDeclaredMethod(
+                "onPrepareWorldAndLaunchJar",
+                File::class.java,
+                kotlin.coroutines.Continuation::class.java,
+            )
             .apply { isAccessible = true }
     }
 
