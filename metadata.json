@@ -1,6 +1,0 @@
-{
-  "name": "MineHost",
-  "description": "A comprehensive Minecraft server management application with AI assistance.",
-  "requestFramePermissions": [],
-  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
-}
