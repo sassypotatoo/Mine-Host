@@ -108,8 +108,8 @@ class JavaEngineCatalogContractTest {
             onLog = {},
             onStatusChange = {}
         )
-        assertTrue(engine is com.example.server.engine.VanillaEngine)
-        assertEquals("java_vanilla", engine.getEngineId())
+        val vanilla = engine as com.example.server.engine.VanillaEngine
+        assertEquals("java_vanilla", vanilla.getEngineId())
     }
 
     @Test
@@ -127,7 +127,7 @@ class JavaEngineCatalogContractTest {
             onLog = {},
             onStatusChange = {}
         )
-        assertTrue(engine is com.example.server.engine.FabricEngine)
-        assertEquals("java_fabric", engine.getEngineId())
+        val fabric = engine as com.example.server.engine.FabricEngine
+        assertEquals("java_fabric", fabric.getEngineId())
     }
 }

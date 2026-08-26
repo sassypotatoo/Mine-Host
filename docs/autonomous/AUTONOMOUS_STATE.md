@@ -255,3 +255,8 @@
   ServerFactory construction). StableBedrockCatalogContractTest coverage flows
   automatically from ALL_TEMPLATES membership. Runtime Verification: UNVERIFIED
   (no device). CI verdict pending.
+- 2026-08-26 — CI run 32945700065 FAIL root cause: my new
+  JavaEngineCatalogContractTest called getEngineId() through the ServerEngine
+  interface type (method lives on JvmServerEngineBase) -> unresolved reference at
+  :app:compileDebugUnitTestKotlin. All production changes compiled clean.
+  Fix: typed cast to concrete engine classes. BUILD_FIX=1/5.
