@@ -5,8 +5,8 @@
 
 ## Current task
 
-- **Task:** Production-readiness loop — Phase A: P0 blockers
-- **Status:** IN_PROGRESS (2026-08-25)
+- **Task:** Production-readiness loop — Phase A (P0 blockers) COMPLETE; Phase B next
+- **Status:** P0 CLOSED 2026-08-26 — first fully green CI run 32932710800
 - **Plan (P0–P4, audit-derived 2026-08-25):**
   - **P0#1 corrupt gradle-wrapper.jar** — sha256 `a5e75118...` (78783 B), BadZipFile
     confirmed locally. Fix: fetch official wrapper jar for v9.3.1 from
@@ -37,15 +37,16 @@
 | MAX_RUNTIME_FIX_ITERATIONS | 0 | 5 |
 | MAX_TOTAL_ITERATIONS | 6 | 15 |
 
-## Gate status (last verified 2026-08-26)
+## Gate status (last verified 2026-08-26, run 32932710800)
 
 | Gate | State | Evidence |
 |---|---|---|
 | Local compile (Termux) | UNAVAILABLE | no JDK/Gradle installed (see AUTONOMOUS_WORKFLOW.md §1) |
 | Local unit tests | UNAVAILABLE | same |
-| CI Set up Gradle + main compile | **PASSING** | run 32889978741: official v9.3.1 wrapper jar accepted; :app:compileDebugKotlin succeeded (first green stages ever) |
-| CI unit-test compile+run | FAILING | run 32889978741: `:app:compileDebugUnitTestKotlin` — EngineVersionTransactionManagerTest.kt:32 called nonexistent `catalog.refresh(false)`; fixed in b42b3c1 (awaiting CI) |
-| CI APK artifact | NOT PRODUCED | blocked by test stage above |
+| CI Set up Gradle + main compile | **PASSING** | every run since d5d26d7 |
+| CI unit-test compile+run | **PASSING — 232/232** | run 32932710800 (first full green in project history) |
+| CI APK artifact | **PRODUCED** | artifact minehost-debug, 24,629,467 bytes |
+| Native launcher packaged in APK | **VERIFIED** | "Verify Native Launcher in APK" step success, same run — P0#2 closed |
 | Device/runtime verification | UNVERIFIED | no adb/android-tools; no device evidence yet |
 
 ## Known blockers
@@ -54,12 +55,10 @@
    sha256 `a5e75118...`, BadZipFile) replaced with official gradle/gradle v9.3.1
    wrapper jar (46175 B, sha256 `b3a875dd...`). Runs 32889978741 and 32892864131
    passed "Set up Gradle" and wrapper validation — root cause confirmed and closed.
-2. **P0#2 native launcher build** — pushed dfc43f5 (externalNativeBuild
-   re-enabled + abiFilters arm64-v8a + CMAKE_RUNTIME_OUTPUT_DIRECTORY redirect;
-   AGP packages only artifacts under the library output dir). Verification run
-   was auto-cancelled by a later push before reaching assembleDebug; must be
-   re-verified on the next green-through-tests run ("Verify Native Launcher
-   in APK" step).
+2. ~~**P0#2 native launcher build**~~ **RESOLVED 2026-08-26**: dfc43f5
+   (externalNativeBuild re-enabled + abiFilters arm64-v8a +
+   CMAKE_RUNTIME_OUTPUT_DIRECTORY redirect) verified by run 32932710800's
+   "Verify Native Launcher in APK" step = success; APK artifact produced.
 3. **Test-suite deadlock ROOT-CAUSED 2026-08-26** (was misread as slow
    Robolectric): BedrockEngineHardeningTest >
    staleProcessExitStillRunsItsCleanup STARTED, never completed (runs
@@ -121,6 +120,12 @@
    if the run for 3b28df3 still fails at test stage, further iterations
    must be classified by root cause (production defect => BUILD bucket)
    and justified explicitly, not silently renewed.
+11. **FIRST FULLY GREEN RUN 2026-08-26** — run 32932710800 @ 1f291d4:
+    Set up Gradle ✓ compile ✓ 232/232 tests ✓ APK artifact minehost-debug
+    (24.6 MB) ✓ "Verify Native Launcher in APK" ✓ => P0#1 and P0#2 both
+    CLOSED. Final fix was 1f291d4 removing the stale strict-https require
+    that had been shadowing 3bd24b9's loopback allowance. Phase A complete;
+    next phase per plan: P1 core-consistency sweep, then P2 app features.
 
 ## History (append-only, newest last)
 
