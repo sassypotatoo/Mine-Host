@@ -16,6 +16,9 @@ import com.example.world.ImportedWorldVerificationStore
 import com.example.world.WorldLaunchOwnershipPolicy
 import com.example.world.WorldLaunchOwnership
 import com.example.world.EngineGeneratedWorldStore
+import com.example.world.WorldCompatibilityCore
+import com.example.world.WorldFileIntegrity
+import com.example.world.WorldWorkingCopyManager
 import java.io.File
 import java.io.FileInputStream
 import java.io.IOException
@@ -55,6 +58,9 @@ abstract class BedrockJavaEngineBase(
 
     @Volatile
     private var preparedWorld: PreparedBedrockWorld? = null
+
+    @Volatile
+    private var activeProtectedLaunch: WorldCompatibilityCore.PreparedLaunch? = null
 
     protected open fun runtimeProtocolExpectation(): RuntimeProtocolExpectation =
         RuntimeProtocolExpectation(
@@ -228,12 +234,18 @@ abstract class BedrockJavaEngineBase(
         }
 
         when (decision.ownership) {
-            WorldLaunchOwnership.IMPORTED_PROTECTED_VALID,
+            WorldLaunchOwnership.IMPORTED_PROTECTED_VALID -> {
+                val launch = prepareImportedProtectedWorld(activeWorldName, serverJar)
+                preparedWorld = PreparedBedrockWorld(
+                    worldName = activeWorldName,
+                    ownership = decision.ownership,
+                )
+                return launch.launchArtifact
+            }
             WorldLaunchOwnership.UNTRACKED_REQUIRES_ADOPTION,
             WorldLaunchOwnership.EXTERNAL_ADOPTION_REQUIRED -> {
-                // Loop 4: Park World Adapter fail-closed.
                 throw IllegalStateException(
-                    "World adapter is currently postponed. World '$activeWorldName' (${decision.ownership}) cannot be safely auto-adapted in this baseline."
+                    "World '$activeWorldName' (${decision.ownership}) must be adopted through MineHost's protected import flow before it can be launched."
                 )
             }
             WorldLaunchOwnership.INCOMPLETE_IMPORT_TRANSACTION,
@@ -268,6 +280,60 @@ abstract class BedrockJavaEngineBase(
 
     override fun onProcessStartedHook(session: ServerProcessSession) {
         startRakNetProbeLoop(session)
+    }
+
+    private fun prepareImportedProtectedWorld(
+        worldName: String,
+        serverJar: File,
+    ): WorldCompatibilityCore.PreparedLaunch {
+        onLog("[WorldCompat] Preparing protected imported world '$worldName' against ${engineVersion.id}")
+        val core = WorldCompatibilityCore(serverDir)
+        val prepared = core.prepareProtectedLaunch(
+            worldName = worldName,
+            engineId = getEngineId(),
+            engineVersionId = engineVersion.id,
+            engineArtifact = serverJar,
+            expectedArtifactSha256 = engineVersion.sha256,
+            protocolVersions = runtimeProtocolExpectation().expectedProtocols,
+        ).getOrElse { error ->
+            throw IllegalStateException(
+                "Imported world '$worldName' cannot be safely launched: ${error.message}",
+                error,
+            )
+        }
+        prepared.compatibility.reasons.take(6).forEach { onLog("[WorldCompat] $it") }
+        if (prepared.compatibility.requiresProtectedLaunch) {
+            onLog("[WorldCompat] Protected mode stays active; a runtime failure resets this world from its immutable original.")
+        }
+        activeProtectedLaunch = prepared
+        return prepared
+    }
+
+    private fun restoreProtectedWorldAfterRuntimeFailure(session: ServerProcessSession) {
+        val launch = activeProtectedLaunch ?: return
+        activeProtectedLaunch = null
+        if (!isCurrentProcessSession(session)) return
+
+        val errors = buildList {
+            session.fatalErrorMessage?.let(::add)
+            synchronized(session.compatibilityErrors) { addAll(session.compatibilityErrors) }
+        }
+        WorldCompatibilityCore(serverDir)
+            .restoreAfterRuntimeFailure(launch.protection.worldName, getEngineId(), errors)
+            .fold(
+                onSuccess = {
+                    onLog(
+                        "[WorldCompat] Working copy of '${launch.protection.worldName}' was reset " +
+                            "from its immutable original after the runtime failure."
+                    )
+                },
+                onFailure = {
+                    onLog(
+                        "[WorldCompat] Could not reset '${launch.protection.worldName}' after the " +
+                            "runtime failure: ${it.message}"
+                    )
+                },
+            )
     }
 
     override fun onHealthEvent(event: HealthEvent, line: String, session: ServerProcessSession) {
@@ -319,6 +385,7 @@ abstract class BedrockJavaEngineBase(
 
                 scope.launch {
                     stopServerInternal(session, TerminationCause.WORLD_INCOMPATIBLE_STOP)
+                    restoreProtectedWorldAfterRuntimeFailure(session)
                 }
             }
             HealthEvent.SERVER_STOPPING -> {
@@ -450,6 +517,25 @@ abstract class BedrockJavaEngineBase(
                         true
                     } else {
                         onLog("[World] Identity verification failed for newly generated world '${prepared.worldName}'.")
+                        false
+                    }
+                }
+            }
+
+            WorldLaunchOwnership.IMPORTED_PROTECTED_VALID -> {
+                val metadata = com.example.world.WorldWorkingCopyManager(serverDir).metadata(prepared.worldName)
+                val expectedHash = metadata?.preparedWorldHash
+                if (metadata == null || expectedHash == null) {
+                    onLog("[World] Protected-world metadata is missing for '${prepared.worldName}'.")
+                    false
+                } else {
+                    val actualHash = runCatching {
+                        com.example.world.WorldFileIntegrity.fingerprint(worldDirectory).rootHash
+                    }.getOrNull()
+                    if (actualHash == expectedHash) {
+                        true
+                    } else {
+                        onLog("[World] Working copy of '${prepared.worldName}' no longer matches its prepared fingerprint.")
                         false
                     }
                 }

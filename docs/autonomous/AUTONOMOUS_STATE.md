@@ -260,3 +260,21 @@
   interface type (method lives on JvmServerEngineBase) -> unresolved reference at
   :app:compileDebugUnitTestKotlin. All production changes compiled clean.
   Fix: typed cast to concrete engine classes. BUILD_FIX=1/5.
+- 2026-08-26 — FEATURE CYCLE: Stage 15 protected imported-world launch pipeline
+  activated in BedrockJavaEngineBase (was parked behind a deliberate throw).
+  IMPORTED_PROTECTED_VALID now routes through WorldCompatibilityCore
+  .prepareProtectedLaunch (immutable-original fingerprint check, working-copy
+  reset, re-inspection, artifact inspection, adapter compatibility,
+  RuntimeMappingDiagnostics) before returning launchArtifact; EXTERNAL_ADOPTION_
+  REQUIRED / UNTRACKED_REQUIRES_ADOPTION now throw an explicit "must be adopted"
+  error instead of falling into generic handling; WORLD_INCOMPATIBLE stop path
+  additionally restores the working copy from its immutable original via
+  restoreAfterRuntimeFailure; ensurePreparedWorldIdentity validates the prepared
+  world against the protection record's source hash each launch. Deliberately
+  NOT wired: finalizeProtectedVerification (requires gameplay telemetry the
+  engine layer cannot observe) — worlds remain PROVISIONAL per launch with
+  exact engine-tuple+fingerprint resume support; fail-closed preserved. New
+  Robolectric test BedrockImportedWorldLaunchRoutingTest covers both routing
+  branches (untracked refusal + undecodable protected world fails closed in
+  prepareProtectedLaunch). Runtime Verification: UNVERIFIED (no device). CI
+  verdict pending.
