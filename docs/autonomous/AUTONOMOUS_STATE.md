@@ -287,3 +287,9 @@
   routing assertion). Fix: test-only reflective suspend bridge
   (getDeclaredMethod + isAccessible + COROUTINE_SUSPENDED-aware
   suspendCoroutine adapter); zero production changes. BUILD_FIX=1/5.
+- 2026-08-26 — CI run 32950127249 FAIL root cause: bridge used nonexistent
+  kotlinx.coroutines.suspendCoroutine (stdlib is kotlin.coroutines.
+  suspendCoroutine); unresolved callee left the lambda parameter ERROR-typed
+  so even member resumeWith/resumeWithException failed to resolve. Fix: stdlib
+  call + member-only resumeWith(Result) on both paths (no extension imports).
+  BUILD_FIX=2/5. TEST=0/5 TOTAL=2/15.

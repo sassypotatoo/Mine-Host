@@ -86,14 +86,15 @@ class BedrockImportedWorldLaunchRoutingTest {
 
     @Suppress("UNCHECKED_CAST")
     private suspend fun invokeProtectedLaunch(engine: NukkitMOTEngine, serverJar: File): File =
-        kotlinx.coroutines.suspendCoroutine { continuation ->
+        kotlin.coroutines.suspendCoroutine { continuation ->
             try {
                 when (val raw = launchHook.invoke(engine, serverJar, continuation)) {
                     kotlin.coroutines.intrinsics.COROUTINE_SUSPENDED -> Unit
                     else -> continuation.resumeWith(Result.success(raw as File))
                 }
             } catch (e: java.lang.reflect.InvocationTargetException) {
-                continuation.resumeWithException(e.cause ?: e)
+                val cause = e.cause ?: e
+                continuation.resumeWith(Result.failure(cause))
             }
         }
 
