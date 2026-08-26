@@ -55,7 +55,7 @@ contradicted the History accounting (recovery-session correction).
 | Local compile (Termux) | UNAVAILABLE | no JDK/Gradle installed (see AUTONOMOUS_WORKFLOW.md §1) |
 | Local unit tests | UNAVAILABLE | same |
 | CI Set up Gradle + main compile | **PASSING** | every run since d5d26d7 |
-| CI unit-test compile+run | **PASSING — 242/242** | run 32953655059 @ fcd69e1 (all steps success incl. Verify Native Launcher in APK) |
+| CI unit-test compile+run | **PASSING — 242/242** | run 32965458907 @ ecc5c7a (all steps success incl. Verify Native Launcher in APK) |
 | CI APK artifact | **PRODUCED** | artifact minehost-debug, 24,629,467 bytes |
 | Native launcher packaged in APK | **VERIFIED** | "Verify Native Launcher in APK" step success, same run — P0#2 closed |
 | Device/runtime verification | UNVERIFIED | no adb/android-tools; no device evidence yet |
@@ -315,3 +315,18 @@ contradicted the History accounting (recovery-session correction).
   BUILD=2/5 TEST=1/5 TOTAL=3/15. Runtime Verification remains UNVERIFIED
   (no device). Next open threads: parked items only (stale 1361 pin,
   unwired finalizeProtectedVerification, P3 needs evidenced defect).
+- 2026-08-26 — DEPENDENCY AUDIT (operator-requested): removed unused retrofit +
+  converter-moshi + logging-interceptor (zero imports anywhere; OkHttp used
+  directly) and four unreferenced repo-root JSON relics (PojavLauncher-era
+  snapshots, GitHub-404 body, AI-builder metadata.json). 573 deletions, commit
+  1866924, CI run 32960921678 PASS. Catalog consistency validated by script.
+- 2026-08-26 — PERF SUBSET (operator-approved): JvmServerEngineBase startServer
+  now provisions Java runtime and engine JAR concurrently (engine body
+  extracted verbatim to provisionVerifiedEngineJar; structured concurrency,
+  first-failure cancellation preserved; log emitter already synchronized).
+  Launch args: G1GC + MaxGCPauseMillis=200 + G1New/MaxNewSizePercent for
+  heaps >=512M (was unconditional SerialGC — concrete defect on multicore);
+  Serial retained below 512M. Fingerprint-skip working-copy resume verified
+  ALREADY IMPLEMENTED (WorldWorkingCopyManager.prepareEngineWorkingCopy) — no
+  change needed there. Commit ecc5c7a, CI run 32965458907 PASS, 242/242.
+  Fix iterations used: 0. Runtime Verification: UNVERIFIED (no device).
