@@ -4,4 +4,5 @@ data class RuntimeProtocolExpectation(
     val expectedProtocols: List<Int>,
     val selectedBedrockVersion: String,
     val source: String,
+    val supportsAdvertisedCurrentProtocol: Boolean = false,
 )

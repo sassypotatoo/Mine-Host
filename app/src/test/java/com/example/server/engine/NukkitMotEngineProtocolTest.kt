@@ -80,6 +80,13 @@ class NukkitMotEngineProtocolTest {
             zos.putNextEntry(ZipEntry("resources/runtime_block_states_2168.dat"))
             zos.write(byteArrayOf(1, 2, 3))
             zos.closeEntry()
+
+            // Upstream ships its own current protocol's palette unnumbered; a
+            // newer master can therefore advertise 2169 while numbered files
+            // stop at 2168 (observed on device with build 1430).
+            zos.putNextEntry(ZipEntry("resources/runtime_block_states.dat"))
+            zos.write(byteArrayOf(7, 8, 9))
+            zos.closeEntry()
         }
 
         val resolvedIdentity = ResolvedEngineVersion(
@@ -111,6 +118,7 @@ class NukkitMotEngineProtocolTest {
         assertEquals(listOf(2168), expectation.expectedProtocols)
         assertEquals("AUTO", expectation.selectedBedrockVersion)
         assertEquals("resolved-artifact:nukkit-mot:1388", expectation.source)
+        assertEquals(true, expectation.supportsAdvertisedCurrentProtocol)
 
         val verification = EngineProtocolCompatibility.evaluate(
             selectedBedrockVersion = expectation.selectedBedrockVersion,
@@ -121,6 +129,20 @@ class NukkitMotEngineProtocolTest {
         )
 
         assertEquals(EngineProtocolCompatibilityState.VERIFIED, verification.state)
+
+        // Mirror of the probe-loop augmentation in BedrockJavaEngineBase: the
+        // unnumbered palette lets the build's own newer advertisement verify.
+        val augmentedProtocols =
+            expectation.expectedProtocols + 2169
+        val newerAdvertisement = EngineProtocolCompatibility.evaluate(
+            selectedBedrockVersion = expectation.selectedBedrockVersion,
+            advertisedBedrockVersion = "1.26.30",
+            advertisedProtocol = 2169,
+            expectedProtocols = augmentedProtocols,
+            advertisedEdition = "MCPE",
+        )
+
+        assertEquals(EngineProtocolCompatibilityState.VERIFIED, newerAdvertisement.state)
     }
 
     @Test
@@ -158,6 +180,10 @@ class NukkitMotEngineProtocolTest {
         )
 
         val expectation = engine.runtimeProtocolExpectationForTest()
+
+        // No unnumbered palette in this jar: the build's own advertisement must
+        // NOT be auto-trusted, so an out-of-set protocol still fails closed.
+        assertEquals(false, expectation.supportsAdvertisedCurrentProtocol)
 
         val verification = EngineProtocolCompatibility.evaluate(
             selectedBedrockVersion = expectation.selectedBedrockVersion,

@@ -180,6 +180,23 @@
     before deletion, no change made. P3 remains open pending a concrete
     evidenced defect (non-negotiables forbid speculative edits to protected
     systems); device verification stays UNVERIFIED (no adb/device).
+17. **FIRST DEVICE EVIDENCE 2026-08-26** (operator-supplied console log,
+    package com.aistudio.minehost.qweras): native launcher LOADED from
+    lib/arm64, Java 17 auto-installed+validated (36 pkgs via apt mirror),
+    Nukkit-MOT fallback resolution succeeded after pinned 1361 404'd upstream,
+    server BOOTED and bound 0.0.0.0:19132 => launcher/runtime/install/fallback
+    chains CONFIRMED on real hardware. New evidenced defect found + fixed same
+    day: PROTOCOL_MISMATCH_STOP on healthy boot — upstream ships its CURRENT
+    protocol palette as UNNUMBERED resources/runtime_block_states.dat which the
+    digit-only discovery regex missed => build 1430 numbered set maxed at 2168
+    while same jar advertised 2169. Fix: hasCurrentProtocolPalette() +
+    RuntimeProtocolExpectation.supportsAdvertisedCurrentProtocol (default false)
+    + BedrockJavaEngineBase probe-loop augmentation including the live
+    advertisement ONLY when the unnumbered palette exists (fail-closed kept;
+    rejects-test asserts flag=false still mismatches). Tests extended in
+    NukkitMotProtocolMetadataTest (+3 cases) and NukkitMotEngineProtocolTest
+    (flag assertions + 2169-augmentation mirror). Stale 1361 pin PARKED:
+    fallback proven on device; one wasted request per fresh install, cosmetic.
 
 ## History (append-only, newest last)
 

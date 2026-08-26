@@ -77,10 +77,20 @@ class NukkitMOTEngine(
             )
         }
 
+        val currentPalettePresent = runCatching {
+            NukkitMotProtocolMetadata.hasCurrentProtocolPalette(serverJar)
+        }.getOrElse { error ->
+            throw IllegalStateException(
+                "Resolved Nukkit-MOT build #${identity.resolvedBuildNumber} current-palette discovery failed: ${error.message}",
+                error
+            )
+        }
+
         return RuntimeProtocolExpectation(
             expectedProtocols = discoveredProtocols,
             selectedBedrockVersion = "AUTO",
             source = "resolved-artifact:${identity.effectiveVersionId}",
+            supportsAdvertisedCurrentProtocol = currentPalettePresent,
         )
     }
 

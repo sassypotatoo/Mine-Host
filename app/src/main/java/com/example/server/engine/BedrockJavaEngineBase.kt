@@ -770,15 +770,31 @@ abstract class BedrockJavaEngineBase(
                         session.pingResult = ping
                         if (!session.networkReady) {
                             val expectation = runtimeProtocolExpectation()
+                            var expectedProtocols = expectation.expectedProtocols
+                            if (
+                                expectation.supportsAdvertisedCurrentProtocol &&
+                                ping.protocol != null &&
+                                ping.protocol !in expectedProtocols
+                            ) {
+                                // The probed process IS this artifact; its unnumbered
+                                // runtime_block_states.dat palette is the current
+                                // protocol's own metadata, so the advertisement is covered.
+                                expectedProtocols = expectedProtocols + ping.protocol
+                                onLog(
+                                    "[Protocol] Unnumbered runtime_block_states.dat covers this " +
+                                        "build's own advertisement (protocol ${ping.protocol}); " +
+                                        "included in verification."
+                                )
+                            }
                             if (!session.protocolExpectationLogged) {
                                 session.protocolExpectationLogged = true
-                                onLog("[Protocol] Verification source: ${expectation.source}, protocols: ${expectation.expectedProtocols.joinToString()}")
+                                onLog("[Protocol] Verification source: ${expectation.source}, protocols: ${expectedProtocols.joinToString()}")
                             }
                             val verification = EngineProtocolCompatibility.evaluate(
                                 selectedBedrockVersion = expectation.selectedBedrockVersion,
                                 advertisedBedrockVersion = ping.minecraftVersion,
                                 advertisedProtocol = ping.protocol,
-                                expectedProtocols = expectation.expectedProtocols,
+                                expectedProtocols = expectedProtocols,
                                 advertisedEdition = ping.edition,
                             )
 
