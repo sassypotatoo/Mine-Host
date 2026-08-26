@@ -79,7 +79,12 @@ class PaperHardeningTest {
     fun testSizeMismatchRejection() = runBlocking {
         val engine = createPaperEngine(expectedSize = 2000L)
         val dest = File(tempDir, "paper.jar")
-        
+
+        // downloadFile validates JAR structure before returning, so the body
+        // must be a real JAR; only its length is wrong versus the manifest.
+        val jarBytes = fakeJarBytes()
+        assertTrue(jarBytes.size != 2000)
+
         val buildInfoJson = JSONArray().apply {
             put(JSONObject().apply {
                 put("id", 100)
@@ -96,20 +101,22 @@ class PaperHardeningTest {
                 })
             })
         }
-        
+
         // Mock server to return the build info
         server.enqueue(MockResponse().setBody(buildInfoJson.toString()))
-        server.enqueue(MockResponse().setBody("A".repeat(1500))) // Actual download > 1KB but != 2000
-        
+        server.enqueue(MockResponse().setBody(okio.Buffer().write(jarBytes)))
+
         val result = Downloader.downloadServerJar(context, engine, dest, minecraftVersion = "1.21.4") {}
-        
-        assertTrue(result is ServerJarDownloadResult.Failure)
+
+        assertTrue("result: $result", result is ServerJarDownloadResult.Failure)
         assertTrue((result as ServerJarDownloadResult.Failure).message.contains("size mismatch"))
         assertFalse(dest.exists())
     }
 
     @Test
     fun testShaMismatchRejection() = runBlocking {
+        val jarBytes = fakeJarBytes()
+
         val buildInfoJson = JSONArray().apply {
             put(JSONObject().apply {
                 put("id", 100)
@@ -121,24 +128,35 @@ class PaperHardeningTest {
                         put("checksums", JSONObject().apply {
                             put("sha256", "f00df00df00df00df00df00df00df00df00df00df00df00df00df00df00df00d")
                         })
-                        put("size", 2000)
+                        put("size", jarBytes.size)
                     })
                 })
             })
         }
-        
+
         server.enqueue(MockResponse().setBody(buildInfoJson.toString()))
-        server.enqueue(MockResponse().setBody("B".repeat(2000)))
-        
-        val engine = createPaperEngine(expectedSize = 2000L)
+        server.enqueue(MockResponse().setBody(okio.Buffer().write(jarBytes)))
+
+        val engine = createPaperEngine(expectedSize = jarBytes.size.toLong())
         val dest = File(tempDir, "paper.jar")
         val result = Downloader.downloadServerJar(context, engine, dest, minecraftVersion = "1.21.4") {}
-        
-        println("testShaMismatchRejection result: $result")
-        
-        assertTrue(result is ServerJarDownloadResult.Failure)
+
+        assertTrue("result: $result", result is ServerJarDownloadResult.Failure)
         assertTrue((result as ServerJarDownloadResult.Failure).message.contains("checksum mismatch"))
         assertFalse(dest.exists())
+    }
+
+    private fun fakeJarBytes(): ByteArray {
+        val bytes = java.io.ByteArrayOutputStream()
+        java.util.zip.ZipOutputStream(bytes).use { zos ->
+            zos.putNextEntry(java.util.zip.ZipEntry("org/bukkit/craftbukkit/Main.class"))
+            zos.write(ByteArray(4096))
+            zos.closeEntry()
+            zos.putNextEntry(java.util.zip.ZipEntry("META-INF/MANIFEST.MF"))
+            zos.write("Manifest-Version: 1.0\n".toByteArray())
+            zos.closeEntry()
+        }
+        return bytes.toByteArray()
     }
 
     private fun createPaperEngine(expectedSize: Long? = null) = EngineVersion(

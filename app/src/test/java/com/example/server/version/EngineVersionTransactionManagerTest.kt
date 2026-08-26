@@ -4,7 +4,11 @@ import android.content.Context
 import com.example.data.ServerEdition
 import com.example.data.ServerProfile
 import com.example.data.ServerProfileRepository
+import com.example.data.StartServerResult
 import com.example.server.ServerManager
+import com.example.server.ServerStatus
+import io.mockk.every
+import io.mockk.mockk
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -27,18 +31,27 @@ class EngineVersionTransactionManagerTest {
     private lateinit var profiles: ServerProfileRepository
     private lateinit var serverManager: ServerManager
     private lateinit var manager: EngineVersionTransactionManager
+    private val serverStatus = java.util.concurrent.atomic.AtomicReference(ServerStatus.STOPPED)
 
     @org.junit.Before
     fun setup() {
         org.robolectric.util.ReflectionHelpers.setStaticField(android.os.Build::class.java, "SUPPORTED_ABIS", arrayOf("arm64-v8a"))
         context = org.robolectric.RuntimeEnvironment.getApplication()
-        val catalog = EngineVersionCatalogRepository(context)
-        // Catalog gating is bypassed here: java_paper versions only enter the
-        // verified catalog via remote promotion, which these transaction-flow
-        // tests do not exercise.
+        // Catalog gating is bypassed (java_paper builds enter the verified
+        // catalog only via remote promotion), and the trailing readiness
+        // health check is stubbed at the ServerManager boundary so the
+        // transaction mechanics are testable without a real launch.
         profiles = ServerProfileRepository(context, null)
-        serverManager = ServerManager(context, catalog)
-        serverManager.setProfileRepositoryProvider { profiles.profiles.value }
+        serverManager = mockk(relaxed = true)
+        every { serverManager.getStatus(any()) } answers { serverStatus.get() }
+        every { serverManager.startServer(any(), any()) } answers {
+            serverStatus.set(ServerStatus.ONLINE)
+            StartServerResult.Started
+        }
+        every { serverManager.stopServer(any()) } answers {
+            serverStatus.set(ServerStatus.STOPPED)
+            Unit
+        }
         manager = EngineVersionTransactionManager(context)
     }
 
