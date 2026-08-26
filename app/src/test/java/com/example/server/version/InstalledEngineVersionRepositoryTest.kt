@@ -12,7 +12,16 @@ import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
 import org.junit.rules.TemporaryFolder
+import org.junit.runner.RunWith
+import org.robolectric.RobolectricTestRunner
+import org.robolectric.annotation.Config
 
+/**
+ * The repository persists through org.json, which is a throwing stub on the
+ * plain-JVM unit-test classpath; Robolectric supplies the real implementation.
+ */
+@RunWith(RobolectricTestRunner::class)
+@Config(sdk = [33])
 class InstalledEngineVersionRepositoryTest {
 
     @get:Rule

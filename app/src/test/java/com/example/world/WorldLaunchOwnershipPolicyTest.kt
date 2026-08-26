@@ -26,7 +26,7 @@ class WorldLaunchOwnershipPolicyTest {
         File(worldDir, "db").mkdirs()
 
         val result = WorldLaunchOwnershipPolicy.classify(serverRoot, "testworld")
-        assertEquals(WorldLaunchOwnership.UNTRACKED_REQUIRES_ADOPTION, result.ownership)
+        assertEquals(WorldLaunchOwnership.EXTERNAL_ADOPTION_REQUIRED, result.ownership)
     }
 
     @Test

@@ -33,7 +33,10 @@ class EngineVersionTransactionManagerTest {
         org.robolectric.util.ReflectionHelpers.setStaticField(android.os.Build::class.java, "SUPPORTED_ABIS", arrayOf("arm64-v8a"))
         context = org.robolectric.RuntimeEnvironment.getApplication()
         val catalog = EngineVersionCatalogRepository(context)
-        profiles = ServerProfileRepository(context, catalog)
+        // Catalog gating is bypassed here: java_paper versions only enter the
+        // verified catalog via remote promotion, which these transaction-flow
+        // tests do not exercise.
+        profiles = ServerProfileRepository(context, null)
         serverManager = ServerManager(context, catalog)
         serverManager.setProfileRepositoryProvider { profiles.profiles.value }
         manager = EngineVersionTransactionManager(context)

@@ -5,8 +5,10 @@ import java.util.jar.JarFile
 
 object NukkitMotProtocolMetadata {
 
+    // matchEntire anchors both ends, so an optional directory prefix must be
+    // part of the pattern itself; "(?:^|/)" can never consume "dir/" here.
     private val protocolResource =
-        Regex("""(?:^|/)runtime_block_states_(\d+)\.dat$""")
+        Regex("""(?:.*/)?runtime_block_states_(\d+)\.dat""")
 
     fun discoverSupportedProtocols(
         jarFile: File,

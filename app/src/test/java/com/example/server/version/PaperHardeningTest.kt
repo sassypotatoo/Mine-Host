@@ -36,17 +36,9 @@ class PaperHardeningTest {
     fun setup() {
         server = MockWebServer()
         server.start()
-        // Override PaperResolver project URL for tests
-        // Note: projectUrl is internal, so it works if in same module
-        // We'll use reflection if internal access is restricted in this environment
-        try {
-            val field = PaperResolver::class.java.getDeclaredField("projectUrl")
-            field.isAccessible = true
-            field.set(null, server.url("/v3/projects/paper").toString())
-        } catch (e: Exception) {
-            // Fallback to internal access if possible
-            // PaperResolver.projectUrl = server.url("/v3/projects/paper").toString()
-        }
+        // internal set is visible to this friend compilation; reflection cannot
+        // do this because the backing field is an instance field of the object.
+        PaperResolver.projectUrl = server.url("/v3/projects/paper").toString()
 
         tempDir = File.createTempFile("paper-hardening-", "").apply {
             delete()
@@ -56,12 +48,7 @@ class PaperHardeningTest {
 
     @After
     fun teardown() {
-        try {
-            val field = PaperResolver::class.java.getDeclaredField("projectUrl")
-            field.isAccessible = true
-            field.set(null, "https://fill.papermc.io/v3/projects/paper")
-        } catch (e: Exception) {}
-
+        PaperResolver.projectUrl = "https://fill.papermc.io/v3/projects/paper"
         server.shutdown()
         tempDir.deleteRecursively()
     }

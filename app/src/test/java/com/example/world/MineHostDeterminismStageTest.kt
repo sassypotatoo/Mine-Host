@@ -176,7 +176,7 @@ class MineHostDeterminismStageTest {
     fun testDynamicGeneratorIdentityResolver() {
         val defaultGen = EngineGeneratorIdentityResolver.resolve("nukkit-mot", engineVersion, "DEFAULT")
         assertEquals("nukkit-mot/normal", defaultGen.id)
-        assertEquals("1361", defaultGen.revision)
+        assertEquals("jenkins-build:1361", defaultGen.revision)
 
         val flatGen = EngineGeneratorIdentityResolver.resolve("bedrock_power_nukkit_x", engineVersion, "FLAT")
         assertEquals("powernukkitx/flat", flatGen.id)

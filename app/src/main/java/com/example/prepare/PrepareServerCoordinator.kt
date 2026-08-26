@@ -18,7 +18,14 @@ import java.io.File
 
 class PrepareServerCoordinator(
     private val context: Context,
-    private val pluginInstaller: PluginInstaller
+    private val pluginInstaller: PluginInstaller,
+    private val runtimePreparer: suspend (
+        context: Context,
+        javaMajor: Int,
+        onProgress: (String) -> Unit,
+    ) -> RuntimePreparationResult = { ctx, major, progress ->
+        JavaRuntimeManager.ensureRuntimeReady(ctx, major, progress)
+    },
 ) {
     enum class ComponentState { INSTALLED_VALID, MISSING, INVALID, OPTIONAL }
 
@@ -124,7 +131,7 @@ class PrepareServerCoordinator(
             selectedMinecraftVersion
         )
 
-        when (val runtime = JavaRuntimeManager.ensureRuntimeReady(context, targetJavaMajor, onProgress)) {
+        when (val runtime = runtimePreparer(context, targetJavaMajor, onProgress)) {
             is RuntimePreparationResult.Ready -> completed += "Java ${runtime.javaMajor}"
             is RuntimePreparationResult.Unsupported -> return@withContext Result.Failure("runtime", runtime.message, completed)
             is RuntimePreparationResult.Failure -> return@withContext Result.Failure(runtime.stage, runtime.message, completed)

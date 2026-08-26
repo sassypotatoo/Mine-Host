@@ -36,7 +36,18 @@ class PrepareServerCoordinatorTest {
             val pluginInstaller = com.example.plugins.PluginInstaller(
                 createBackup = { com.example.data.OperationResult(true, "Mock backup") }
             )
-            val coordinator = PrepareServerCoordinator(context, pluginInstaller)
+            val coordinator = PrepareServerCoordinator(
+                context,
+                pluginInstaller,
+                runtimePreparer = { _, javaMajor, _ ->
+                    com.example.server.RuntimePreparationResult.Ready(
+                        runtimeHome = tempDir,
+                        launcherFile = File(tempDir, "java"),
+                        javaMajor = javaMajor,
+                        runtimeFingerprint = "test-fingerprint",
+                    )
+                },
+            )
             val engine = createPaperEngine()
             
             // Paper 1.19.4 -> Java 17
