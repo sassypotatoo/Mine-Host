@@ -25,6 +25,7 @@ import java.util.Locale
 import java.util.zip.ZipEntry
 import java.util.zip.ZipInputStream
 import java.util.zip.ZipOutputStream
+import com.example.server.template.TemplateRegistry
 
 class LocalServerDataService(
     private val rootProvider: () -> File,
@@ -202,11 +203,11 @@ class LocalServerDataService(
     private fun isJavaProfile(): Boolean {
         val profile = profileProvider?.invoke()
         if (profile != null) {
-            return profile.edition == ServerEdition.JAVA || profile.engineId == "java_paper"
+            return profile.edition == ServerEdition.JAVA || TemplateRegistry.isJavaEditionEngine(profile.engineId)
         }
         val installed = InstalledEngineVersionRepository.read(root)
         if (installed != null) {
-            return installed.engineId == "java_paper"
+            return TemplateRegistry.isJavaEditionEngine(installed.engineId)
         }
         val profileFile = File(root, ".minehost/profile.json")
         if (profileFile.isFile) {
@@ -214,7 +215,7 @@ class LocalServerDataService(
                 val json = JSONObject(profileFile.readText())
                 val edition = json.optString("edition")
                 val engineId = json.optString("engineId")
-                if (edition.equals("JAVA", ignoreCase = true) || engineId == "java_paper") return true
+                if (edition.equals("JAVA", ignoreCase = true) || TemplateRegistry.isJavaEditionEngine(engineId)) return true
             }
         }
         return false

@@ -234,3 +234,24 @@
   changes: protocol regex + coordinator runtime seam; 6 test corrections).
   Counters: TEST=2/5, TOTAL=4/15. Awaiting CI verdict; on green, verify
   "Verify Native Launcher in APK" step for the owed P0#2 evidence.
+- 2026-08-26 — FEATURE CYCLE: Vanilla + Fabric Java Edition engines implemented
+  end-to-end under the operator "implement everything" mandate. New files
+  VanillaEngine/FabricEngine (JavaEditionEngineBase subclasses); ServerType.JAVA_VANILLA;
+  templates java_vanilla/java_fabric (1024MB) registered in ALL_TEMPLATES +
+  REGISTERED_TEMPLATES; static catalog entries in engine_versions.json pinned by
+  SHA-256 verified against freshly downloaded artifacts (vanilla 26.2 bundler jar
+  = Mojang piston-data sha1-verified object, sha256 cdacdfb2...; fabric launcher
+  26.2/loader 0.19.3/installer 1.1.2, sha256 301f83aa...; both manifests inspected:
+  net.minecraft.bundler.Main / net.fabricmc.installer.ServerLauncher). Integration
+  fixes for sites that treated java_paper as THE Java sentinel: TemplateRegistry
+  .isJavaEditionEngine helper; EngineCatalog specs (server.jar /
+  fabric-server-launch.jar, port 25565); ConfigAdapterFactory VanillaAdapter/
+  FabricAdapter; ServerProfileRepository persists JAVA_TCP + ServerEdition.JAVA;
+  LocalServerDataService isJavaProfile all three paths; wizard finalization port
+  19132->25565 + edition/network; VersionStep split paper-dynamic vs java-static
+  UI + copy; ReviewStep EULA surface now shown for every Java engine;
+  WizardIllustrations icons; ReleaseVerifier trusted main classes. New test
+  JavaEngineCatalogContractTest (specs, adapter routing, properties write,
+  ServerFactory construction). StableBedrockCatalogContractTest coverage flows
+  automatically from ALL_TEMPLATES membership. Runtime Verification: UNVERIFIED
+  (no device). CI verdict pending.

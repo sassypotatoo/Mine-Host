@@ -23,6 +23,7 @@ import com.example.server.version.ReleaseChannel
 import com.example.ui.servercreation.CreateServerDraft
 import com.example.ui.servercreation.CreateServerWizardViewModel
 import com.example.ui.servercreation.WizardTheme
+import com.example.server.template.TemplateRegistry
 
 @Composable
 fun VersionStep(
@@ -32,7 +33,9 @@ fun VersionStep(
     onRetryPaperFetch: () -> Unit = {},
     onBedrockVersionSelected: (BedrockVersionOption) -> Unit
 ) {
-    val isJava = draft.engine?.id == "java_paper"
+    val engineId = draft.engine?.id
+    val isPaperApi = engineId == "java_paper"
+    val isJava = TemplateRegistry.isJavaEditionEngine(engineId)
     
     Column(
         modifier = Modifier.fillMaxWidth(),
@@ -45,14 +48,17 @@ fun VersionStep(
                 color = WizardTheme.PrimaryText
             )
             Text(
-                if (isJava) "Choose a Minecraft Java Edition version supported by PaperMC."
-                else "Choose a Minecraft Bedrock version supported by this server engine.",
+                when {
+                    engineId == "java_paper" -> "Choose a Minecraft Java Edition version supported by PaperMC."
+                    isJava -> "Choose a Minecraft Java Edition version supported by this server engine."
+                    else -> "Choose a Minecraft Bedrock version supported by this server engine."
+                },
                 style = MaterialTheme.typography.bodySmall,
                 color = WizardTheme.SecondaryText
             )
         }
 
-        if (isJava) {
+        if (isPaperApi) {
             when (dynamicVersionState) {
                 is CreateServerWizardViewModel.DynamicVersionState.LOADING -> {
                     Box(

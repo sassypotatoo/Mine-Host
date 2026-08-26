@@ -22,6 +22,7 @@ import org.json.JSONObject
 import java.io.File
 import java.io.IOException
 import java.util.UUID
+import com.example.server.template.TemplateRegistry
 
 /**
  * UUID-authoritative profile store. Every mutation is serialized through one
@@ -77,7 +78,7 @@ class ServerProfileRepository(
             // allocating on a UDP draft view lets two paper profiles collide
             // on the same TCP port (surfaced by updateProfile's conflict guard).
             val storedNetworkType =
-                if (draft.engineId == "java_paper") ServerNetworkType.JAVA_TCP else draft.networkType
+                if (TemplateRegistry.isJavaEditionEngine(draft.engineId)) ServerNetworkType.JAVA_TCP else draft.networkType
             val transport = storedNetworkType.portTransport()
             val usedPorts = current.asSequence()
                 .filter { it.networkType.portTransport() == transport }
@@ -116,7 +117,7 @@ class ServerProfileRepository(
                 onlineMode = draft.onlineMode,
                 autoRestart = draft.autoRestart,
                 autoBackup = draft.autoBackup,
-                edition = if (draft.engineId == "java_paper") ServerEdition.JAVA else draft.edition,
+                edition = if (TemplateRegistry.isJavaEditionEngine(draft.engineId)) ServerEdition.JAVA else draft.edition,
                 networkType = storedNetworkType,
                 minecraftVersion = draft.minecraftVersion ?: draft.bedrockVersion,
                 minecraftEulaAccepted = draft.minecraftEulaAccepted,

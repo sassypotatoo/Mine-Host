@@ -244,6 +244,60 @@ class PaperAdapter : EngineConfigAdapter {
     }
 }
 
+class VanillaAdapter : EngineConfigAdapter {
+    override val capabilities = EngineWorldGenerationCapabilities(
+        supportsDefault = true,
+        supportsFlat = true,
+        levelTypeProperty = "level-type",
+        defaultValue = "minecraft:normal",
+        flatValue = "minecraft:flat",
+        evidenceRepository = "https://minecraft.wiki/w/Server.properties",
+        evidenceRevision = "26.2",
+        evidenceFile = "server.properties",
+        evidenceNote = "Vanilla dedicated server reads standard Java Edition server.properties with level-type minecraft:normal / minecraft:flat."
+    )
+
+    override fun applyConfig(serverDir: File, config: EngineServerConfig) {
+        com.example.javaedition.JavaServerPropertiesAdapter.applyProperties(
+            serverDir = serverDir,
+            port = config.port,
+            onlineMode = config.onlineMode,
+            levelName = config.levelName,
+            gameMode = config.gameMode,
+            difficulty = config.difficulty,
+            maxPlayers = config.maxPlayers,
+            motd = config.motd
+        )
+    }
+}
+
+class FabricAdapter : EngineConfigAdapter {
+    override val capabilities = EngineWorldGenerationCapabilities(
+        supportsDefault = true,
+        supportsFlat = true,
+        levelTypeProperty = "level-type",
+        defaultValue = "minecraft:normal",
+        flatValue = "minecraft:flat",
+        evidenceRepository = "https://github.com/FabricMC/fabric",
+        evidenceRevision = "0.19.3",
+        evidenceFile = "server.properties",
+        evidenceNote = "Fabric server launcher wraps the vanilla dedicated server, so the standard Java Edition server.properties contract applies unchanged."
+    )
+
+    override fun applyConfig(serverDir: File, config: EngineServerConfig) {
+        com.example.javaedition.JavaServerPropertiesAdapter.applyProperties(
+            serverDir = serverDir,
+            port = config.port,
+            onlineMode = config.onlineMode,
+            levelName = config.levelName,
+            gameMode = config.gameMode,
+            difficulty = config.difficulty,
+            maxPlayers = config.maxPlayers,
+            motd = config.motd
+        )
+    }
+}
+
 object ConfigAdapterFactory {
     fun getAdapter(family: String): EngineConfigAdapter {
         return when (family) {
@@ -253,6 +307,8 @@ object ConfigAdapterFactory {
             "Cloudburst", "bedrock_cloudburst_nukkit" -> CloudburstAdapter()
             "Nukkit-MOT", "nukkit-mot" -> NukkitMotAdapter()
             "Paper", "java_paper" -> PaperAdapter()
+            "Vanilla", "java_vanilla" -> VanillaAdapter()
+            "Fabric", "java_fabric" -> FabricAdapter()
             else -> error("No engine configuration adapter registered for $family")
         }
     }

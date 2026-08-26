@@ -440,7 +440,7 @@ class CreateServerWizardViewModel(application: Application) : AndroidViewModel(a
             return
         }
 
-        val isJava = engineId == "java_paper"
+        val isJava = com.example.server.template.TemplateRegistry.isJavaEditionEngine(engineId)
         if (isJava && !currentDraft.minecraftEulaAccepted) {
             showMessage("You must accept the Minecraft End User License Agreement (EULA) before creating a Paper server.")
             return

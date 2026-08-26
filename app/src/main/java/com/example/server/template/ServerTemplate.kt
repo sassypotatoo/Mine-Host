@@ -71,13 +71,31 @@ object TemplateRegistry {
         defaultMemoryMb = 1024
     )
 
+    val JAVA_VANILLA = ServerTemplate(
+        id = "java_vanilla",
+        name = "Vanilla",
+        description = "Official Mojang Minecraft Java Edition server",
+        serverType = ServerType.JAVA_VANILLA,
+        defaultMemoryMb = 1024
+    )
+
+    val JAVA_FABRIC = ServerTemplate(
+        id = "java_fabric",
+        name = "Fabric",
+        description = "Lightweight modded Minecraft Java Edition server",
+        serverType = ServerType.JAVA_FABRIC,
+        defaultMemoryMb = 1024
+    )
+
     /** Bedrock and Java engine templates available in the engine selection UI. */
     val ALL_TEMPLATES = listOf(
         BEDROCK_POWER_NUKKIT_X,
         BEDROCK_CLOUDBURST_NUKKIT,
         BEDROCK_NUKKIT_MOT,
         BEDROCK_NUKKIT,
-        JAVA_PAPER
+        JAVA_PAPER,
+        JAVA_VANILLA,
+        JAVA_FABRIC
     )
 
     private val REGISTERED_TEMPLATES = listOf(
@@ -86,10 +104,18 @@ object TemplateRegistry {
         BEDROCK_CLOUDBURST_NUKKIT,
         BEDROCK_NUKKIT_MOT,
         BEDROCK_NUKKIT,
-        JAVA_PAPER
+        JAVA_PAPER,
+        JAVA_VANILLA,
+        JAVA_FABRIC
     )
 
     fun getTemplate(id: String): ServerTemplate? {
         return REGISTERED_TEMPLATES.find { it.id == id }
     }
+
+    /** Engine ids whose profiles are Minecraft Java Edition (TCP, eula.txt, server.properties). */
+    val JAVA_EDITION_ENGINE_IDS = setOf("java_paper", "java_vanilla", "java_fabric")
+
+    fun isJavaEditionEngine(engineId: String?): Boolean =
+        engineId != null && engineId in JAVA_EDITION_ENGINE_IDS
 }

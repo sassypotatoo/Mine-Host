@@ -23,6 +23,7 @@ import com.example.ui.servercreation.CreateServerDraft
 import com.example.ui.servercreation.NetworkMode
 import com.example.ui.servercreation.WizardTheme
 import com.example.ui.servercreation.components.ReviewSuccessArtwork
+import com.example.server.template.TemplateRegistry
 
 @Composable
 fun ReviewStep(
@@ -155,7 +156,7 @@ fun ReviewStep(
             }
         }
 
-        if (draft.engine?.id == "java_paper") {
+        if (TemplateRegistry.isJavaEditionEngine(draft.engine?.id)) {
             Surface(
                 modifier = Modifier.fillMaxWidth(),
                 shape = RoundedCornerShape(14.dp),

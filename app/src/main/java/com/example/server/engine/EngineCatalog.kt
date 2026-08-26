@@ -143,6 +143,28 @@ object EngineCatalog {
         applicationArguments = listOf("--nogui")
     )
 
+    val JAVA_VANILLA = EngineLaunchSpec(
+        id = "java_vanilla",
+        family = "Vanilla",
+        displayName = "Vanilla",
+        jarName = "server.jar",
+        defaultPort = 25565,
+        stopCommand = "stop",
+        successPatterns = listOf("Done (", "For help, type \"help\""),
+        applicationArguments = listOf("--nogui")
+    )
+
+    val JAVA_FABRIC = EngineLaunchSpec(
+        id = "java_fabric",
+        family = "Fabric",
+        displayName = "Fabric",
+        jarName = "fabric-server-launch.jar",
+        defaultPort = 25565,
+        stopCommand = "stop",
+        successPatterns = listOf("Done (", "For help, type \"help\""),
+        applicationArguments = listOf("--nogui")
+    )
+
     val ALL_ENGINES = listOf(
         POWER_NUKKIT_X_2_0_0,
         POWER_NUKKIT_X_EXPERIMENTAL,
@@ -150,7 +172,9 @@ object EngineCatalog {
         PM1E,
         CLOUDBURST,
         NUKKIT_MOT,
-        JAVA_PAPER
+        JAVA_PAPER,
+        JAVA_VANILLA,
+        JAVA_FABRIC
     )
 
     fun getSpec(id: String): EngineLaunchSpec? {

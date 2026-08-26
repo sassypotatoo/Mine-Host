@@ -7,6 +7,8 @@ import com.example.server.engine.PowerNukkitEngine
 import com.example.server.engine.PowerNukkitXEngine
 import com.example.server.engine.NukkitMOTEngine
 import com.example.server.engine.PaperEngine
+import com.example.server.engine.FabricEngine
+import com.example.server.engine.VanillaEngine
 import com.example.server.engine.ServerEngine
 import com.example.server.template.ServerTemplate
 import com.example.server.version.EngineVersion
@@ -38,6 +40,32 @@ object ServerFactory {
             "bedrock_cloudburst_nukkit", "Cloudburst" -> CloudburstEngine(context, serverDir, engineVersion, bedrockVersion, port, profileId, runtimeSessionId, serverConfig, onLog, onStatusChange)
             "nukkit-mot", "Nukkit-MOT" -> NukkitMOTEngine(context, serverDir, engineVersion, bedrockVersion, port, profileId, runtimeSessionId, serverConfig, onLog, onStatusChange)
             "java_paper", "Paper", "PaperMC" -> PaperEngine(
+                context = context,
+                serverDir = serverDir,
+                engineVersion = engineVersion,
+                minecraftVersion = bedrockVersion,
+                port = port,
+                profileId = profileId,
+                runtimeSessionId = runtimeSessionId,
+                serverConfig = serverConfig,
+                minecraftEulaAccepted = minecraftEulaAccepted,
+                onLog = onLog,
+                onStatusChange = onStatusChange
+            )
+            "java_vanilla", "Vanilla" -> VanillaEngine(
+                context = context,
+                serverDir = serverDir,
+                engineVersion = engineVersion,
+                minecraftVersion = bedrockVersion,
+                port = port,
+                profileId = profileId,
+                runtimeSessionId = runtimeSessionId,
+                serverConfig = serverConfig,
+                minecraftEulaAccepted = minecraftEulaAccepted,
+                onLog = onLog,
+                onStatusChange = onStatusChange
+            )
+            "java_fabric", "Fabric" -> FabricEngine(
                 context = context,
                 serverDir = serverDir,
                 engineVersion = engineVersion,

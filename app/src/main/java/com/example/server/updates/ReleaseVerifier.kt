@@ -163,6 +163,8 @@ object ReleaseVerifier {
                     "nukkit-mot" -> listOf("cn.nukkit.Nukkit")
                     "bedrock_cloudburst_nukkit" -> listOf("cn.nukkit.Nukkit", "org.cloudburstmc.nukkit.Nukkit")
                     "java_paper" -> listOf("org.bukkit.craftbukkit.Main", "io.papermc.paper.Main")
+                    "java_vanilla" -> listOf("net.minecraft.bundler.Main", "net.minecraft.server.Main")
+                    "java_fabric" -> listOf("net.fabricmc.installer.ServerLauncher", "net.fabricmc.loader.impl.launch.knot.KnotServer")
                     "pocketmine-mp" -> emptyList() // Not a JAR engine usually
                     else -> emptyList()
                 }

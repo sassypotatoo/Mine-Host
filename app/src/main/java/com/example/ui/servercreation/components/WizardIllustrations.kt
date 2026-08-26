@@ -50,6 +50,8 @@ fun EngineArtwork(
         "nukkit-mot" -> Icons.Default.Memory
         "bedrock_nukkit" -> Icons.Default.Storage
         "java_paper" -> Icons.Default.Coffee
+        "java_vanilla" -> Icons.Default.Public
+        "java_fabric" -> Icons.Default.Extension
         else -> Icons.Default.Settings
     }
     
