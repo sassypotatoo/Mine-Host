@@ -32,10 +32,10 @@
 
 | Counter | Used | Limit |
 |---|---|---|
-| MAX_BUILD_FIX_ITERATIONS | 2 | 5 |
-| MAX_TEST_FIX_ITERATIONS | 3 (56e7d90 + 3bd24b9) | 5 |
+| MAX_BUILD_FIX_ITERATIONS | 3 (coEvery compile fix) | 5 |
+| MAX_TEST_FIX_ITERATIONS | 4 (56e7d90, 3bd24b9, 05283f7) | 5 |
 | MAX_RUNTIME_FIX_ITERATIONS | 0 | 5 |
-| MAX_TOTAL_ITERATIONS | 5 | 15 |
+| MAX_TOTAL_ITERATIONS | 6 | 15 |
 
 ## Gate status (last verified 2026-08-26)
 
@@ -99,6 +99,17 @@
    isTrustedPaperHost's localhost allowance, 3bd24b9) and EVTM metadata-flow
    (install() fails pre-write, reason only println'd which log-failed drops;
    test now raises AssertionError embedding install()'s message, 3bd24b9).
+8. Run 32925285330 (47cf385): still 3 failed but diagnostics landed.
+   (a) PaperHardening: loopback-HTTP fix worked; remaining blocker was
+   downloadFile's structural JAR validation (>=1024B, zip, .class entry)
+   running before size/checksum gates — text bodies never reached them.
+   Fixed by enqueueing real minimal JARs (05283f7). (b) EVTM embedded
+   message revealed startServer rejects java_paper_stable at
+   ServerManager.kt:300 catalog gate, then rollback deletes the new
+   metadata — hence null reads all along. ServerManager boundary now
+   mocked (STOPPED->ONLINE transitions) so transaction mechanics run
+   hermetically through production code paths (05283f7). CI verdict for
+   05283f7 pending.
 
 ## History (append-only, newest last)
 

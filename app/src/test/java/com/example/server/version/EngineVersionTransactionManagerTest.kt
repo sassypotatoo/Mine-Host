@@ -7,6 +7,7 @@ import com.example.data.ServerProfileRepository
 import com.example.data.StartServerResult
 import com.example.server.ServerManager
 import com.example.server.ServerStatus
+import io.mockk.coEvery
 import io.mockk.every
 import io.mockk.mockk
 import kotlinx.coroutines.runBlocking
@@ -44,7 +45,7 @@ class EngineVersionTransactionManagerTest {
         profiles = ServerProfileRepository(context, null)
         serverManager = mockk(relaxed = true)
         every { serverManager.getStatus(any()) } answers { serverStatus.get() }
-        every { serverManager.startServer(any(), any()) } answers {
+        coEvery { serverManager.startServer(any(), any()) } answers {
             serverStatus.set(ServerStatus.ONLINE)
             StartServerResult.Started
         }
