@@ -5,8 +5,10 @@
 
 ## Current task
 
-- **Task:** Production-readiness loop — Phase A (P0 blockers) COMPLETE; Phase B next
-- **Status:** P0 CLOSED 2026-08-26 — first fully green CI run 32932710800
+- **Task:** Production-readiness loop — Phase A COMPLETE; Phase B underway
+  (P1 core-consistency sweep DONE 2026-08-26, no defects; next: P2 app features)
+- **Status:** P0 CLOSED 2026-08-26 — first fully green CI run 32932710800;
+  P1 sweep CLOSED same day (audit-only, zero code changes required)
 - **Plan (P0–P4, audit-derived 2026-08-25):**
   - **P0#1 corrupt gradle-wrapper.jar** — sha256 `a5e75118...` (78783 B), BadZipFile
     confirmed locally. Fix: fetch official wrapper jar for v9.3.1 from
@@ -126,6 +128,30 @@
     CLOSED. Final fix was 1f291d4 removing the stale strict-https require
     that had been shadowing 3bd24b9's loopback allowance. Phase A complete;
     next phase per plan: P1 core-consistency sweep, then P2 app features.
+12. **P1 core-consistency sweep COMPLETE 2026-08-26 (audit-only, no defects):**
+    (a) Launch contract CONSISTENT — single JVM launch path
+    JvmServerEngineBase.startServer → JavaRuntimeManager.createLauncherProcessBuilder
+    (:417); BedrockJavaEngineBase/JavaEditionEngineBase add no divergent process
+    creation; env vars match native launcher reads exactly (MINEHOST_RUNTIME_HOME,
+    _JAVA_MAJOR, _ARG_COUNT, _ARG_%d, _LIBJLI_PATH + JAVA_HOME fallback,
+    main.cpp:33-72); javaMajor policy agrees across layers (engineVersion.
+    runtimeJavaVersion → SUPPORTED_RUNTIME_MAJORS {17,21,25} = PaperResolver map;
+    fail-fast mismatch guard JvmServerEngineBase.kt:265). Only other ProcessBuilder
+    is TunnelManager (cloudflared, out of scope).
+    (b) TermuxPackageResolver = HTTPS apt-mirror client for OpenJDK .debs
+    (packages-cf.termux.dev) — NO Termux-app dependency, principle intact;
+    rename/doc note deferred to P4.
+    (c) verified_remote_versions.json empty bootstrap is by design: static raw
+    engine_versions resource loads first, remote entries enter via promotion,
+    corrupt/missing → fails safe to emptyList (EngineVersionCatalogRepository).
+    (d) resolution.json SHA-256 chain verified fail-closed: absent/invalid stored
+    digest → matches() false → reinstall; catalog pin enforced unless trusted
+    official-resolved install; structural validateJar final gate
+    (InstalledEngineVersionRepository.matches :179-239).
+13. Docs-only commit 7448336 (Phase-A record): CI run 32933552788 GREEN
+    (watchdog exit 0) — confirms green baseline stable on docs changes too.
+14. Phase B opened: P1 sweep closed clean; proceeding to P2 app features
+    (console UI, lifecycle UI, downloads, tunneling UX, version management).
 
 ## History (append-only, newest last)
 
