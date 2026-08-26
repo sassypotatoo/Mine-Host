@@ -278,3 +278,12 @@
   branches (untracked refusal + undecodable protected world fails closed in
   prepareProtectedLaunch). Runtime Verification: UNVERIFIED (no device). CI
   verdict pending.
+- 2026-08-26 — CI run 32949301872 FAIL root cause: routing test called
+  protected suspend onPrepareWorldAndLaunchJar directly (Kotlin protected has
+  no package access, unlike Java) -> compileDebugUnitTestKotlin unresolved
+  access at :88/:129. NukkitMOTEngine is final so subclass-exposure was not
+  possible; startServer() is unusable as a seam (foreground-service lease +
+  runtime setup + download would fail first under Robolectric and mask the
+  routing assertion). Fix: test-only reflective suspend bridge
+  (getDeclaredMethod + isAccessible + COROUTINE_SUSPENDED-aware
+  suspendCoroutine adapter); zero production changes. BUILD_FIX=1/5.

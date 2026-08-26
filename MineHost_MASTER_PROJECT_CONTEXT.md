@@ -1600,12 +1600,21 @@ The project is currently closer to:
 Foundational architecture       ████████████████████  largely established
 Real local server execution     ████████████████████  established
 Bedrock engine execution        ████████████████░░░░  established baseline
-Bedrock world compatibility     ████████░░░░░░░░░░░░  main active work
-Java/Paper release hardening    ████████████░░░░░░░░  incomplete verification
+Bedrock world compatibility     ██████████████░░░░░░  pipeline code-complete, device acceptance pending
+Java engines (Paper/Vanilla/Fabric) ██████████████░░░░ implemented, CI-verified, device acceptance pending
 Play Store release hardening    ████████░░░░░░░░░░░░  not yet final
 ```
 
 These bars are qualitative project-state indicators, not measured percentages.
+
+### Verified implementation snapshot — 2026-08-26
+
+Per Appendix B, this snapshot records the audited source state that supersedes older prose in §19–§38 and §56:
+
+- **World import/compatibility**: read-only inspector (level.db/LevelDB, level.dat NBT), immutable protected originals via `WorldWorkingCopyManager.protectImportedWorld`, verification-state store (`ImportedWorldVerificationStore`: PENDING → PROVISIONAL → VERIFIED / FAILED), launch-ownership classification (`WorldLaunchOwnershipPolicy`), engine adapters for Nukkit-MOT, Cloudburst, PM1E, PowerNukkit(X) (fail-closed pass-through where palettes are undecoded). Protected imported-world launch is **activated** (`BedrockJavaEngineBase` routes `IMPORTED_PROTECTED_VALID` through `WorldCompatibilityCore.prepareProtectedLaunch`; runtime failures restore the working copy from the immutable original). Final VERIFIED promotion requires gameplay telemetry and is intentionally not yet wired.
+- **Java engines**: Paper (dynamic API resolver), Vanilla (Mojang bundler), Fabric (launcher + loader), all with pinned SHA-256 catalog entries, trusted main-class allowlists, config adapters writing standard `server.properties`, EULA flow, and a catalog contract test suite. CI unit/regression suite green as of this date; all Runtime Verification remains UNVERIFIED until physical-device acceptance.
+- **Operations already implemented** (previously assumed missing): scheduled auto-backups (`MainViewModel.startAutomationLoop`: 15-minute tick, per-profile 6-hour interval, save-gating when online, backup notifications); crash/metrics parsing; AI assistant over real console/state data.
+- **Remaining true gaps**: physical-device acceptance corpus (Layer 4), signed reproducible AAB + Play Store material (Layer 5), Supabase Google OAuth provider enablement (operator dashboard action), UI polish pass.
 
 ---
 
@@ -1712,12 +1721,15 @@ The project repeatedly demonstrated several important engineering lessons:
 
 The core local-server architecture is real and substantially established.
 
+As of the 2026-08-26 verified snapshot (§51), world-compatibility and Java-engine
+implementation work is code-complete and CI-verified; Runtime Verification remains
+UNVERIFIED throughout because no physical-device acceptance run has occurred.
+
 The highest-value active engineering work remains:
 
-**1. Modern Bedrock world compatibility**  
-**2. Java/Paper final stabilization verification**  
-**3. Physical-device release acceptance**  
-**4. Play Store release hardening**
+**1. Physical-device release acceptance (Layer 4 corpus)**  
+**2. Signed reproducible AAB + Play Store material (Layer 5)**  
+**3. Residual hardening found during device acceptance**  
 
 Everything else should remain secondary until these gates are green.
 

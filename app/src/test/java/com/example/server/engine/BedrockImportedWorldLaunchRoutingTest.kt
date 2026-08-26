@@ -78,6 +78,25 @@ class BedrockImportedWorldLaunchRoutingTest {
         return world
     }
 
+    private val launchHook: java.lang.reflect.Method by lazy {
+        BedrockJavaEngineBase::class.java
+            .getDeclaredMethod("onPrepareWorldAndLaunchJar", File::class.java)
+            .apply { isAccessible = true }
+    }
+
+    @Suppress("UNCHECKED_CAST")
+    private suspend fun invokeProtectedLaunch(engine: NukkitMOTEngine, serverJar: File): File =
+        kotlinx.coroutines.suspendCoroutine { continuation ->
+            try {
+                when (val raw = launchHook.invoke(engine, serverJar, continuation)) {
+                    kotlin.coroutines.intrinsics.COROUTINE_SUSPENDED -> Unit
+                    else -> continuation.resumeWith(Result.success(raw as File))
+                }
+            } catch (e: java.lang.reflect.InvocationTargetException) {
+                continuation.resumeWithException(e.cause ?: e)
+            }
+        }
+
     @Test
     fun untrackedWorldIsRefusedUntilItIsAdoptedThroughProtectedImport() {
         writeUndecodableActiveWorld("untracked")
@@ -85,7 +104,7 @@ class BedrockImportedWorldLaunchRoutingTest {
 
         val error = assertThrows(IllegalStateException::class.java) {
             runBlocking {
-                engine.onPrepareWorldAndLaunchJar(File(serverDir, "nukkit-mot.jar"))
+                invokeProtectedLaunch(engine, File(serverDir, "nukkit-mot.jar"))
             }
         }
         assertEquals(
@@ -126,7 +145,7 @@ class BedrockImportedWorldLaunchRoutingTest {
 
         val error = assertThrows(IllegalStateException::class.java) {
             runBlocking {
-                engine.onPrepareWorldAndLaunchJar(launchJar)
+                invokeProtectedLaunch(engine, launchJar)
             }
         }
         assertTrue(error.message.orEmpty().contains("cannot be safely launched"))
