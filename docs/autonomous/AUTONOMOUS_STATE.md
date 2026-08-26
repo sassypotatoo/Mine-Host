@@ -37,12 +37,16 @@
 
 ## Iteration counters (reset per task)
 
+Current task = Stage-15 routing-test closure (df8a0fe onward). Earlier
+cumulative rows removed 2026-08-26 — they predated the per-task reset and
+contradicted the History accounting (recovery-session correction).
+
 | Counter | Used | Limit |
 |---|---|---|
-| MAX_BUILD_FIX_ITERATIONS | 4 (coEvery fix; port-allocation prod fix 3b28df3) | 5 |
-| MAX_TEST_FIX_ITERATIONS | 5 (…, 05283f7, 3b28df3) — AT LIMIT | 5 |
+| MAX_BUILD_FIX_ITERATIONS | 2 (reflective bridge compile: 144df41, b860867) | 5 |
+| MAX_TEST_FIX_ITERATIONS | 1 (fcd69e1: getDeclaredMethod missing Continuation param) | 5 |
 | MAX_RUNTIME_FIX_ITERATIONS | 0 | 5 |
-| MAX_TOTAL_ITERATIONS | 6 | 15 |
+| MAX_TOTAL_ITERATIONS | 3 | 15 |
 
 ## Gate status (last verified 2026-08-26, run 32932710800)
 
@@ -51,7 +55,7 @@
 | Local compile (Termux) | UNAVAILABLE | no JDK/Gradle installed (see AUTONOMOUS_WORKFLOW.md §1) |
 | Local unit tests | UNAVAILABLE | same |
 | CI Set up Gradle + main compile | **PASSING** | every run since d5d26d7 |
-| CI unit-test compile+run | **PASSING — 232/232** | run 32932710800 (first full green in project history) |
+| CI unit-test compile+run | **PASSING — 242/242** | run 32953655059 @ fcd69e1 (all steps success incl. Verify Native Launcher in APK) |
 | CI APK artifact | **PRODUCED** | artifact minehost-debug, 24,629,467 bytes |
 | Native launcher packaged in APK | **VERIFIED** | "Verify Native Launcher in APK" step success, same run — P0#2 closed |
 | Device/runtime verification | UNVERIFIED | no adb/android-tools; no device evidence yet |
@@ -293,3 +297,21 @@
   so even member resumeWith/resumeWithException failed to resolve. Fix: stdlib
   call + member-only resumeWith(Result) on both paths (no extension imports).
   BUILD_FIX=2/5. TEST=0/5 TOTAL=2/15.
+- 2026-08-26 — RECOVERY after device restart mid-session: tree clean, no local-only
+  work lost; state reconciled against git log + gh run list. Verdict for b860867 =
+  run 32950832951 FAIL: compileDebugUnitTestKotlin now PASSES (import fix worked);
+  242 tests, 2 failed — BedrockImportedWorldLaunchRoutingTest both cases threw
+  NoSuchMethodException: onPrepareWorldAndLaunchJar(java.io.File) at the bridge
+  lookup. Root cause: suspend fun JVM descriptor carries a trailing
+  kotlin.coroutines.Continuation param; lookup declared only (File) while the
+  invoke call site already passed (engine, jar, continuation). Fix fcd69e1
+  (test-only, one signature): add Continuation::class.java to getDeclaredMethod.
+  Stale top-of-file counters corrected to per-task accounting. TEST=1/5
+  TOTAL=3/15. CI verdict for fcd69e1 pending.
+- 2026-08-26 — CI run 32953655059 SUCCESS @ fcd69e1: 242/242 tests green;
+  every step success including "Verify Native Launcher in APK". Stage-15
+  protected imported-world launch routing thread CLOSED (both routing tests
+  pass through the reflective suspend bridge). Task counters final:
+  BUILD=2/5 TEST=1/5 TOTAL=3/15. Runtime Verification remains UNVERIFIED
+  (no device). Next open threads: parked items only (stale 1361 pin,
+  unwired finalizeProtectedVerification, P3 needs evidenced defect).
