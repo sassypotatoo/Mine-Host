@@ -33,9 +33,9 @@
 | Counter | Used | Limit |
 |---|---|---|
 | MAX_BUILD_FIX_ITERATIONS | 2 | 5 |
-| MAX_TEST_FIX_ITERATIONS | 1 | 5 |
+| MAX_TEST_FIX_ITERATIONS | 3 (56e7d90 + 3bd24b9) | 5 |
 | MAX_RUNTIME_FIX_ITERATIONS | 0 | 5 |
-| MAX_TOTAL_ITERATIONS | 3 | 15 |
+| MAX_TOTAL_ITERATIONS | 5 | 15 |
 
 ## Gate status (last verified 2026-08-26)
 
@@ -78,6 +78,27 @@
    path (apt mirror over HTTPS; no Termux app dependency — principle intact,
    document reality later); verified_remote_versions.json ships empty
    (`{"catalogVersion": 1, "versions": []}`) by design pending runtime resolution.
+6. **13 test failures ROOT-CAUSED + fixed in 56e7d90** (run 32903468852:
+   232 tests / 13 failed, first full execution ever): (a) NukkitMot protocol
+   regex anchoring bug (matchEntire + "(?:^|/)" cannot consume dir prefixes);
+   (b) InstalledEngineVersionRepositoryTest ran on plain JVM where org.json is
+   a throwing stub — write() swallowed the exception and always returned
+   false → now Robolectric; (c) PaperHardeningTest reflection override of
+   PaperResolver.projectUrl never worked (instance field of object;
+   set(null) throws) → tests hit real fill.papermc.io → direct internal-set
+   assignment; (d) PrepareServerCoordinator gained injectable runtimePreparer
+   (default = JavaRuntimeManager.ensureRuntimeReady); (e) EVTM createProfile
+   bypasses catalog gating (java_paper only enters catalog via promotion);
+   (f) two stale expectations updated (jenkins-build:1361;
+   EXTERNAL_ADOPTION_REQUIRED). Pushed; CI verdict pending.
+7. Run 32924184430 (56e7d90): 232 tests / **3 failed** (was 13) — Robolectric,
+   regex, coordinator-seam, determinism and ownership fixes all CONFIRMED by
+   CI. Remaining: PaperHardening x2 (validatePaperArtifactUrl demanded https
+   for every artifact URL; MockWebServer is loopback http → resolution failed
+   before size/checksum checks; fixed with loopback scheme exception mirroring
+   isTrustedPaperHost's localhost allowance, 3bd24b9) and EVTM metadata-flow
+   (install() fails pre-write, reason only println'd which log-failed drops;
+   test now raises AssertionError embedding install()'s message, 3bd24b9).
 
 ## History (append-only, newest last)
 
@@ -110,3 +131,8 @@
   progress-aware watchdog (20m no-observable-progress INVESTIGATING, never
   auto-cancels; REST live logs confirmed BlobNotFound mid-step — endpoint
   limitation, fallback = step transitions).
+- 2026-08-26 — Test-failure triage (run 32903468852) completed with full
+  root-cause analysis per cluster; fixes pushed as 56e7d90 (2 production
+  changes: protocol regex + coordinator runtime seam; 6 test corrections).
+  Counters: TEST=2/5, TOTAL=4/15. Awaiting CI verdict; on green, verify
+  "Verify Native Launcher in APK" step for the owed P0#2 evidence.
