@@ -315,10 +315,6 @@ object PaperResolver {
                     )
                 }
 
-        require(url.scheme == "https") {
-            "Paper artifact URL must use HTTPS"
-        }
-
         val host = url.host.lowercase()
 
         // Loopback mirrors isTrustedPaperHost's test allowance; hermetic

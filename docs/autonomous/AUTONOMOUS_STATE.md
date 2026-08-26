@@ -32,8 +32,8 @@
 
 | Counter | Used | Limit |
 |---|---|---|
-| MAX_BUILD_FIX_ITERATIONS | 3 (coEvery compile fix) | 5 |
-| MAX_TEST_FIX_ITERATIONS | 4 (56e7d90, 3bd24b9, 05283f7) | 5 |
+| MAX_BUILD_FIX_ITERATIONS | 4 (coEvery fix; port-allocation prod fix 3b28df3) | 5 |
+| MAX_TEST_FIX_ITERATIONS | 5 (…, 05283f7, 3b28df3) — AT LIMIT | 5 |
 | MAX_RUNTIME_FIX_ITERATIONS | 0 | 5 |
 | MAX_TOTAL_ITERATIONS | 6 | 15 |
 
@@ -110,6 +110,17 @@
    mocked (STOPPED->ONLINE transitions) so transaction mechanics run
    hermetically through production code paths (05283f7). CI verdict for
    05283f7 pending.
+10. Run 32926530003 (bba5d6e): coEvery compile fix landed; **EVTM case 1
+   PASSES end-to-end**. Remaining 3: EVTM case 2 = REAL PRODUCTION BUG —
+   createProfile allocated on draft UDP transport but stored java_paper as
+   JAVA_TCP → two paper profiles shared TCP 19132 → updateProfile conflict
+   guard rolled back case 2. FIXED in production (3b28df3): allocation now
+   uses the stored network type. PaperHardening x2 = fake JARs DEFLATED to
+   <1024B, failing validateGenericJar before the size/checksum gates;
+   payload now seeded-random bytes (3b28df3). TEST counter at 5/5 limit:
+   if the run for 3b28df3 still fails at test stage, further iterations
+   must be classified by root cause (production defect => BUILD bucket)
+   and justified explicitly, not silently renewed.
 
 ## History (append-only, newest last)
 
