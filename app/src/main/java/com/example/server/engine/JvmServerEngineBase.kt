@@ -250,22 +250,6 @@ abstract class JvmServerEngineBase(
                 // Java runtime setup
                 val targetJavaMajor = getRequiredJavaMajor()
                 onLog("[Runtime] Requesting Java runtime ($targetJavaMajor)...")
-                val runtimeReady = when (
-                    val result = JavaRuntimeManager.ensureRuntimeReady(
-                        context,
-                        targetJavaMajor,
-                        onLog
-                    )
-                ) {
-                    is RuntimePreparationResult.Ready -> result
-                    is RuntimePreparationResult.Unsupported -> throw IOException(result.message)
-                    is RuntimePreparationResult.Failure -> throw IOException(result.message)
-                }
-
-                require(runtimeReady.javaMajor == targetJavaMajor) {
-                    "Runtime Java major mismatch: expected $targetJavaMajor, got ${runtimeReady.javaMajor}"
-                }
-                onLog("[Runtime] Java ${runtimeReady.javaMajor} ready at ${runtimeReady.runtimeHome.absolutePath}, launcher: ${runtimeReady.launcherFile.absolutePath}")
 
                 // Engine JAR verification & download
                 val selectedVer = onGetSelectedVersion()
@@ -276,77 +260,44 @@ abstract class JvmServerEngineBase(
                 val needsDownload = !InstalledEngineVersionRepository.matches(serverDir, engineVersion, selectedVer) ||
                     !serverJar.isFile || serverJar.length() == 0L
 
-                if (needsDownload) {
-                    onLog("[Engine] Downloading verified engine build (${engineVersion.id})...")
+                if (!needsDownload) {
+                    if (verifiedInstallation != null) {
+                        onLog("[Engine] Verified installation cached: ${verifiedInstallation.versionName} (${verifiedInstallation.versionId}).")
+                        resolvedIdentity = verifiedInstallation.resolvedIdentity
+                    }
+                } else {
                     healthMonitor.setStatus(ServerStatus.DOWNLOADING)
-                    val downloadResult = Downloader.downloadServerJar(
-                        context = context,
-                        version = engineVersion,
-                        destination = serverJar,
-                        minecraftVersion = selectedVer,
-                    ) { msg ->
-                        onLog(msg)
-                    }
-
-                    when (downloadResult) {
-                        is ServerJarDownloadResult.Success -> {
-                            resolvedIdentity = downloadResult.identity
-                        }
-                        is ServerJarDownloadResult.Cancelled -> throw CancellationException("Download cancelled")
-                        is ServerJarDownloadResult.Failure -> throw IOException(downloadResult.message)
-                    }
-
-                    val effectiveResolvedIdentity = resolvedIdentity
-                    val jarValidation = InstalledEngineVersionRepository.validateJar(
-                        serverJar,
-                        engineVersion.launchMode,
-                        engineVersion.mainClass,
-                    )
-
-                    require(jarValidation.valid) {
-                        jarValidation.error
-                            ?: "Downloaded engine JAR failed final validation"
-                    }
-
-                    val installedInfo =
-                        EngineInstallationMetadataFactory.create(
-                            version = engineVersion,
-                            bedrockVersion = selectedVer,
-                            jarFile = serverJar,
-                            validation = jarValidation,
-                            resolvedIdentity = effectiveResolvedIdentity,
-                            runtimeJavaVersion = targetJavaMajor,
-                        )
-                    val actualJarSha256 =
-                        installedInfo.jarSha256
-                            ?: throw IOException(
-                                "Installed engine SHA-256 is missing"
-                            )
-                    val installationWritten = InstalledEngineVersionRepository.write(serverDir, installedInfo)
-                    if (!installationWritten) {
-                        serverJar.delete()
-                        throw IOException("Engine JAR was downloaded but installation metadata could not be committed")
-                    }
-                    require(
-                        InstalledEngineVersionRepository.matches(
-                            serverDir,
-                            engineVersion,
-                            selectedVer
-                        )
-                    ) {
-                        "Downloaded engine installation failed final integrity verification"
-                    }
-                    onLog("[Engine] Engine build verified and saved.")
-                    effectiveResolvedIdentity?.let {
-                        onLog(
-                            "[Engine] Installed official resolved ${engineVersion.displayName} build " +
-                                "#${it.resolvedBuildNumber}; SHA-256 $actualJarSha256"
-                        )
-                    }
-                } else if (verifiedInstallation != null) {
-                    onLog("[Engine] Verified installation cached: ${verifiedInstallation.versionName} (${verifiedInstallation.versionId}).")
-                    resolvedIdentity = verifiedInstallation.resolvedIdentity
                 }
+
+                // Runtime installation and engine provisioning are independent; run concurrently.
+                var preparedRuntime: RuntimePreparationResult.Ready? = null
+                coroutineScope {
+                    val runtimeJob = launch {
+                        preparedRuntime = when (
+                            val result = JavaRuntimeManager.ensureRuntimeReady(
+                                context,
+                                targetJavaMajor,
+                                onLog
+                            )
+                        ) {
+                            is RuntimePreparationResult.Ready -> result
+                            is RuntimePreparationResult.Unsupported -> throw IOException(result.message)
+                            is RuntimePreparationResult.Failure -> throw IOException(result.message)
+                        }
+                    }
+                    val engineJob = launch {
+                        if (needsDownload) {
+                            provisionVerifiedEngineJar(selectedVer, serverJar, targetJavaMajor)
+                        }
+                    }
+                    listOf(runtimeJob, engineJob).joinAll()
+                }
+
+                val runtimeReady = requireNotNull(preparedRuntime)
+                require(runtimeReady.javaMajor == targetJavaMajor) {
+                    "Runtime Java major mismatch: expected $targetJavaMajor, got ${runtimeReady.javaMajor}"
+                }
+                onLog("[Runtime] Java ${runtimeReady.javaMajor} ready at ${runtimeReady.runtimeHome.absolutePath}, launcher: ${runtimeReady.launcherFile.absolutePath}")
 
                 onApplyEngineConfig()
 
@@ -361,7 +312,16 @@ abstract class JvmServerEngineBase(
                 val javaArguments = mutableListOf<String>()
                 javaArguments += "-Xms128M"
                 javaArguments += "-Xmx${safeMemoryMb}M"
-                javaArguments += "-XX:+UseSerialGC"
+                if (safeMemoryMb >= 512) {
+                    // G1 uses spare cores for collection; Serial only wins on tiny heaps.
+                    javaArguments += "-XX:+UseG1GC"
+                    javaArguments += "-XX:MaxGCPauseMillis=200"
+                    javaArguments += "-XX:G1NewSizePercent=30"
+                    javaArguments += "-XX:G1MaxNewSizePercent=40"
+                    javaArguments += "-XX:+ParallelRefProcEnabled"
+                } else {
+                    javaArguments += "-XX:+UseSerialGC"
+                }
                 javaArguments += "-Djava.awt.headless=true"
                 javaArguments += "-Dfile.encoding=UTF-8"
                 javaArguments += "-Djava.io.tmpdir=${tempDir.absolutePath}"
@@ -481,6 +441,78 @@ abstract class JvmServerEngineBase(
     protected open fun onGetSelectedVersion(): String = "AUTO"
     internal open suspend fun onPreflightCheck() {}
     protected open suspend fun onApplyEngineConfig() {}
+    private suspend fun provisionVerifiedEngineJar(
+        selectedVer: String,
+        serverJar: File,
+        targetJavaMajor: Int,
+    ) {
+        onLog("[Engine] Downloading verified engine build (${engineVersion.id})...")
+        val downloadResult = Downloader.downloadServerJar(
+            context = context,
+            version = engineVersion,
+            destination = serverJar,
+            minecraftVersion = selectedVer,
+        ) { msg ->
+            onLog(msg)
+        }
+
+        when (downloadResult) {
+            is ServerJarDownloadResult.Success -> {
+                resolvedIdentity = downloadResult.identity
+            }
+            is ServerJarDownloadResult.Cancelled -> throw CancellationException("Download cancelled")
+            is ServerJarDownloadResult.Failure -> throw IOException(downloadResult.message)
+        }
+
+        val effectiveResolvedIdentity = resolvedIdentity
+        val jarValidation = InstalledEngineVersionRepository.validateJar(
+            serverJar,
+            engineVersion.launchMode,
+            engineVersion.mainClass,
+        )
+
+        require(jarValidation.valid) {
+            jarValidation.error
+                ?: "Downloaded engine JAR failed final validation"
+        }
+
+        val installedInfo =
+            EngineInstallationMetadataFactory.create(
+                version = engineVersion,
+                bedrockVersion = selectedVer,
+                jarFile = serverJar,
+                validation = jarValidation,
+                resolvedIdentity = effectiveResolvedIdentity,
+                runtimeJavaVersion = targetJavaMajor,
+            )
+        val actualJarSha256 =
+            installedInfo.jarSha256
+                ?: throw IOException(
+                    "Installed engine SHA-256 is missing"
+                )
+        val installationWritten = InstalledEngineVersionRepository.write(serverDir, installedInfo)
+        if (!installationWritten) {
+            serverJar.delete()
+            throw IOException("Engine JAR was downloaded but installation metadata could not be committed")
+        }
+        require(
+            InstalledEngineVersionRepository.matches(
+                serverDir,
+                engineVersion,
+                selectedVer
+            )
+        ) {
+            "Downloaded engine installation failed final integrity verification"
+        }
+        onLog("[Engine] Engine build verified and saved.")
+        effectiveResolvedIdentity?.let {
+            onLog(
+                "[Engine] Installed official resolved ${engineVersion.displayName} build " +
+                    "#${it.resolvedBuildNumber}; SHA-256 $actualJarSha256"
+            )
+        }
+    }
+
     protected open suspend fun onPrepareWorldAndLaunchJar(serverJar: File): File = serverJar
     protected open fun onLogLineProcessed(line: String, session: ServerProcessSession) {}
     protected open fun onProcessStartedHook(session: ServerProcessSession) {}
