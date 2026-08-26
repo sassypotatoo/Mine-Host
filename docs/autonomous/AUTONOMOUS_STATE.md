@@ -171,6 +171,15 @@
     PATCH_REPORT stale claims corrected (phantom PackageMineHostLauncherTask
     annotated with the true dfc43f5 mechanism + CI run evidence; wrapper-jar
     historical note appended).
+16. Run 32934169575 (85bc04b, P1-sweep record) CANCELLED by the immediately
+    following f6f118c push — cancel-in-progress concurrency, NOT a failure.
+    Its content is fully contained in f6f118c; the f6f118c run is the
+    authoritative verdict for both docs commits. Parked permanently: the
+    "dead-enum UNTRACKED_REQUIRES_ADOPTION" cleanup idea was WRONG — the value
+    has four live usages (WorldLaunchOwnershipPolicy.kt:143 etc.); verified
+    before deletion, no change made. P3 remains open pending a concrete
+    evidenced defect (non-negotiables forbid speculative edits to protected
+    systems); device verification stays UNVERIFIED (no adb/device).
 
 ## History (append-only, newest last)
 
