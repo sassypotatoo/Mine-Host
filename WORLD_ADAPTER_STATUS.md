@@ -130,3 +130,12 @@ A refusal means Nukkit-MOT genuinely lacks a safe representation under the curre
 ## Build limitation
 
 A complete Android Gradle build was not run because the uploaded `gradle/wrapper/gradle-wrapper.jar` is corrupt and has no readable ZIP central directory. The unrelated wrapper was preserved rather than silently replaced.
+
+> **2026-08-26 update (P0#1 RESOLVED, commit d5d26d7):** the wrapper-jar
+> corruption described above was diagnosed and resolved; the file in the
+> current `main` is a valid ZIP (`gradle-wrapper.jar`, 46,175 bytes, 33
+> internal entries, `Main-Class: org.gradle.wrapper.GradleWrapperMain`,
+> `Enable-Native-Access: ALL-UNNAMED`). The "Build limitation" caveat still
+> applies on environments that lack a JDK / Android SDK (the Termux CI side
+> cannot exercise `:app:assembleDebug`); CI on GitHub Actions is the
+> authoritative build gate. See `docs/autonomous/AUTONOMOUS_STATE.md`.
