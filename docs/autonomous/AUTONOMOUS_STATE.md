@@ -2,8 +2,22 @@
 
 > Update this file at EVERY phase transition. On session restart, read it first,
 > reconcile against `git log` / `./tools/ci-watch.sh --sha HEAD --once`, then resume.
+>
+> v2.1 schema (2026-09-02): the "Current task" section tracks, for the active
+> objective — current objective, current phase, classification/path, completed
+> work, in-progress work, failed attempts, discovered issues, decisions, files
+> changed, verification results, CI result, next action, mode. CI events are
+> appended automatically by `tools/ci-state-update.sh` (driven by
+> `tools/ci-watch.sh --update-state`).
 
 ## Current task
+
+- **Mode:** default (per-task autonomous; ralph mode unused)
+- **Classification/path:** bounded (single-task focused, existing flows)
+- **Current objective:** Land MineHost Autonomous v2.1 workflow upgrade
+- **Current phase:** implementation
+- **In-progress work:** ci-watch --update-state hook; AUTONOMOUS_STATE v2.1 schema; ci-state-update.sh
+- **Next action:** commit, push-gated, ci-watch, close
 
 - **Task:** Production-readiness loop — Phase A COMPLETE; Phase B underway
   (P1 sweep DONE clean; P2 RE-SCOPED 2026-08-26: all five feature areas already
@@ -34,6 +48,12 @@
   - **P2** app features per master context (console, lifecycle UI, downloads, tunneling,
     version management UX), P3 reliability/error-handling polish, P4 docs-follow-reality
     (README empty; PATCH_REPORT corrections).
+- **Current objective**: v2.1 master orchestrator: Agent tool delegation + orchestrate.sh state machine verified end-to-end
+- **Current phase**: Phase 0 — context load
+- **Classification/path**: bounded
+- **In-progress work**: context loading
+- **Next action**: Phase 1 classify
+- **Active specialist**: (none yet)
 
 ## Iteration counters (reset per task)
 
@@ -330,3 +350,31 @@ contradicted the History accounting (recovery-session correction).
   ALREADY IMPLEMENTED (WorldWorkingCopyManager.prepareEngineWorkingCopy) — no
   change needed there. Commit ecc5c7a, CI run 32965458907 PASS, 242/242.
   Fix iterations used: 0. Runtime Verification: UNVERIFIED (no device).
+
+### Auto-recorded CI events (ci-state-update.sh)
+
+| Timestamp | Run | Ref | Conclusion | URL | Note |
+|---|---|---|---|---|---|
+| 2026-09-02T08:00:44Z | run=99999 | main@7ed2871f5893 | **success** |  | self-test |
+
+### Orchestration log
+- 2026-09-02T11:56:07Z — start: task='SELF-TEST' classification='bounded'
+- 2026-09-02T11:56:21Z — start: task='SELF-TEST' classification='bounded'
+- 2026-09-02T11:56:34Z — start: task='SELF-TEST' classification='bounded'
+- 2026-09-02T11:56:55Z — start: task='SELF-TEST' classification='bounded'
+- 2026-09-02T12:02:18Z — start: task='SELF-TEST' classification='bounded'
+- 2026-09-02T12:02:34Z — start: task='SELF-TEST' classification='bounded'
+- 2026-09-02T12:02:44Z — start: task='SELF-TEST' classification='bounded'
+- 2026-09-02T12:03:00Z — start: task='SELF-TEST' classification='bounded'
+- 2026-09-02T12:03:01Z — classify: bounded
+- 2026-09-02T12:03:01Z — dispatch.start: feature-dev:code-explorer — Locate existing Bedrock world import code
+- 2026-09-02T12:03:01Z — dispatch.completed: feature-dev:code-explorer — Locate existing Bedrock world import code
+- 2026-09-02T12:03:01Z —   findings: src/main/java/.../WorldImporter.kt:42
+- 2026-09-02T12:03:01Z —   files:    src/main/java/.../WorldImporter.kt
+- 2026-09-02T12:03:01Z — plan: smallest safe fix in WorldImporter.kt
+- 2026-09-02T12:03:02Z — implement: files=src/main/java/.../WorldImporter.kt — add missing null check
+- 2026-09-02T12:03:02Z — gate.build: unavailable — no JDK on Termux
+- 2026-09-02T12:03:02Z — review: approve — diff is minimal and correct
+- 2026-09-02T12:03:02Z — ci: run=99999 conclusion=success url=https://github.com/sassypotatoo/Mine-Host/actions/runs/99999
+- 2026-09-02T12:03:02Z — finish: pass — SELF-TEST complete: orchestrate.sh + delegation contract verified
+- 2026-09-02T12:50:05Z — start: task='v2.1 master orchestrator: Agent tool delegation + orchestrate.sh state machine verified end-to-end' classification='bounded'

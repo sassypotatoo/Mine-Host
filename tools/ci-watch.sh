@@ -9,15 +9,18 @@
 #
 # Usage:
 #   tools/ci-watch.sh [--sha SHA] [--timeout MIN] [--interval SEC] [--once]
-#                     [--tail N] [--stall-min N]
+#                     [--tail N] [--stall-min N] [--update-state [NOTE]]
 #
-#   --sha         commit to watch (default: HEAD)
-#   --timeout     max minutes to watch at all (default: 60)
-#   --interval    seconds between polls (default: 60)
-#   --once        single check, do not loop
-#   --tail        max lines of failed-step log to print on FAIL (default: 150)
-#   --stall-min   minutes of no observable progress before INVESTIGATING
-#                 (default: 20)
+#   --sha           commit to watch (default: HEAD)
+#   --timeout       max minutes to watch at all (default: 60)
+#   --interval      seconds between polls (default: 60)
+#   --once          single check, do not loop
+#   --tail          max lines of failed-step log to print on FAIL (default: 150)
+#   --stall-min     minutes of no observable progress before INVESTIGATING
+#                   (default: 20)
+#   --update-state  [NOTE]  on terminal state (PASS or FAIL), append a History
+#                   row to docs/autonomous/AUTONOMOUS_STATE.md via
+#                   tools/ci-state-update.sh. Optional NOTE is recorded.
 #
 # Exit codes:
 #   0  run(s) concluded successfully
@@ -27,6 +30,7 @@
 set -euo pipefail
 
 SHA="HEAD"; TIMEOUT_MIN=60; INTERVAL=60; ONCE=0; TAIL=150; STALL_MIN=20
+UPDATE_STATE=0; STATE_NOTE=""
 while [ $# -gt 0 ]; do
   case "$1" in
     --sha) SHA="$2"; shift 2 ;;
@@ -35,15 +39,40 @@ while [ $# -gt 0 ]; do
     --once) ONCE=1; shift ;;
     --tail) TAIL="$2"; shift 2 ;;
     --stall-min) STALL_MIN="$2"; shift 2 ;;
+    --update-state)
+      UPDATE_STATE=1
+      # Optional positional NOTE following the flag (only if not another flag).
+      if [ $# -ge 2 ] && [ "${2:-}" != "--"* ]; then
+        STATE_NOTE="$2"; shift 2
+      else
+        shift 1
+      fi
+      ;;
     *) echo "[ci-watch] unknown argument: $1" >&2; exit 2 ;;
   esac
 done
+
+# Helper: append a CI event to AUTONOMOUS_STATE.md if --update-state was set.
+maybe_update_state() {
+  local run_id="$1" conclusion="$2" url="$3"
+  [ "$UPDATE_STATE" = "1" ] || return 0
+  if [ -x "tools/ci-state-update.sh" ]; then
+    "tools/ci-state-update.sh" \
+      --run-id "$run_id" --conclusion "$conclusion" \
+      --sha "$FULL_SHA" --branch "$BRANCH" --url "$url" \
+      --note "${STATE_NOTE:-recorded by ci-watch.sh --update-state}" \
+      || echo "[ci-watch] WARNING: ci-state-update.sh failed (non-fatal)" >&2
+  else
+    echo "[ci-watch] WARNING: tools/ci-state-update.sh not found or not executable" >&2
+  fi
+}
 
 command -v gh >/dev/null 2>&1 || { echo "[ci-watch] gh CLI missing" >&2; exit 2; }
 command -v python3 >/dev/null 2>&1 || { echo "[ci-watch] python3 missing" >&2; exit 2; }
 git rev-parse --is-inside-work-tree >/dev/null 2>&1 || { echo "[ci-watch] not a git repository" >&2; exit 2; }
 
 FULL_SHA=$(git rev-parse "$SHA")
+BRANCH=$(git symbolic-ref --quiet --short HEAD 2>/dev/null || echo "detached")
 
 REMOTE_URL=$(git remote get-url origin)
 REPO=${REMOTE_URL#*github.com[:\/]}
@@ -155,6 +184,7 @@ while :; do
 
       if [ "$CONCLUSION" = "success" ]; then
         echo "[ci-watch] RESULT: PASS"
+        maybe_update_state "$ID" "success" "$RUN_URL"
         exit 0
       fi
 
@@ -170,6 +200,7 @@ while :; do
       done
       echo "=========================================="
       echo "[ci-watch] RESULT: FAIL"
+      maybe_update_state "$ID" "failure" "$RUN_URL"
       exit 1
       ;;
     PENDING*)

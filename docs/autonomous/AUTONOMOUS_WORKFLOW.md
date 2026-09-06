@@ -140,3 +140,90 @@ The workflow is repo-contained and project-generic except for names:
 4. Reset `docs/autonomous/AUTONOMOUS_STATE.md` to a fresh template.
 
 No other machine-specific state exists; credentials stay outside the repo (gh hosts.yml).
+
+---
+
+## 7. v2.1 dispatch layer (2026-09-02)
+
+The single canonical entry point is **`/minehost-autonomous`**.
+`/minehost-auto` is kept as a compatibility alias — new invocations should
+use `/minehost-autonomous`. Inside that entry, the loop is:
+
+```
+/minehost-autonomous <task>
+   |
+   v
+[0] Load context: CLAUDE.md + MASTER_PROJECT_CONTEXT + AUTONOMOUS_WORKFLOW
+   |    + AUTONOMOUS_STATE (+ reconcile if IN_PROGRESS) + SKILL.md
+   |    + discover + read only task-relevant Markdown
+   v
+[1] Classify via superpowers:brainstorming (spike | bounded | architectural)
+   |    HARD-GATE is INFORMATIONAL only — recorded for the audit trail,
+   |    does not pause the loop.
+   v
+[2] Doc ↔ repo reality check: repo is source of truth; record discrepancies
+   |    in AUTONOMOUS_STATE.md under "Discovered issues"
+   v
+[3] Pick specialists only when useful:
+   |    feature-dev:code-explorer   — repo context thin / "where does X live?"
+   |    feature-dev:code-architect  — multi-file / new subsystem
+   |    feature-dev:code-reviewer   — final review of the diff
+   |    code-simplifier             — only when simplification is justified
+   |    context7                    — BEFORE writing external/version-sensitive code
+   |    claude-security / security-guidance — security-sensitive changes
+   |    ralph-loop                  — opt-in mode for repetitive batches
+   |    github / playwright / chrome-devtools-mcp / commit-commands — as needed
+   v
+[4] Plan (smallest safe change; protected systems need documented evidence)
+[5] Implement (TDD where it earns its keep)
+[6] Build / test gates (local: report UNAVAILABLE if no JDK; CI is authoritative)
+[7] QA: compile is not evidence; verify the change does what was asked
+[8] git diff → commit → ./tools/push-gated.sh
+[9] ./tools/ci-watch.sh <sha> --update-state
+   |    On PASS: state updated automatically.
+   |    On FAIL: print real failed-step logs; root-cause; smallest fix;
+   |             loop back to [5]. Counters 5/5/5, total 15; on limit → hard STOP.
+   v
+[10] AUTONOMOUS_STATE.md updated at every phase transition
+[11] Report in SKILL.md mandatory format
+```
+
+### v2.1 state schema
+
+`AUTONOMOUS_STATE.md` carries, for the current objective:
+
+- current objective
+- current phase
+- classification / path (spike | bounded | architectural)
+- completed work
+- in-progress work
+- failed attempts (with evidence excerpts)
+- discovered issues (incl. doc↔repo discrepancies)
+- decisions (with reason)
+- files changed (paths + summary)
+- verification results
+- CI result (run id, conclusion, url)
+- next action
+- mode (default; `ralph` for repetitive batch mode)
+
+### v2.1 invariants preserved from v1
+
+Retry limits 5/5/5/15, protected systems, mandatory report format, and
+hard-stop protocol are unchanged. v2.1 does not weaken them. Only
+"stop and ask" triggers are: (a) retry limit breach, (b) fundamental
+ambiguity that blocks all planning, (c) operator override.
+
+### v2.1 file map
+
+| File | Role |
+|---|---|
+| `.claude/commands/minehost-autonomous.md` | **single canonical entry** |
+| `.claude/commands/minehost-auto.md` | compatibility alias (kept) |
+| `.claude/skills/minehost-autonomous/SKILL.md` | governing workflow + v2.1 addendum |
+| `.claude/skills/minehost-autonomous-v2/SKILL.md` | v2.1 dispatch layer |
+| `docs/autonomous/AUTONOMOUS_WORKFLOW.md` | this file (env spec + v2.1 §7) |
+| `docs/autonomous/AUTONOMOUS_STATE.md` | living state file, v2.1 schema |
+| `tools/ci-watch.sh` | progress-aware Actions watchdog (`--update-state` added) |
+| `tools/ci-state-update.sh` | append-only writer for state file (new) |
+| `tools/push-gated.sh` | only sanctioned push path (unchanged) |
+| `CLAUDE.md` | session orientation, points at `/minehost-autonomous` |

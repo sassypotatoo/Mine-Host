@@ -147,3 +147,52 @@ Gate applicability: a gate is applicable unless structurally impossible for the 
 - Editing formerly-protected components without documented evidence
 
 All of these mean: stop, reassess against the Core Loop, report honestly.
+
+---
+
+## v2.1 dispatch layer addendum (2026-09-02)
+
+The governing invariants above are preserved unchanged. v2.1 adds a
+dispatch layer in front of this loop and an automatic state/CI bookkeeping
+trail behind it. The single canonical entry point is
+`/minehost-autonomous`; the v1 entry `/minehost-auto` is kept as a
+compatibility alias. Full spec lives in
+`.claude/skills/minehost-autonomous-v2/SKILL.md` and
+`.claude/commands/minehost-autonomous.md`.
+
+Key behavioral changes vs v1 (still inside the same hard invariants):
+
+- `superpowers:brainstorming` classification (spike / bounded /
+  architectural) is recorded for the audit trail, but does NOT pause the
+  loop for human approval. The hard invariants above remain the only
+  stop conditions.
+- Specialist skills (`feature-dev:code-explorer`, `feature-dev:code-architect`,
+  `feature-dev:code-reviewer`, `code-simplifier`, `claude-security`,
+  `security-guidance`, `ralph-loop`, `context7`, `github`, `playwright`,
+  `chrome-devtools-mcp`, `commit-commands`) are invoked only when they
+  actually help the current task. No blind "run every plugin" mode.
+- `context7` is invoked automatically BEFORE writing code that touches
+  external / version-sensitive libraries or APIs (Gradle, AGP, Kotlin,
+  Nukkit/Paper/PaperMC, Supabase, FRP, etc.). Skipped for trivial local
+  edits where it adds no value.
+- `claude-security` + `security-guidance` are invoked automatically when
+  the change touches any of: downloads, binaries, command execution,
+  JNI/native loading, networking, authentication, tunneling, permissions,
+  file extraction, IPC, crypto, Supabase/RLS, or user-controlled input.
+- QA: a successful compile alone is not evidence that MineHost
+  functionality works. The verification step must address whether the
+  change actually does what the task asked for; the report quotes
+  captured output.
+- The repository is the source of truth. If documentation disagrees with
+  code, the discrepancy is recorded in `AUTONOMOUS_STATE.md` under
+  "Discovered issues" rather than hallucinated as implemented.
+- `AUTONOMOUS_STATE.md` is updated at every phase transition with the
+  v2.1 schema: current objective, current phase, classification/path,
+  completed work, in-progress work, failed attempts, discovered issues,
+  decisions, files changed, verification results, CI result, next action.
+- `tools/ci-watch.sh --update-state` auto-feeds CI results into
+  `AUTONOMOUS_STATE.md` via `tools/ci-state-update.sh` so the human
+  partner never has to copy-paste run ids.
+
+Retry limits, protected systems, mandatory report format, and the
+hard-stop protocol are unchanged. v2.1 does not weaken them.
