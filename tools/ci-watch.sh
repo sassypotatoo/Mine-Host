@@ -61,9 +61,10 @@ maybe_update_state() {
       --run-id "$run_id" --conclusion "$conclusion" \
       --sha "$FULL_SHA" --branch "$BRANCH" --url "$url" \
       --note "${STATE_NOTE:-recorded by ci-watch.sh --update-state}" \
-      || echo "[ci-watch] WARNING: ci-state-update.sh failed (non-fatal)" >&2
+      || { echo "[ci-watch] ERROR: ci-state-update.sh failed" >&2; exit 1; }
   else
-    echo "[ci-watch] WARNING: tools/ci-state-update.sh not found or not executable" >&2
+    echo "[ci-watch] ERROR: tools/ci-state-update.sh not found or not executable" >&2
+    exit 1
   fi
 }
 

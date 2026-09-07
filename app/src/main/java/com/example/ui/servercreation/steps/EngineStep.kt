@@ -21,7 +21,16 @@ fun EngineStep(
     requiresManualVerification: (String) -> Boolean,
     onEngineSelected: (com.example.server.template.ServerTemplate) -> Unit
 ) {
-    val templates = TemplateRegistry.ALL_TEMPLATES
+    // Filter templates based on selected edition
+    val templates = when (draft.edition) {
+        com.example.data.ServerEdition.JAVA -> TemplateRegistry.ALL_TEMPLATES.filter {
+            com.example.server.template.TemplateRegistry.isJavaEditionEngine(it.id)
+        }
+        com.example.data.ServerEdition.BEDROCK -> TemplateRegistry.ALL_TEMPLATES.filter {
+            !com.example.server.template.TemplateRegistry.isJavaEditionEngine(it.id)
+        }
+        else -> TemplateRegistry.ALL_TEMPLATES // Shouldn't happen with current implementation
+    }
 
     Column(
         modifier = Modifier.fillMaxWidth(),
