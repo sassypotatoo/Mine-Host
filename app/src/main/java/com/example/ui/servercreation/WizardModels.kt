@@ -8,6 +8,7 @@ import java.security.SecureRandom
 
 enum class WizardStep(val title: String) {
     BASICS("Basics"),
+    EDITION("Edition"),
     ENGINE("Engine"),
     VERSION("Version"),
     WORLD("World"),
@@ -74,5 +75,6 @@ data class CreateServerDraft(
     val minecraftEulaAccepted: Boolean = false,
     val manualEngineInstallAcknowledged: Boolean = false,
     val manualEngineJarUri: Uri? = null,
-    val manualEngineSha256: String = ""
+    val manualEngineSha256: String = "",
+    val edition: ServerEdition? = null
 )

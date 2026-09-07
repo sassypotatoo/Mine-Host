@@ -56,7 +56,8 @@ class CreateServerWizardViewModel(application: Application) : AndroidViewModel(a
     private val _draft = MutableStateFlow(CreateServerDraft(
         engine = TemplateRegistry.BEDROCK_NUKKIT_MOT,
         engineVersionId = catalogRepository.getDefaultVersion(TemplateRegistry.BEDROCK_NUKKIT_MOT.id)?.id,
-        bedrockVersion = catalogRepository.getDefaultVersion(TemplateRegistry.BEDROCK_NUKKIT_MOT.id)?.recommendedBedrockVersion
+        bedrockVersion = catalogRepository.getDefaultVersion(TemplateRegistry.BEDROCK_NUKKIT_MOT.id)?.recommendedBedrockVersion,
+        edition = ServerEdition.BEDROCK
     ))
     val draft: StateFlow<CreateServerDraft> = _draft.asStateFlow()
 
@@ -72,6 +73,15 @@ class CreateServerWizardViewModel(application: Application) : AndroidViewModel(a
     }
 
     fun selectEngine(template: ServerTemplate) {
+        val currentEdition = _draft.value.edition ?: ServerEdition.BEDROCK
+        // Only allow engines that match the selected edition
+        val isJavaEngine = com.example.server.template.TemplateRegistry.isJavaEditionEngine(template.id)
+        if ((currentEdition == ServerEdition.JAVA && !isJavaEngine) ||
+            (currentEdition == ServerEdition.BEDROCK && isJavaEngine)) {
+            // Don't select engine if it doesn't match edition
+            return
+        }
+
         val defaultEngineVersion = catalogRepository.getDefaultVersion(template.id)
         val defaultBedrockVersion = when {
             template.id == "java_paper" -> null
@@ -79,7 +89,7 @@ class CreateServerWizardViewModel(application: Application) : AndroidViewModel(a
             defaultEngineVersion.compatibilityMode == com.example.server.version.CompatibilityMode.MULTI_VERSION -> "AUTO"
             else -> defaultEngineVersion.recommendedBedrockVersion ?: defaultEngineVersion.supportedBedrockVersions.firstOrNull()
         }
-        
+
         updateDraft {
             it.copy(
                 engine = template,

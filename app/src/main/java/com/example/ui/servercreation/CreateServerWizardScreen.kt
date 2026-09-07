@@ -91,7 +91,7 @@ fun CreateServerWizardScreen(
                     )
                     Spacer(Modifier.height(WizardTheme.TitleToSubtitle))
                     Text(
-                        "Step ${currentStep.ordinal + 1} of 7 · ${currentStep.title}",
+                        "Step ${currentStep.ordinal + 1} of 8 · ${currentStep.title}",
                         style = MaterialTheme.typography.bodySmall.copy(
                             color = WizardTheme.PrimaryBlue,
                             fontWeight = FontWeight.Bold,
@@ -159,6 +159,7 @@ fun CreateServerWizardScreen(
                 WizardCard {
                     when (currentStep) {
                         WizardStep.BASICS -> BasicsStep(draft, wizardViewModel::setDraft)
+                        WizardStep.EDITION -> EditionStep(draft, wizardViewModel::setDraft)
                         WizardStep.ENGINE -> EngineStep(
                             draft = draft,
                             isEngineAvailable = { availableEngineIds.contains(it) },
