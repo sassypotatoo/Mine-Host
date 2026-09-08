@@ -3,7 +3,6 @@
 > **Correction note (2026-08-26, autonomous audit):** the original claims below
 > were written against an earlier iteration of this codebase and are annotated
 > where they no longer describe reality. Verified current state wins — see
-> `docs/autonomous/AUTONOMOUS_STATE.md` for CI-evidenced history.
 
 - ~~Fixed AGP missing generated native executables by explicitly registering the `libminehost_jvm_launcher.so` via `PackageMineHostLauncherTask` variant API.~~
   **CORRECTED:** no `PackageMineHostLauncherTask` exists anywhere in the repo.

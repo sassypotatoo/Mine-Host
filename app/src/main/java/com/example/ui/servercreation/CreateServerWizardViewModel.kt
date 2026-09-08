@@ -366,6 +366,7 @@ class CreateServerWizardViewModel(application: Application) : AndroidViewModel(a
     val canContinue = combine(_currentStep, _draft) { step, draft ->
         when (step) {
             WizardStep.BASICS -> draft.serverName.isNotBlank()
+            WizardStep.EDITION -> draft.edition != null
             WizardStep.ENGINE -> draft.engine?.id?.let(::isEngineAvailable) == true
             WizardStep.VERSION -> {
                 val bedrockVersion = draft.bedrockVersion

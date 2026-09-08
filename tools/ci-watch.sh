@@ -52,21 +52,6 @@ while [ $# -gt 0 ]; do
   esac
 done
 
-# Helper: append a CI event to AUTONOMOUS_STATE.md if --update-state was set.
-maybe_update_state() {
-  local run_id="$1" conclusion="$2" url="$3"
-  [ "$UPDATE_STATE" = "1" ] || return 0
-  if [ -x "tools/ci-state-update.sh" ]; then
-    "tools/ci-state-update.sh" \
-      --run-id "$run_id" --conclusion "$conclusion" \
-      --sha "$FULL_SHA" --branch "$BRANCH" --url "$url" \
-      --note "${STATE_NOTE:-recorded by ci-watch.sh --update-state}" \
-      || { echo "[ci-watch] ERROR: ci-state-update.sh failed" >&2; exit 1; }
-  else
-    echo "[ci-watch] ERROR: tools/ci-state-update.sh not found or not executable" >&2
-    exit 1
-  fi
-}
 
 command -v gh >/dev/null 2>&1 || { echo "[ci-watch] gh CLI missing" >&2; exit 2; }
 command -v python3 >/dev/null 2>&1 || { echo "[ci-watch] python3 missing" >&2; exit 2; }
