@@ -1,0 +1,34 @@
+{
+  "name": "minehost-beastmode",
+  "description": "Beast Mode v3 workflow orchestration system for MineHost autonomous development. Manages state, objectives, and verification without making implementation decisions.",
+  "version": "1.0.0",
+  "author": "MineHost Development Team",
+  "license": "MIT",
+  "commands": [
+    {
+      "name": "minehost-autonomous",
+      "description": "Toggle Beast Mode v3 workflow orchestration system ON/OFF and set work requests",
+      "usage": "/minehost-autonomous [work request]",
+      "examples": [
+        "/minehost-autonomous",
+        "/minehost-autonomous \"Fix typo in README.md\""
+      ]
+    }
+  ],
+  "hooks": [
+    {
+      "matcher": "",
+      "hooks": [
+        {
+          "type": "command",
+          "command": "python3 $PROJECT_ROOT/.claude/hooks/user_prompt_submit.py",
+          "timeout": 5
+        }
+      ]
+    }
+  ],
+  "stateFile": ".claude/beastmode_state.json",
+  "requires": [
+    "python3"
+  ]
+}
