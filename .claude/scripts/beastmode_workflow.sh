@@ -137,7 +137,7 @@ echo "Committed with SHA: $commit_sha" >&2
 
 # Push using./tools/push-gated.sh
 echo "Pushing using./tools/push-gated.sh" >&2
-if ! ./tools/push-gated.sh; then
+if ! ./tools/push-gated.sh >&2; then
 echo "Error: ./tools/push-gated.sh failed" >&2
 return 1
 fi
@@ -414,13 +414,16 @@ local new_state
 new_state=$(echo "$state_json" | python3 -c "
 import sys, json
 data = json.load(sys.stdin)
+obj_id = sys.argv[1]
+commit_sha = sys.argv[2]
+timestamp = sys.argv[3]
 for obj in data['objectives']:
-    if obj['id'] == '$obj_id':
-        obj['lastCommit'] = '$commit_sha'
+    if obj['id'] == obj_id:
+        obj['lastCommit'] = commit_sha
         break
-data['timestamp'] = '$(get_timestamp)'
+data['timestamp'] = timestamp
 print(json.dumps(data))
-")
+" "$obj_id" "$commit_sha" "$(get_timestamp)")
 write_state "$new_state"
 
 # Decide whether to use local verification

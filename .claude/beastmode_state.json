@@ -1,1 +1,12 @@
-{"beastModeEnabled": true, "currentTask": "Fix typo in README.md", "objectives": [{"id": "1789146157789", "description": "Fix typo in README.md", "status": "FAILED_EXCEEDED", "attempts": 7, "lastCommit": "", "ciStatus": "", "verificationNotes": "Exceeded retry budget (5 attempts)"}, {"id": "1789148801199", "description": "Fix typo in README.md", "status": "PENDING", "attempts": 1, "lastCommit": "", "ciStatus": "", "verificationNotes": ""}], "currentObjectiveId": "1789148801199", "gitBranch": "", "lastCiRunUrl": "", "knownIssues": [], "blockers": [], "timestamp": "2026-09-11T17:46:42Z", "workflowStatus": "ACTIVE"}
+{
+  "beastModeEnabled": false,
+  "currentTask": "",
+  "objectives": [],
+  "currentObjectiveId": null,
+  "gitBranch": "",
+  "lastCiRunUrl": "",
+  "knownIssues": [],
+  "blockers": [],
+  "timestamp": "",
+  "workflowStatus": "IDLE"
+}

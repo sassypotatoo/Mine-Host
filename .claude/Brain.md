@@ -204,6 +204,18 @@ Beast Mode enforces hard verification-integrity rules:
 - UNVERIFIED reporting for missing/invalid evidence
 - No inference or simulation of results
 
+## Bash Robustness Architecture (Fixed v3.2)
+
+Stabilization audit fixes applied to `beastmode_workflow.sh` and `beastmode_utils.sh`:
+
+1. **Dynamic PROJECT_ROOT**: both scripts derive the repo root from `BASH_SOURCE[0]` (`$(dirname ...)/../..`), not hardcoded paths — they work from any checkout location.
+2. **Arithmetic under `set -e`**: counters use `var=$((var + 1))` instead of `((var++))`; the post-increment form returns exit status 1 when the old value is 0, which silently killed the loop under `set -e`.
+3. **File-target regex**: `implement_objective()` matches `^(Fix|fix|Update|update)[[:space:]](.+)\.(md|txt|json|xml|yaml|yml)[[:space:]]*$` — the earlier pattern hit bash "empty (sub)expression" errors.
+4. **Python inline scripts**: 4-space indentation inside `if`/`for` blocks (heredoc-embedded code previously raised `IndentationError`), and all interpolated values pass via `sys.argv` instead of shell substitution inside Python string literals (which raised `SyntaxError: unterminated string literal` when values contained quotes).
+5. **stdout/stderr contract**: `commit_and_push()` sends all progress messages to stderr; stdout carries ONLY the commit SHA, so command substitution captures a clean value.
+6. **Push gate error handling**: `if ! ./tools/push-gated.sh >&2; then` — errors surface instead of aborting silently under `set -e`.
+7. **State reset for testing**: `beastmode_state.json` restored to a clean IDLE baseline after fixes.
+
 ## Integration with MineHost Systems
 
 ### Tool Dependencies
