@@ -8,7 +8,7 @@
 set -euo pipefail
 
 # Use absolute path to avoid any directory confusion
-PROJECT_ROOT="/data/data/com.termux/files/home/mine-host-import.lY0iUy/Java-integration-3-main"
+PROJECT_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 source "${PROJECT_ROOT}/.claude/scripts/beastmode_utils.sh"
 
 STATE_FILE="${PROJECT_ROOT}/.claude/beastmode_state.json"
@@ -118,7 +118,7 @@ if [ $? -ne 0 ]; then
 echo "Error: git add -u failed" >&2
 return 1
 fi
-git add. 2>/dev/null || true # Add new files
+git add . 2>/dev/null || true # Add new files
 git commit -m "$commit_message"
 if [ $? -ne 0 ]; then
 echo "Error: git commit failed" >&2
@@ -205,7 +205,7 @@ local ci_logs
 ci_logs=$(./tools/ci-watch.sh --sha "$commit_sha" --get-logs 2>/dev/null || echo "Failed to retrieve CI logs")
 
 # Signal that Claude Code should analyze the CI failure
-local temp_ci_file="${PROJECT_ROOT}/.claude/ci_analysis_${obj_id}_${attempt_num}.txt"
+local temp_ci_file="${PROJECT_ROOT}/.claude/ci_analysis_${objective_id}_${attempt_num}.txt"
 echo "Commit SHA: $commit_sha" > "$temp_ci_file"
 echo "Objective: $objective_description" >> "$temp_ci_file"
 echo "Attempt: $attempt_num" >> "$temp_ci_file"
@@ -217,7 +217,7 @@ echo "Analysis request: Identify root cause and suggest smallest appropriate fix
 
 # Signal that Claude Code should analyze this failure
 # Claude Code will observe the state and temp file, then provide analysis
-echo "CLAUDE_CODE_ANALYZE_FAILURE: $obj_id:$attempt_num"
+echo "CLAUDE_CODE_ANALYZE_FAILURE: $objective_id:$attempt_num"
 
 # For Phase 2, we provide a basic analysis based on common CI failure patterns
 # In a full implementation, Claude Code would analyze the actual logs and provide a fix
@@ -289,13 +289,13 @@ if [ -n "$objective_line" ]; then
 # Check if this objective already exists
 if echo "$existing_objectives_json" | grep -q "$objective_line"; then
 echo "Objective already exists, reusing: $objective_line"
-((objective_count++))
+objective_count=$((objective_count + 1))
 continue
 fi
 local obj_id
 obj_id=$(add_objective "$objective_line")
 echo "Added objective $obj_id: $objective_line"
-((objective_count++))
+objective_count=$((objective_count + 1))
 fi
 done < <(echo "$objectives")
 
@@ -512,7 +512,7 @@ iteration_time=$((attempt_end_time - attempt_start_time))
 echo "Objective $obj_id attempt $((obj_attempts + 1)) completed in ${iteration_time}s"
 
 # Increment total iterations
-((total_iterations++))
+total_iterations=$((total_iterations + 1))
 
 # Small delay to avoid tight loop
 sleep 1
