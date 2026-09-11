@@ -126,7 +126,7 @@ Beast Mode v3 is a workflow orchestration layer that manages autonomous work cyc
 
 ## Claude Capability Selection Architecture
 
-Beast Mode v3 includes a Capability Selection Guidance system that helps Claude Code make informed decisions about when to employ various skills, MCP servers, plugins, and sub-agents. The authoritative guidance lives in `~/.claude/skills/minehost-autonomous/SKILL.md` under "Capability Selection Guidance". Beast Mode itself never invokes capabilities — it only emits `GUIDANCE_NEEDED` signals; Claude Code reads the guidance and decides which capabilities (if any) fit the objective.
+Beast Mode v3 includes a Capability Selection Guidance system that helps Claude Code make informed decisions about when to employ various skills, MCP servers, plugins, and sub-agents. The authoritative guidance lives in the project-level skill at `.claude/skills/minehost-beastmode/SKILL.md` under "Capability Selection Guidance". Beast Mode itself never invokes capabilities — it only emits `GUIDANCE_NEEDED` signals; Claude Code reads the guidance and decides which capabilities (if any) fit the objective.
 
 Capability categories:
 1. Large Codebase Analysis & Exploration (code-explorer, Explore, general-purpose)
@@ -137,6 +137,21 @@ Capability categories:
 6. Simple Tasks & Local Edits (direct editing tools, remember)
 
 Flow: Beast Mode emits GUIDANCE_NEEDED → Claude Code consults the guidance → Claude Code selects capabilities by objective nature, complexity, exploration needs, and security implications → Claude Code reports capability choices with evidence-based reasoning → claims of capability usage must reflect actual invocations.
+
+## Command / Skill Separation (Fixed v3.1)
+
+Beast Mode v3 has exactly one user-facing command and one internal skill:
+
+- **`/minehost-autonomous`** — the PRIMARY user command. Activates Beast Mode, sets the current objective, and serves as the only user-facing entry point. Accepts both quoted (`/minehost-autonomous "task"`) and unquoted (`/minehost-autonomous task`) task forms.
+- **`minehost-beastmode`** — an INTERNAL skill. It provides workflow rules, capability guidance, and verification rules as loadable knowledge/context. It is NOT a user-facing command and must not be presented as one in autocomplete or help.
+
+Separation rationale: the command activates the workflow; the skill carries the workflow knowledge. One entry point eliminates the previous confusion where `/minehost-beastmode` and `/minehost-autonomous` appeared as two competing workflows.
+
+## Hook Robustness Architecture (Fixed v3.1)
+
+- **Dynamic repository root**: `user_prompt_submit.py` derives `PROJECT_ROOT` from the hook's own file location (`Path(__file__).parent.parent.parent.parent`), no hardcoded absolute path. The hook works wherever the repo is cloned.
+- **Quoted and unquoted activation**: both `/minehost-autonomous "task"` and `/minehost-autonomous task` persist the task into `beastmode_state.json` and set `workflowStatus: ACTIVE`.
+- **Fail-open error handling**: on any exception, the hook logs to stderr and exits 0 — normal Claude Code processing continues. The old dead stdin re-read in the exception handler was removed.
 
 ## Persistence & Verification Integrity Architecture (Fixed v3.0)
 

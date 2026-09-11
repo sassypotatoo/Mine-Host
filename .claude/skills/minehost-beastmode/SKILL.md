@@ -8,6 +8,98 @@ Beast Mode v3 is a workflow orchestration layer that manages state, objectives, 
 
 Use for any autonomous implementation task in the MineHost repo where you want to leverage the Beast Mode v3 workflow orchestration system. This skill provides the `/minehost-autonomous` command and the UserPromptSubmit hook to enable Beast Mode.
 
+## Capability Selection Guidance
+
+This section provides guidance to Claude Code on when to employ various capabilities (skills, MCP servers, plugins, sub-agents) during Beast Mode workflow execution. Beast Mode never invokes these capabilities directly - it only manages workflow state and provides `GUIDANCE_NEEDED` signals. Claude Code retains full autonomy to decide which capabilities to use based on this guidance and the specific requirements of each objective.
+
+### Capability Categories
+
+#### 1. Large Codebase Analysis & Exploration
+
+**When to Use**: Understanding complex codebases, tracing execution paths, mapping architecture layers, finding specific implementations, understanding dependencies.
+
+**Skills/Plugins**: 
+- `feature-dev:code-explorer`: Deep analysis of existing features by tracing execution paths and mapping dependencies
+- `Explore`: Fast file pattern matching and keyword searching across the codebase
+- `general-purpose`: Researching complex questions and executing multi-step tasks
+**Avoid When**: Simple file edits, trivial changes, or when you already know exactly what needs to be changed.
+
+#### 2. Android Development & Build Systems
+
+**When to Use**: Gradle/Kotlin/Java changes, Android app modifications, build system configuration, resource management.
+
+**Skills/Plugins**: 
+- `feature-dev:code-architect`: Designing feature architectures for Android components
+- `code-simplifier`: Simplifying and refining Android/Kotlin code for clarity
+- `context7`: Fetching up-to-date documentation for Android SDK, Gradle, Kotlin, Jetpack libraries
+**Avoid When**: Non-Android changes, documentation updates, or configuration changes unrelated to build systems.
+
+#### 3. Security Review & Analysis
+
+**When to Use**: Changes involving downloads, binaries, command execution, JNI/native loading, networking, authentication, tunneling, permissions, file extraction, IPC, crypto, Supabase/RLS, or user-controlled input.
+
+**Skills/Plugins**: 
+- `claude-security`: Automated security scanning for vulnerabilities
+- `security-guidance`: Expert guidance on secure implementation practices
+- `feature-dev:code-reviewer`: Security-focused code review with confidence-based filtering
+**Avoid When**: Pure UI changes, documentation updates, or changes with no security implications.
+
+#### 4. Supabase Development
+
+**When to Use**: Database schema changes, Supabase function modifications, RLS policies, Supabase client usage, authentication flows.
+
+**Skills/Plugins**: 
+- `supabase`: Direct interaction with Supabase for schema migrations, function execution, and database operations
+- `context7`: Supabase-specific documentation and best practices
+**Avoid When**: Non-database changes, frontend-only updates, or changes unrelated to Supabase integration.
+
+#### 5. UI/Browser Testing & Automation
+
+**When to Use**: Frontend changes, user interface modifications, user interaction flows, visual regression testing, cross-browser compatibility.
+
+**Skills/Plugins**: 
+- `playwright`: End-to-end testing of web applications and user interfaces
+- `chrome-devtools-mcp`: Browser automation and debugging capabilities
+- `frontend-design`: UI/UX design guidance and component library recommendations
+**Avoid When**: Backend-only changes, API modifications, or non-visual changes.
+
+#### 6. Simple Tasks & Local Edits
+
+**When to Use**: Trivial file modifications, documentation updates, configuration changes, simple bug fixes, refactoring with clear scope.
+
+**Skills/Plugins**: 
+- Basic text editing (Read/Edit/Write tools)
+- `code-simplifier`: For simple code clarity improvements
+- `remember`: For persisting context across conversations when needed
+**Avoid When**: Complex architectural changes, security-sensitive modifications, or changes requiring deep codebase understanding.
+
+### Connection with Beast Mode Workflow
+
+During Beast Mode execution, you will see guidance signals like:
+- `GUIDANCE_NEEDED: implement the following objective:`
+- `GUIDANCE_PROVIDED: Objective requires Claude Code implementation`
+
+When you see `GUIDANCE_NEEDED`, refer to this guidance section to determine which capabilities would be most effective for implementing the objective. Consider:
+1. The nature of the change (Android, security, database, UI, etc.)
+2. The complexity and scope of the objective
+3. Whether exploration or analysis is needed first
+4. Any security or compliance implications
+
+#### What Beast Mode Does NOT Do
+
+- Beast Mode does NOT automatically invoke skills, MCP servers, plugins, or sub-agents
+- Beast Mode does NOT force the usage of any specific capability
+- Beast Mode does NOT make implementation decisions
+- Beast Mode only manages workflow state, objectives, and verification coordination
+
+#### What Claude Code Should Do
+
+- Claude Code should read and understand the `GUIDANCE_NEEDED`/objective description
+- Claude Code should consult this Capability Selection Guidance section to determine appropriate capabilities
+- Claude Code should freely choose which skills, MCP servers, plugins, or sub-agents (if any) to employ
+- Claude Code should provide evidence-based reasoning for capability choices in the workflow reports
+- Claude Code should never claim capability usage unless actual invocation occurred
+
 ## Core Loop
 
 1. Read the project context (if any) from the user's message or existing state.

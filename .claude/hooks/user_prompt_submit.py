@@ -11,7 +11,7 @@ import sys
 from pathlib import Path
 
 # Configuration
-PROJECT_ROOT = Path("/data/data/com.termux/files/home/mine-host-import.lY0iUy/Java-integration-3-main")
+PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
 STATE_FILE = PROJECT_ROOT / ".claude" / "beastmode_state.json"
 
 def read_state():
@@ -78,12 +78,24 @@ def main():
             print(json.dumps(hook_input))
             return
 
-        # Check for the activation-with-task form: /minehost-autonomous "work request"
+        # Check for the activation-with-task form: /minehost-autonomous "work request" or /minehost-autonomous task
+        # First try quoted form
         task_match = re.match(r'^/minehost-autonomous\s+"([^"]*)"\s*$', stripped_prompt)
         if task_match:
             task = task_match.group(1).strip()
             if not task:
                 task = "(none)"
+        else:
+            # Try unquoted form: everything after the command
+            task_match = re.match(r'^/minehost-autonomous\s+(.*)$', stripped_prompt)
+            if task_match:
+                task = task_match.group(1).strip()
+                if not task:
+                    task = "(none)"
+            else:
+                task_match = None
+
+        if task_match:
             new_state = state.copy()
             new_state["beastModeEnabled"] = True
             new_state["currentTask"] = task
@@ -122,12 +134,7 @@ Current Task:
     except Exception as e:
         # On error, fail open - allow normal processing
         print(f"Beast Mode hook error: {e}", file=sys.stderr)
-        try:
-            hook_input = json.loads(sys.stdin.read())
-            print(json.dumps(hook_input))
-        except:
-            # If we can't even read input, exit normally
-            sys.exit(0)
+        sys.exit(0)
 
 if __name__ == "__main__":
     main()
