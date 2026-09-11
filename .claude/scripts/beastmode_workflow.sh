@@ -167,12 +167,13 @@ local ci_status
 ci_status=$(echo "$state_json" | python3 -c "
 import sys, json
 data = json.load(sys.stdin)
+commit_sha = sys.argv[1]
 # Find the objective with this commit SHA and get its CI status
 for obj in data['objectives']:
-if obj.get('lastCommit') == '$commit_sha':
-print(obj.get('ciStatus', ''))
-break
-")
+    if obj.get('lastCommit') == commit_sha:
+        print(obj.get('ciStatus', ''))
+        break
+" "$commit_sha")
 
 if [ "$ci_status" = "PASS" ]; then
 echo "CI_RESULT: PASS"
@@ -374,10 +375,10 @@ new_state=$(echo "$state_json" | python3 -c "
 import sys, json
 data = json.load(sys.stdin)
 for obj in data['objectives']:
-if obj['id'] == '$obj_id':
-obj['status'] = 'FAILED_EXCEEDED'
-obj['verificationNotes'] = 'Exceeded retry budget ($MAX_ATTEMPTS_PER_OBJECTIVE attempts)'
-break
+    if obj['id'] == '$obj_id':
+        obj['status'] = 'FAILED_EXCEEDED'
+        obj['verificationNotes'] = 'Exceeded retry budget ($MAX_ATTEMPTS_PER_OBJECTIVE attempts)'
+        break
 data['timestamp'] = '$(get_timestamp)'
 print(json.dumps(data))
 ")
@@ -414,9 +415,9 @@ new_state=$(echo "$state_json" | python3 -c "
 import sys, json
 data = json.load(sys.stdin)
 for obj in data['objectives']:
-if obj['id'] == '$obj_id':
-obj['lastCommit'] = '$commit_sha'
-break
+    if obj['id'] == '$obj_id':
+        obj['lastCommit'] = '$commit_sha'
+        break
 data['timestamp'] = '$(get_timestamp)'
 print(json.dumps(data))
 ")
@@ -463,10 +464,10 @@ new_state=$(echo "$state_json" | python3 -c "
 import sys, json
 data = json.load(sys.stdin)
 for obj in data['objectives']:
-if obj['id'] == '$obj_id':
-obj['ciStatus'] = 'PASS'
-obj['verificationNotes'] = 'CI verification passed'
-break
+    if obj['id'] == '$obj_id':
+        obj['ciStatus'] = 'PASS'
+        obj['verificationNotes'] = 'CI verification passed'
+        break
 data['timestamp'] = '$(get_timestamp)'
 print(json.dumps(data))
 ")
@@ -486,10 +487,10 @@ new_state=$(echo "$state_json" | python3 -c "
 import sys, json
 data = json.load(sys.stdin)
 for obj in data['objectives']:
-if obj['id'] == '$obj_id':
-obj['ciStatus'] = 'FAIL'
-obj['verificationNotes'] = 'CI verification failed: $fix_description'
-break
+    if obj['id'] == '$obj_id':
+        obj['ciStatus'] = 'FAIL'
+        obj['verificationNotes'] = 'CI verification failed: $fix_description'
+        break
 data['timestamp'] = '$(get_timestamp)'
 print(json.dumps(data))
 ")
