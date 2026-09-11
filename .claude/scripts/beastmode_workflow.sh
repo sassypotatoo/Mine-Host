@@ -105,11 +105,12 @@ return 0
 }
 
 # Function to commit and push changes
+# Outputs progress messages to stderr so stdout carries ONLY the commit SHA
 commit_and_push() {
 local commit_message="$1"
 
-echo "Committing and pushing changes."
-echo "Commit message: $commit_message"
+echo "Committing and pushing changes." >&2
+echo "Commit message: $commit_message" >&2
 
 # Commit changes using git
 cd "$PROJECT_ROOT"
@@ -132,10 +133,10 @@ if [ -z "$commit_sha" ]; then
 echo "Error: failed to get commit SHA" >&2
 return 1
 fi
-echo "Committed with SHA: $commit_sha"
+echo "Committed with SHA: $commit_sha" >&2
 
 # Push using./tools/push-gated.sh
-echo "Pushing using./tools/push-gated.sh"
+echo "Pushing using./tools/push-gated.sh" >&2
 if ! ./tools/push-gated.sh; then
 echo "Error: ./tools/push-gated.sh failed" >&2
 return 1
