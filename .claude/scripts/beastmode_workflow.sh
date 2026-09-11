@@ -82,10 +82,10 @@ echo "Objective ID: $objective_id"
 # and provide guidance to Claude Code for more complex tasks
 
 # Check if this is a simple file modification we can handle
-if [[ "$objective_description" =~ ^(Fix|fix|Update|update)( |)(.+)\.(md|txt|json|xml|yaml|yml)( |)$ ]]; then
+if [[ "$objective_description" =~ ^(Fix|fix|Update|update)[[:space:]](.+)\.(md|txt|json|xml|yaml|yml)[[:space:]]*$ ]]; then
 # Simple file fix - attempt to locate and fix the file
 local target_file
-target_file=$(echo "$objective_description" | sed -E 's/^(Fix|fix|Update|update)( |)(.+)\.(md|txt|json|xml|yaml|yml)( |)$/\3.\4/')
+target_file=$(echo "$objective_description" | sed -E 's/^(Fix|fix|Update|update)[[:space:]](.+)\.(md|txt|json|xml|yaml|yml)[[:space:]]*$/\2.\3/')
 
 if [ -f "$PROJECT_ROOT/$target_file" ]; then
 echo "Attempting to fix $target_file based on objective: $objective_description"
