@@ -10,7 +10,19 @@ Use for any autonomous implementation task in the MineHost repo where you want t
 
 ## Capability Selection Guidance
 
-This section provides guidance to Claude Code on when to employ various capabilities (skills, MCP servers, plugins, sub-agents) during Beast Mode workflow execution. Beast Mode never invokes these capabilities directly - it only manages workflow state and provides `GUIDANCE_NEEDED` signals. Claude Code retains full autonomy to decide which capabilities to use based on this guidance and the specific requirements of each objective.
+This section provides guidance to Claude Code on when to employ various capabilities (skills, MCP servers, plugins) during Beast Mode workflow execution. Beast Mode never invokes these capabilities directly - it only manages workflow state and provides `GUIDANCE_NEEDED` signals. Claude Code retains full autonomy to decide which capabilities to use based on this guidance and the specific requirements of each objective.
+
+### Rule
+
+- Beast Mode only provides guidance. It manages state, objectives, and verification tracking.
+- Claude Code decides whether to use any capability, and which one.
+- No automatic plugin/MCP/skill/sub-agent invocation ever occurs.
+
+### Available Capabilities in This Environment
+
+Only these capabilities are actually available in this environment. Do not reference or invoke any capability not on this list:
+
+`superpowers`, `code-review`, `context7`, `supabase`, `playwright`, `chrome-devtools-mcp`, `security-guidance`, `claude-security`, `remember`, `code-simplifier`, `frontend-design`, `gstack`, `minehost-beastmode`
 
 ### Capability Categories
 
@@ -18,46 +30,44 @@ This section provides guidance to Claude Code on when to employ various capabili
 
 **When to Use**: Understanding complex codebases, tracing execution paths, mapping architecture layers, finding specific implementations, understanding dependencies.
 
-**Skills/Plugins**: 
-- `feature-dev:code-explorer`: Deep analysis of existing features by tracing execution paths and mapping dependencies
-- `Explore`: Fast file pattern matching and keyword searching across the codebase
-- `general-purpose`: Researching complex questions and executing multi-step tasks
+**Capabilities**:
+- `superpowers`: process skills (brainstorming, systematic debugging, dispatching-parallel-agents, subagent-driven development)
+- `gstack`: router for the gstack skill suite (planning, review, QA, shipping, debugging, docs, security, design)
 **Avoid When**: Simple file edits, trivial changes, or when you already know exactly what needs to be changed.
 
 #### 2. Android Development & Build Systems
 
 **When to Use**: Gradle/Kotlin/Java changes, Android app modifications, build system configuration, resource management.
 
-**Skills/Plugins**: 
-- `feature-dev:code-architect`: Designing feature architectures for Android components
+**Capabilities**:
+- `context7` (MCP): Up-to-date documentation for Android SDK, Gradle, Kotlin, Jetpack libraries
 - `code-simplifier`: Simplifying and refining Android/Kotlin code for clarity
-- `context7`: Fetching up-to-date documentation for Android SDK, Gradle, Kotlin, Jetpack libraries
 **Avoid When**: Non-Android changes, documentation updates, or configuration changes unrelated to build systems.
 
 #### 3. Security Review & Analysis
 
 **When to Use**: Changes involving downloads, binaries, command execution, JNI/native loading, networking, authentication, tunneling, permissions, file extraction, IPC, crypto, Supabase/RLS, or user-controlled input.
 
-**Skills/Plugins**: 
-- `claude-security`: Automated security scanning for vulnerabilities
+**Capabilities**:
+- `claude-security`: Automated security scanning (scan-changes, scan-codebase, suggest-patches)
 - `security-guidance`: Expert guidance on secure implementation practices
-- `feature-dev:code-reviewer`: Security-focused code review with confidence-based filtering
+- `code-review`: Code review including security-focused review
 **Avoid When**: Pure UI changes, documentation updates, or changes with no security implications.
 
 #### 4. Supabase Development
 
 **When to Use**: Database schema changes, Supabase function modifications, RLS policies, Supabase client usage, authentication flows.
 
-**Skills/Plugins**: 
-- `supabase`: Direct interaction with Supabase for schema migrations, function execution, and database operations
-- `context7`: Supabase-specific documentation and best practices
+**Capabilities**:
+- `supabase` (MCP): Direct interaction with Supabase for schema migrations, function execution, and database operations
+- `context7` (MCP): Supabase-specific documentation and best practices
 **Avoid When**: Non-database changes, frontend-only updates, or changes unrelated to Supabase integration.
 
 #### 5. UI/Browser Testing & Automation
 
 **When to Use**: Frontend changes, user interface modifications, user interaction flows, visual regression testing, cross-browser compatibility.
 
-**Skills/Plugins**: 
+**Capabilities**:
 - `playwright`: End-to-end testing of web applications and user interfaces
 - `chrome-devtools-mcp`: Browser automation and debugging capabilities
 - `frontend-design`: UI/UX design guidance and component library recommendations
@@ -67,11 +77,11 @@ This section provides guidance to Claude Code on when to employ various capabili
 
 **When to Use**: Trivial file modifications, documentation updates, configuration changes, simple bug fixes, refactoring with clear scope.
 
-**Skills/Plugins**: 
+**Capabilities**:
 - Basic text editing (Read/Edit/Write tools)
 - `code-simplifier`: For simple code clarity improvements
 - `remember`: For persisting context across conversations when needed
-**Avoid When**: Complex architectural changes, security-sensitive modifications, or changes requiring deep codebase understanding.
+- `minehost-beastmode`: This skill itself, as loadable workflow knowledge
 
 ### Connection with Beast Mode Workflow
 

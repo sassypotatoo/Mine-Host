@@ -180,4 +180,22 @@ Living document tracking the development of Beast Mode v3 workflow system for th
 - **Status**: COMPLETED
 
 ---
+
+### Phase 7: Documentation & Capability Guidance Cleanup ✅
+- **Duration**: 2026-09-11
+- **Problem**: The Capability Selection Guidance and Brain.md referenced capabilities not actually available in this environment (`feature-dev:code-explorer`, `Explore`, `general-purpose`, `feature-dev:code-architect`, `feature-dev:code-reviewer`, `plugin-dev:*`), which risked fabricated or impossible capability invocations.
+- **Solution**:
+  1. Rewrote the Capability Selection Guidance in project-level `.claude/skills/minehost-beastmode/SKILL.md` to reference only actual available capabilities: `superpowers`, `code-review`, `context7`, `supabase`, `playwright`, `chrome-devtools-mcp`, `security-guidance`, `claude-security`, `remember`, `code-simplifier`, `frontend-design`, `gstack`, `minehost-beastmode`. Added explicit "Available Capabilities in This Environment" list and a three-rule block (Beast Mode only guides; Claude Code decides; no automatic invocation).
+  2. Updated Brain.md "Skill/MCP/Plugin Separation" and "Claude Capability Selection Architecture" sections with the same verified capability lists, organized per category.
+  3. Verified command separation: `/minehost-autonomous` remains the sole user-facing command; `minehost-beastmode` is internal workflow knowledge only. No `.claude/` doc presents minehost-beastmode as a user command.
+  4. Searched `.claude/` for old command names, incorrect invocation instructions, and outdated capability references; remaining matches (`/minehost-auto` as v1 compatibility alias) are accurate historical references.
+- **Files Changed**:
+  - `.claude/skills/minehost-beastmode/SKILL.md` (capability list correction)
+  - `.claude/Brain.md` (capability list corrections in two sections)
+  - `.claude/Progress.md` (this entry)
+- **Boundaries Maintained**: No Beast Mode redesign, no architecture changes, no MineHost application source code modified, no new workflow systems, no tests/audits performed.
+- **Status**: COMPLETED
+
+---
+
 *This document is updated at the completion of each significant milestone in Beast Mode development.*

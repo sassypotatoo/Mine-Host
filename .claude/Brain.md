@@ -58,14 +58,13 @@ Beast Mode v3 is a workflow orchestration layer that manages autonomous work cyc
 - **Code Reviewer**: Self-reviews implementation before committing
 - **Problem Solver**: Diagnoses and fixes CI failures when guided by Beast Mode
 
-### Skill/MCP/Plugin/Agent Separation
-- **Beast Mode**: Zero direct invocation of skills/MCP/plugins/agents
+### Skill/MCP/Plugin Separation
+- **Beast Mode**: Zero direct invocation of skills/MCP/plugins; manages state, objectives, and verification tracking only
 - **Guidance Only**: Provides `GUIDANCE_NEEDED: implement the following objective:` or `GUIDANCE_PROVIDED: Objective requires Claude Code implementation`
-- **Claude Code Autonomy**: Free to use any available capability:
-  - Skills: superpowers:brainstorming, feature-dev:*, plugin-dev:*, etc.
-  - MCP Servers: context7, supabase, github, etc.
-  - Plugins: code-reviewer, code-architect, frontend-design, etc.
-  - Sub-agents: Explore, code-explorer, code-architect, code-reviewer
+- **Claude Code Autonomy**: Free to use any available capability. Capabilities actually available in this environment:
+  - Skills: superpowers, code-review, remember, code-simplifier, frontend-design, gstack, minehost-beastmode
+  - MCP Servers: context7, supabase, playwright, chrome-devtools-mcp
+  - Security capabilities: claude-security, security-guidance
 - **Decision Boundary**: Beast Mode says "what" needs to be done, Claude Code decides "how"
 
 ## Git/CI Verification Flow
@@ -126,17 +125,36 @@ Beast Mode v3 is a workflow orchestration layer that manages autonomous work cyc
 
 ## Claude Capability Selection Architecture
 
-Beast Mode v3 includes a Capability Selection Guidance system that helps Claude Code make informed decisions about when to employ various skills, MCP servers, plugins, and sub-agents. The authoritative guidance lives in the project-level skill at `.claude/skills/minehost-beastmode/SKILL.md` under "Capability Selection Guidance". Beast Mode itself never invokes capabilities — it only emits `GUIDANCE_NEEDED` signals; Claude Code reads the guidance and decides which capabilities (if any) fit the objective.
+Beast Mode v3 includes a Capability Selection Guidance system that helps Claude Code make informed decisions about when to employ various skills, MCP servers, and plugins during workflow execution. The authoritative guidance lives in the project-level skill at `.claude/skills/minehost-beastmode/SKILL.md` under "Capability Selection Guidance". Beast Mode itself never invokes capabilities — it only emits `GUIDANCE_NEEDED` signals; Claude Code reads the guidance and decides which capabilities (if any) fit the objective.
+
+The guidance connects to Beast Mode's `GUIDANCE_NEEDED: implement the following objective:` signaling: Beast Mode emits the signal, Claude Code consults the guidance below and freely selects capabilities. No capability is forced or automatically invoked.
 
 Capability categories:
-1. Large Codebase Analysis & Exploration (code-explorer, Explore, general-purpose)
-2. Android Development & Build Systems (code-architect, code-simplifier, context7)
-3. Security Review & Analysis (claude-security, security-guidance, code-reviewer)
-4. Supabase Development (supabase, context7)
-5. UI/Browser Testing & Automation (playwright, chrome-devtools-mcp, frontend-design)
-6. Simple Tasks & Local Edits (direct editing tools, remember)
+1. Large Codebase Analysis & Exploration
+   - Capabilities: `superpowers` (process skills: brainstorming, systematic debugging, dispatching-parallel-agents, subagent-driven development), `gstack` (router for planning, review, QA, shipping, debugging, docs, security, design)
+   - Avoid: when the change is trivial or you know exactly what needs editing
 
-Flow: Beast Mode emits GUIDANCE_NEEDED → Claude Code consults the guidance → Claude Code selects capabilities by objective nature, complexity, exploration needs, and security implications → Claude Code reports capability choices with evidence-based reasoning → claims of capability usage must reflect actual invocations.
+2. Android Development & Build Systems
+   - Capabilities: `context7` (MCP: Android SDK, Gradle, Kotlin, Jetpack documentation), `code-simplifier` (Android/Kotlin code clarity)
+   - Avoid: non-Android changes, documentation-only updates, configuration changes unrelated to build systems
+
+3. Security Review & Analysis
+   - Capabilities: `claude-security` (scan-changes, scan-codebase, suggest-patches), `security-guidance`, `code-review`
+   - Avoid: pure UI changes, documentation updates, changes with no security implications
+
+4. Supabase Development
+   - Capabilities: `supabase` (MCP: schema migrations, function execution, database operations), `context7` (MCP: Supabase documentation and best practices)
+   - Avoid: non-database changes, frontend-only updates, changes unrelated to Supabase integration
+
+5. UI/Browser Testing & Automation
+   - Capabilities: `playwright`, `chrome-devtools-mcp`, `frontend-design`
+   - Avoid: backend-only changes, API modifications, non-visual changes
+
+6. Simple Tasks & Local Edits
+   - Capabilities: basic text editing (Read/Edit/Write tools), `code-simplifier` (clarity improvements), `remember` (persisting context across conversations), `minehost-beastmode` (this skill as loadable workflow knowledge)
+   - Avoid: complex architectural changes, security-sensitive modifications, changes requiring deep codebase understanding
+
+Flow: Beast Mode emits `GUIDANCE_NEEDED` → Claude Code consults the guidance → Claude Code selects capabilities by objective nature, complexity, exploration needs, and security implications → Claude Code reports capability choices with evidence-based reasoning → claims of capability usage must reflect actual invocations. Beast Mode never claims capability usage; only Claude Code reports what it actually invoked.
 
 ## Command / Skill Separation (Fixed v3.1)
 
