@@ -124,6 +124,53 @@ Beast Mode v3 is a workflow orchestration layer that manages autonomous work cyc
 4. **Respect MineHost Non-negotiables**: Never modify protected systems without documented evidence
 5. **Error Transparency**: Failures must be reported honestly, never hidden or simulated
 
+## Claude Capability Selection Architecture
+
+Beast Mode v3 includes a Capability Selection Guidance system that helps Claude Code make informed decisions about when to employ various skills, MCP servers, plugins, and sub-agents. The authoritative guidance lives in `~/.claude/skills/minehost-autonomous/SKILL.md` under "Capability Selection Guidance". Beast Mode itself never invokes capabilities — it only emits `GUIDANCE_NEEDED` signals; Claude Code reads the guidance and decides which capabilities (if any) fit the objective.
+
+Capability categories:
+1. Large Codebase Analysis & Exploration (code-explorer, Explore, general-purpose)
+2. Android Development & Build Systems (code-architect, code-simplifier, context7)
+3. Security Review & Analysis (claude-security, security-guidance, code-reviewer)
+4. Supabase Development (supabase, context7)
+5. UI/Browser Testing & Automation (playwright, chrome-devtools-mcp, frontend-design)
+6. Simple Tasks & Local Edits (direct editing tools, remember)
+
+Flow: Beast Mode emits GUIDANCE_NEEDED → Claude Code consults the guidance → Claude Code selects capabilities by objective nature, complexity, exploration needs, and security implications → Claude Code reports capability choices with evidence-based reasoning → claims of capability usage must reflect actual invocations.
+
+## Persistence & Verification Integrity Architecture (Fixed v3.0)
+
+Problem 1 - Fixed: Hook as Authoritative Persistence Layer
+
+The UserPromptSubmit hook now enforces Beast Mode persistence through context injection. When `beastModeEnabled=true` in `.claude/beastmode_state.json`, the hook automatically injects a compact context block into EVERY subsequent user request:
+
+```
+[BEAST MODE ACTIVE]
+
+Beast Mode is persistently enabled.
+
+Current Task:
+{currentTask or (none)}
+
+```
+
+This ensures Claude Code always knows Beast Mode context without remembering state, solving the persistence problem where subsequent messages depended on Claude remembering.
+
+**Activation/Deactivation Flow**:
+- `/minehost-autonomous` toggle command updates state directly
+- Context injection ON when `beastModeEnabled=true`
+- Context injection OFF when `beastModeEnabled=false`
+- No need to require `/minehost-autonomous` before every task
+
+Problem 2 - Fixed: Verification Integrity Invariant
+
+Beast Mode enforces hard verification-integrity rules:
+- Never claim actions occurred without concrete evidence
+- CI verification tied to exact commit SHA being evaluated
+- Skills/plugins/MCP/sub-agents reported only when actually invoked
+- UNVERIFIED reporting for missing/invalid evidence
+- No inference or simulation of results
+
 ## Integration with MineHost Systems
 
 ### Tool Dependencies

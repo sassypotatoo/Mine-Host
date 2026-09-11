@@ -163,7 +163,21 @@ Living document tracking the development of Beast Mode v3 workflow system for th
 - [ ] No automatic progression to future phases
 
 ## Last Updated
-$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+2026-09-11T12:20:00Z
+
+---
+
+### Phase 5: Claude Capability Guidance System ✅
+- **Duration**: 2026-09-11
+- **Problem**: Claude Code lacked structured guidance on when to employ skills, MCP servers, plugins, and sub-agents during Beast Mode workflow execution, risking both capability underuse (missing valuable analysis) and overuse (blind "run every plugin" mode).
+- **Solution**: Added a "Capability Selection Guidance" section to the user-level minehost-autonomous SKILL.md with six capability categories, each listing when-to-use and avoid-when guidance plus the specific capabilities that fit. The guidance connects to the Beast Mode GUIDANCE_NEEDED signaling: Beast Mode emits the signal, Claude Code consults the guidance and freely selects capabilities.
+- **Files Changed**:
+  - `~/.claude/skills/minehost-autonomous/SKILL.md` (created — includes full v1 skill + v2.1 addendum + new Capability Selection Guidance section)
+  - `.claude/Brain.md` (added "Claude Capability Selection Architecture" section documenting the flow and categories)
+  - `.claude/Progress.md` (this entry)
+- **Boundaries Maintained**: Beast Mode never invokes capabilities; guidance only improves Claude Code's selection decisions. No forced usage, no automatic invocation, claims of capability usage must reflect actual invocations.
+- **Verification**: Documentation-level change, no build gates applicable. Structure verified by re-reading files; guidance categories cross-checked against installed plugin/skill/MCP inventory.
+- **Status**: COMPLETED
 
 ---
 *This document is updated at the completion of each significant milestone in Beast Mode development.*

@@ -43,3 +43,56 @@ This skill works through a UserPromptSubmit hook that intercepts all user messag
 
 - Beast Mode never makes implementation decisions; it only manages state and workflow.
 - Beast Mode does not invoke skills, MCP servers, plugins, or sub-agents.
+
+## Verification Integrity
+
+Beast Mode enforces a hard verification-integrity invariant: never claim that an action occurred unless it was actually executed and concrete evidence exists.
+
+This applies to:
+  - implementation
+  - builds
+  - tests
+  - commits
+  - pushes
+  - GitHub Actions
+  - CI results
+  - runtime verification
+  - Skills
+  - plugins
+  - MCPs
+  - sub-agents
+  - tool usage
+  - server/runtime behavior
+
+Never infer success from:
+  - code merely existing
+  - a command being constructed
+  - a command being described
+  - expected behavior
+  - Claude's reasoning
+  - a previous successful run
+  - an unverified state file
+  - an assumed CI result
+
+Never fabricate or simulate:
+  - test results
+  - CI results
+  - commit SHAs
+  - push success
+  - runtime verification
+  - tool/capability usage
+  - completion status
+
+If an action was not actually performed, report:
+  UNVERIFIED
+
+If evidence is missing, stale, contradictory, or cannot be tied to the relevant action/commit, the state MUST NOT be marked "VERIFIED".
+
+For CI specifically:
+  - verify the result belongs to the exact commit SHA being evaluated
+  - do not use an unrelated successful workflow run as evidence
+  - if CI status cannot be confirmed, remain UNVERIFIED
+
+For Skills/plugins/MCPs/sub-agents:
+  - only report a capability as USED if Claude Code actually invoked it
+  - never infer usage because a capability was available or appropriate

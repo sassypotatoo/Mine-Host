@@ -1,1 +1,12 @@
-{"beastModeEnabled": true, "currentTask": "Test work request", "objectives": [], "currentObjectiveId": null, "gitBranch": "", "lastCiRunUrl": "", "knownIssues": [], "blockers": [], "timestamp": "2026-09-10T21:31:32Z", "workflowStatus": "IDLE"}
+{
+  "beastModeEnabled": false,
+  "currentTask": "",
+  "objectives": [],
+  "currentObjectiveId": null,
+  "gitBranch": "",
+  "lastCiRunUrl": "",
+  "knownIssues": [],
+  "blockers": [],
+  "timestamp": "2026-09-11T08:31:04Z",
+  "workflowStatus": "IDLE"
+}
