@@ -1,259 +1,183 @@
 #!/usr/bin/env bash
 #
-# Beast Mode v3 - Utility Functions
+# Beast Mode v3.3 - Utility Functions
 #
-# Provides helper functions for state management, git operations, and CI integration
+# State management for the turn-based autonomous workflow. All shell-to-Python
+# value passing goes through sys.argv with quoted heredocs — never through
+# string interpolation into Python literals (injection-safe).
+#
+# Sourced by beastmode_workflow.sh. Redirect the state file for tests:
+#   BEASTMODE_STATE_FILE=/tmp/test-state.json bash .claude/scripts/beastmode_workflow.sh --status
 
 set -euo pipefail
 
-# Use absolute path to avoid any directory confusion
 PROJECT_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
-STATE_FILE="${PROJECT_ROOT}/.claude/beastmode_state.json"
+STATE_FILE="${BEASTMODE_STATE_FILE:-${PROJECT_ROOT}/.claude/beastmode_state.json}"
 
-# Function to read state
+DEFAULT_STATE_JSON='{"beastModeEnabled":false,"currentTask":"","objectives":[],"currentObjectiveId":null,"gitBranch":"","lastCiRunUrl":"","knownIssues":[],"blockers":[],"timestamp":"","workflowStatus":"IDLE","phase":"IDLE"}'
+
 read_state() {
     if [ -f "$STATE_FILE" ]; then
-        cat "$STATE_FILE"
-    else
-        # Return default state if file doesn't exist
-        echo '{"beastModeEnabled":false,"currentTask":"","objectives":[],"currentObjectiveId":null,"gitBranch":"","lastCiRunUrl":"","knownIssues":[],"blockers":[],"timestamp":""}'
+        content=$(cat "$STATE_FILE")
+        # Trim leading and trailing whitespace
+        content=$(echo "$content" | sed -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//')
+        if [ -n "$content" ]; then
+            echo "$content"
+            return
+        fi
     fi
+    echo "$DEFAULT_STATE_JSON"
 }
 
-# Function to write state
+get_timestamp() {
+    date -u +"%Y-%m-%dT%H:%M:%SZ"
+}
+
+# Merge a JSON object of top-level updates into the state.
+update_state() {
+    local updates="$1"
+    local tmp
+    tmp="$(mktemp "${STATE_FILE}.XXXXXX")"
+    read_state | python3 - "$updates" "$(get_timestamp)" > "$tmp" <<'PY'
+import sys, json
+data = json.load(sys.stdin)
+data.update(json.loads(sys.argv[1]))
+data["timestamp"] = sys.argv[2]
+print(json.dumps(data, indent=2))
+PY
+    mv "$tmp" "$STATE_FILE"
+}
+
+# Print a top-level state field ("" if missing/null; bools as true/false; lists as JSON).
+get_state_field() {
+    local key="$1"
+    read_state | python3 - "$key" <<'PY'
+import sys, json
+data = json.load(sys.stdin)
+value = data.get(sys.argv[1])
+if value is None:
+    print("")
+elif isinstance(value, bool):
+    print("true" if value else "false")
+elif isinstance(value, list):
+    print(json.dumps(value))
+else:
+    print(value)
+PY
+}
+
+# Print one field of one objective ("" if objective or field is missing).
+get_objective_field() {
+    local obj_id="$1" key="$2"
+    read_state | python3 - "$obj_id" "$key" <<'PY'
+import sys, json
+data = json.load(sys.stdin)
+obj_id, key = sys.argv[1], sys.argv[2]
+for obj in data.get("objectives", []):
+    if obj.get("id") == obj_id:
+        value = obj.get(key)
+        if value is None:
+            print("")
+        elif isinstance(value, bool):
+            print("true" if value else "false")
+        else:
+            print(value)
+        break
+PY
+}
+
+# Merge a JSON object of updates into one objective. Fails (return 3) if the
+# objective id is unknown.
+set_objective_fields() {
+    local obj_id="$1" updates="$2"
+    local tmp
+    tmp="$(mktemp "${STATE_FILE}.XXXXXX")"
+    if ! read_state | python3 - "$obj_id" "$updates" "$(get_timestamp)" > "$tmp" <<'PY'
+import sys, json
+data = json.load(sys.stdin)
+obj_id, updates, ts = sys.argv[1], json.loads(sys.argv[2]), sys.argv[3]
+for obj in data.get("objectives", []):
+    if obj.get("id") == obj_id:
+        obj.update(updates)
+        data["timestamp"] = ts
+        print(json.dumps(data, indent=2))
+        sys.exit(0)
+sys.exit(3)
+PY
+    then
+        rm -f "$tmp"
+        return 3
+    fi
+    mv "$tmp" "$STATE_FILE"
+}
+
+# Append a PENDING objective; prints its id.
+add_objective() {
+    local description="$1"
+    local obj_id
+    obj_id="$(date +%s%N | cut -b1-13)"
+    local tmp
+    tmp="$(mktemp "${STATE_FILE}.XXXXXX")"
+    read_state | python3 - "$obj_id" "$description" "$(get_timestamp)" > "$tmp" <<'PY'
+import sys, json
+data = json.load(sys.stdin)
+obj_id, desc, ts = sys.argv[1], sys.argv[2], sys.argv[3]
+data.setdefault("objectives", []).append({
+    "id": obj_id,
+    "description": desc,
+    "status": "PENDING",
+    "attempts": 0,
+    "lastCommit": "",
+    "ciStatus": "",
+    "ciRunUrl": "",
+    "verificationNotes": "",
+    "failureNotes": "",
+})
+data["timestamp"] = ts
+print(json.dumps(data, indent=2))
+PY
+    mv "$tmp" "$STATE_FILE"
+    echo "$obj_id"
+}
+
+# Print the id of the first PENDING objective; exit 1 if none exists.
+get_next_pending_objective_id() {
+    read_state | python3 <<'PY'
+import sys, json
+data = json.load(sys.stdin)
+for obj in data.get("objectives", []):
+    if obj.get("status") == "PENDING":
+        print(obj["id"])
+        sys.exit(0)
+sys.exit(1)
+PY
+}
+
+count_pending_objectives() {
+    read_state | python3 <<'PY'
+import sys, json
+data = json.load(sys.stdin)
+print(sum(1 for o in data.get("objectives", []) if o.get("status") == "PENDING"))
+PY
+}
+
+has_failed_objectives() {
+    read_state | python3 <<'PY'
+import sys, json
+data = json.load(sys.stdin)
+failed = any(o.get("status") == "FAILED_EXCEEDED" for o in data.get("objectives", []))
+print("true" if failed else "false")
+PY
+}
+
+# Write a JSON state object to the state file.
 write_state() {
     local state_json="$1"
     echo "$state_json" > "$STATE_FILE"
 }
 
-# Function to get current timestamp
-get_timestamp() {
-    date -u +"%Y-%m-%dT%H:%M:%SZ"
-}
-
-# Function to update state with new values
-update_state() {
-    local updates="$1"  # JSON string of updates
-    local current_state
-    current_state=$(read_state)
-
-    # Merge updates into current state
-    local new_state
-    new_state=$(echo "$current_state" | python3 -c "
-import sys, json
-data = json.load(sys.stdin)
-updates = json.load(sys.stdin, '$updates') if '$updates' != '' else {}
-data.update(updates)
-print(json.dumps(data))
-")
-    write_state "$new_state"
-}
-
-# Function to get current branch
-get_current_branch() {
-    cd "$PROJECT_ROOT"
-    git symbolic-ref --quiet --short HEAD 2>/dev/null || git rev-parse --short HEAD
-}
-
-# Function to create feature branch
-create_feature_branch() {
-    local branch_name="$1"
-    cd "$PROJECT_ROOT"
-    git fetch origin main
-    git checkout -b "$branch_name" origin/main
-}
-
-# Function to commit changes
-commit_changes() {
-    local message="$1"
-    cd "$PROJECT_ROOT"
-    git add -u
-    git add . 2>/dev/null || true  # Add new files
-    git commit -m "$message"
-}
-
-# Function to push using gated mechanism
-push_changes() {
-    cd "$PROJECT_ROOT"
-    ./tools/push-gated.sh
-}
-
-# Function to get latest commit SHA
-get_latest_commit_sha() {
-    cd "$PROJECT_ROOT"
-    git rev-parse HEAD
-}
-
-# Function to monitor CI for a specific commit
-monitor_ci() {
-    local commit_sha="$1"
-    cd "$PROJECT_ROOT"
-    ./tools/ci-watch.sh --sha "$commit_sha" --update-state
-}
-
-# Function to get CI logs for a failed run
-get_ci_logs() {
-    local run_id="$1"
-    cd "$PROJECT_ROOT"
-    gh run view "$run_id" --repo "$(git remote get-url origin | sed 's/.*github.com[:\/]\(.*\)\.git/\1/')" --log-failed 2>/dev/null || echo "Failed to get logs for run $run_id"
-}
-
-# Function to extract failure information from CI logs
-extract_failure_info() {
-    local logs="$1"
-    echo "$logs" | grep -A 10 -B 5 "FAILED\|Error\|error\|Exception\|exception" | head -30
-}
-
-# Function to check if local verification is available
-is_local_verification_available() {
-    # Check if we have JDK/Gradle/ADB available
-    if command -v java >/dev/null 2>&1 && command -v gradle >/dev/null 2>&1; then
-        return 0  # true
-    else
-        return 1  # false
-    fi
-}
-
-# Function to run local verification
-run_local_verification() {
-    # This would run local Gradle checks if available
-    echo "Local verification not implemented in this version"
-    return 1
-}
-
-# Function to mark objective as verified
-mark_objective_verified() {
-    local objective_id="$1"
-    local current_state
-    current_state=$(read_state)
-
-    local new_state
-    new_state=$(echo "$current_state" | python3 -c "
-import sys, json
-data = json.load(sys.stdin)
-for obj in data['objectives']:
-    if obj['id'] == '$objective_id':
-        obj['status'] = 'VERIFIED'
-        break
-data['timestamp'] = '$(get_timestamp)'
-print(json.dumps(data))
-")
-    write_state "$new_state"
-}
-
-# Function to increment objective attempts
-increment_objective_attempts() {
-    local objective_id="$1"
-    local current_state
-    current_state=$(read_state)
-
-    local new_state
-    new_state=$(echo "$current_state" | python3 -c "
-import sys, json
-data = json.load(sys.stdin)
-for obj in data['objectives']:
-    if obj['id'] == '$objective_id':
-        obj['attempts'] = (obj['attempts'] or 0) + 1
-        break
-data['timestamp'] = '$(get_timestamp)'
-print(json.dumps(data))
-")
-    write_state "$new_state"
-}
-
-# Function to get current objective
-get_current_objective() {
-    local current_state
-    current_state=$(read_state)
-    local current_obj_id
-    current_obj_id=$(echo "$current_state" | python3 -c "import sys, json; data = json.load(sys.stdin); print(data.get('currentObjectiveId') or '')" 2>/dev/null || echo "")
-
-    if [ -n "$current_obj_id" ]; then
-        echo "$current_state" | python3 -c "
-import sys, json
-data = json.load(sys.stdin)
-for obj in data['objectives']:
-    if obj['id'] == '$current_obj_id':
-        print(json.dumps(obj))
-        break
-"
-    else
-        echo "{}"
-    fi
-}
-
-# Function to set current objective
-set_current_objective() {
-    local objective_id="$1"
-    local current_state
-    current_state=$(read_state)
-
-    local new_state
-    new_state=$(echo "$current_state" | python3 -c "
-import sys, json
-data = json.load(sys.stdin)
-data['currentObjectiveId'] = '$objective_id'
-data['timestamp'] = '$(get_timestamp)'
-print(json.dumps(data))
-")
-    write_state "$new_state"
-}
-
-# Function to add an objective
-add_objective() {
-    local description="$1"
-    local objective_id
-    objective_id=$(date +%s%N | cut -b1-13)  # Simple ID generation
-
-    local current_state
-    current_state=$(read_state)
-
-    local new_state
-    new_state=$(echo "$current_state" | python3 -c "
-import sys, json
-data = json.load(sys.stdin)
-new_obj = {
-    'id': '$objective_id',
-    'description': '$description',
-    'status': 'PENDING',
-    'attempts': 0,
-    'lastCommit': '',
-    'ciStatus': '',
-    'verificationNotes': ''
-}
-data['objectives'].append(new_obj)
-data['timestamp'] = '$(get_timestamp)'
-print(json.dumps(data))
-")
-    write_state "$new_state"
-    echo "$objective_id"
-}
-
-# Function to get next pending objective
-get_next_pending_objective() {
-    local current_state
-    current_state=$(read_state)
-
-    echo "$current_state" | python3 -c "
-import sys, json
-data = json.load(sys.stdin)
-for obj in data['objectives']:
-    if obj['status'] == 'PENDING':
-        print(json.dumps(obj))
-        break
-"
-}
-
-# Function to check if all objectives are verified
-# Outputs "true" or "false" to stdout, always returns 0
-all_objectives_verified() {
-    local current_state
-    current_state=$(read_state)
-
-    echo "$current_state" | python3 -c "
-import sys, json
-data = json.load(sys.stdin)
-all_verified = all(obj['status'] == 'VERIFIED' for obj in data['objectives'])
-print(str(all_verified).lower())
-"
+# Write a JSON state object to the state file.
+write_state() {
+    local state_json="$1"
+    echo "$state_json" > "$STATE_FILE"
 }

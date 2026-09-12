@@ -18,8 +18,8 @@
 #   --tail          max lines of failed-step log to print on FAIL (default: 150)
 #   --stall-min     minutes of no observable progress before INVESTIGATING
 #                   (default: 20)
-#   --update-state  [NOTE]  on terminal state (PASS or FAIL), append a History
-#                   row to docs/autonomous/AUTONOMOUS_STATE.md via
+#   --update-state  [NOTE]  on terminal state (PASS or FAIL), record the result
+#                   into .claude/beastmode_state.json via
 #                   tools/ci-state-update.sh. Optional NOTE is recorded.
 #
 # Exit codes:
@@ -59,6 +59,17 @@ git rev-parse --is-inside-work-tree >/dev/null 2>&1 || { echo "[ci-watch] not a 
 
 FULL_SHA=$(git rev-parse "$SHA")
 BRANCH=$(git symbolic-ref --quiet --short HEAD 2>/dev/null || echo "detached")
+
+PROJECT_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+
+maybe_update_state() {
+  local run_id="$1"
+  local conclusion="$2"
+  local sha="$3"
+  local url="$4"
+
+  "$PROJECT_ROOT/tools/ci-state-update.sh" --run-id "$run_id" --conclusion "$conclusion" --sha "$sha" --url "$url" || echo "WARNING: ci-state-update failed" >&2
+}
 
 REMOTE_URL=$(git remote get-url origin)
 REPO=${REMOTE_URL#*github.com[:\/]}
@@ -170,7 +181,7 @@ while :; do
 
       if [ "$CONCLUSION" = "success" ]; then
         echo "[ci-watch] RESULT: PASS"
-        maybe_update_state "$ID" "success" "$RUN_URL"
+        maybe_update_state "$ID" "success" "$FULL_SHA" "$RUN_URL"
         exit 0
       fi
 
@@ -186,7 +197,7 @@ while :; do
       done
       echo "=========================================="
       echo "[ci-watch] RESULT: FAIL"
-      maybe_update_state "$ID" "failure" "$RUN_URL"
+      maybe_update_state "$ID" "failure" "$FULL_SHA" "$RUN_URL"
       exit 1
       ;;
     PENDING*)

@@ -6,7 +6,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "python3 $PROJECT_ROOT/.claude/hooks/user_prompt_submit.py",
+            "command": "python3 ./.claude/hooks/user_prompt_submit.py",
             "timeout": 5
           }
         ]

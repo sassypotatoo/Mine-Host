@@ -47,6 +47,40 @@ def write_state(state):
     except Exception as e:
         print(f"Error writing state: {e}", file=sys.stderr)
 
+def run_workflow_intake(work_request):
+    """Run the workflow script with --intake to process a work request"""
+    try:
+        workflow_script = PROJECT_ROOT / ".claude" / "scripts" / "beastmode_workflow.sh"
+        result = subprocess.run(
+            [str(workflow_script), "--intake", work_request],
+            capture_output=True,
+            text=True,
+            cwd=str(PROJECT_ROOT)
+        )
+        if result.returncode != 0:
+            print(f"Workflow intake failed: {result.stderr}", file=sys.stderr)
+        return result.stdout
+    except Exception as e:
+        print(f"Error running workflow intake: {e}", file=sys.stderr)
+        return ""
+
+def run_workflow_advance():
+    """Run the workflow script with --advance to advance the workflow"""
+    try:
+        workflow_script = PROJECT_ROOT / ".claude" / "scripts" / "beastmode_workflow.sh"
+        result = subprocess.run(
+            [str(workflow_script), "--advance"],
+            capture_output=True,
+            text=True,
+            cwd=str(PROJECT_ROOT)
+        )
+        if result.returncode != 0:
+            print(f"Workflow advance failed: {result.stderr}", file=sys.stderr)
+        return result.stdout
+    except Exception as e:
+        print(f"Error running workflow advance: {e}", file=sys.stderr)
+        return ""
+
 def main():
     """Main hook entry point"""
     try:
@@ -102,7 +136,10 @@ def main():
             new_state["workflowStatus"] = "ACTIVE"
             write_state(new_state)
 
-            hook_input["prompt"] = f"[Beast Mode ON] Activated Beast Mode with task: {task}"
+            # Process the work request through the workflow intake
+            intake_output = run_workflow_intake(task)
+
+            hook_input["prompt"] = f"[Beast Mode ON] Activated Beast Mode with task: {task}\n{intake_output}"
             print(json.dumps(hook_input))
             return
 

@@ -6,7 +6,7 @@
 set -euo pipefail
 
 # Use absolute path to avoid any directory confusion
-PROJECT_ROOT="/data/data/com.termux/files/home/mine-host-import.lY0iUy/Java-integration-3-main"
+PROJECT_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../../.." && pwd)"
 STATE_FILE="${PROJECT_ROOT}/.claude/beastmode_state.json"
 
 # Function to read state
