@@ -1,13 +1,14 @@
 {
   "name": "minehost-beastmode",
-  "description": "Beast Mode v3 workflow orchestration system for MineHost autonomous development. Manages state, objectives, and verification without making implementation decisions.",
+  "description": "Beast Mode v4 workflow orchestration system for MineHost autonomous development. Claude Code is the brain. Manages state, objectives, and verification without competing orchestration.",
+  "enabled": true,
   "version": "1.0.0",
   "author": "MineHost Development Team",
   "license": "MIT",
   "commands": [
     {
       "name": "minehost-autonomous",
-      "description": "Toggle Beast Mode v3 workflow orchestration system ON/OFF and set work requests",
+      "description": "Toggle Beast Mode v4 autonomous workflow ON/OFF and set work requests",
       "usage": "/minehost-autonomous [work request]",
       "examples": [
         "/minehost-autonomous",
