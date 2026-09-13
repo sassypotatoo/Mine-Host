@@ -1,9 +1,3 @@
----
-name: minehost-autonomous
-description: Activate Beast Mode v4 autonomous workflow (toggle ON/OFF or set task)
-group: Beast Mode
----
-
 # Minehost-autonomous Command
 
 Toggle Beast Mode v4 workflow orchestration system.
