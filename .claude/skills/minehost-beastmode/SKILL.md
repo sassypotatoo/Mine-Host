@@ -2,149 +2,223 @@
 
 ## Overview
 
-Beast Mode v3 is a workflow orchestration layer that manages state, objectives, and verification for autonomous tasks in the MineHost repository. It does not make implementation decisions but rather orchestrates the workflow through state management and message classification.
+Beast Mode v4 is a lightweight environment layer that provides state management and safe-push tooling for autonomous tasks in the MineHost repository. Claude Code is the brain—it reads context, decides intent, plans work, implements changes, commits, and verifies results. Beast Mode provides only: activation detection, atomic state read/write, and safe commit/CI tools.
 
 ## When to Use
 
-Use for any autonomous implementation task in the MineHost repo where you want to leverage the Beast Mode v3 workflow orchestration system. This skill provides the `/minehost-autonomous` command and the UserPromptSubmit hook to enable Beast Mode.
+Use for any autonomous implementation task in the MineHost repo where you want Claude Code to drive the complete workflow loop with Beast Mode providing environment support. This skill provides the `/minehost-autonomous` command and the Hook that injects Beast Mode state into context.
+
+## v4 Workflow Integration
+
+This skill provides the ENVIRONMENT. Claude Code provides the BRAIN.
+
+When you see `BEAST MODE ACTIVE` in your context block:
+
+1. **Read state** via `bm-state read` — understand current work queue, completed items, previous decisions
+2. **Classify intent** — is this a question, work continuation, or control request?
+3. **Plan approach** — break work into concrete implementation steps
+4. **Implement changes** — write code, modify configs, create tests
+5. **Commit and push** — use `push-gated.sh` to safely commit work
+6. **Watch CI** — use `ci-watch.sh` to verify results (never fake CI outcomes)
+7. **Loop or report** — update state, continue to next item or report completion
+
+Key principle: Never claim verification without real evidence. Always use actual Git and CI results.
+
+## v4 Workflow Documents
+
+When Beast Mode is ON and a work request arrives:
+
+1. **Claude's Workflow**: Read `.claude/CLAUDE_V4_WORKFLOW.md`
+   - Explicit 7-step decision loop
+   - What to do at each phase
+   - How to handle failures
+   - When to escalate
+
+2. **State Commands**: Reference `.claude/BM_STATE_CHEAT_SHEET.md`
+   - Quick command reference
+   - Typical workflow sequence
+   - State file location
+
+3. **Capability Guidance**: Use this skill's "Capability Selection Guidance" section
+   - Categories: Large codebase, Android dev, Security, Supabase, UI/Browser, Simple tasks
+   - Decision: Use skill? MCP? Sub-agent? None?
+   - Principle: Only what's genuinely useful
+
+Follow the decision loop in CLAUDE_V4_WORKFLOW.md, use tools from BM_STATE_CHEAT_SHEET.md, and employ capabilities from Capability Selection Guidance based on the specific task.
 
 ## Capability Selection Guidance
 
-This section provides guidance to Claude Code on when to employ various capabilities (skills, MCP servers, plugins) during Beast Mode workflow execution. Beast Mode never invokes these capabilities directly - it only manages workflow state and provides `GUIDANCE_NEEDED` signals. Claude Code retains full autonomy to decide which capabilities to use based on this guidance and the specific requirements of each objective.
+This section provides decision criteria for Claude Code when selecting tools, skills, MCP servers, and sub-agents during v4 workflow execution. Beast Mode provides only state and safe-push tools—Claude Code decides all capability usage.
 
-### Rule
+### Core Decision Rule
 
-- Beast Mode only provides guidance. It manages state, objectives, and verification tracking.
-- Claude Code decides whether to use any capability, and which one.
-- No automatic plugin/MCP/skill/sub-agent invocation ever occurs.
+**Use only what's genuinely useful, not everything available.**
+
+For each work item or sub-task:
+1. What is the nature of the change? (Android, security, database, UI, simple edit, etc.)
+2. Does it require deep codebase exploration, or do you already know the scope?
+3. Are there security or compliance implications?
+4. Is there a risk of breaking protected systems?
+5. What evidence will verify the work is correct?
+
+Then decide: skill? MCP? sub-agent? Just use basic tools? None of the above?
+
+**Avoid premature capability invocation.** Many tasks complete with simple file edits and tests. Load heavy capabilities only when they solve a concrete problem, not because they're available.
+
+### Decision Points
+
+Beast Mode provides no guidance signals. Claude Code decides autonomously based on:
+- Scope clarity (fuzzy → explore first, clear → implement directly)
+- Complexity (trivial → direct edit, complex → consider sub-agent or skill)
+- Risk level (low → proceed, high → read and plan first)
+- Available evidence (missing → investigate, present → decide)
 
 ### Available Capabilities in This Environment
 
-Only these capabilities are actually available in this environment. Do not reference or invoke any capability not on this list:
+These capabilities are available in this environment. Decide autonomously which (if any) to use:
 
-`superpowers`, `code-review`, `context7`, `supabase`, `playwright`, `chrome-devtools-mcp`, `security-guidance`, `claude-security`, `remember`, `code-simplifier`, `frontend-design`, `gstack`, `minehost-beastmode`
+- **Skills**: superpowers, code-review, remember, code-simplifier, frontend-design, gstack
+- **MCP Servers**: context7, supabase, playwright, chrome-devtools-mcp
+- **Security**: claude-security, security-guidance
+- **This skill**: minehost-beastmode (for workflow knowledge)
 
-### Capability Categories
+Never reference or invoke capabilities not on this list. Use tools deliberately based on actual need, not inventory completeness.
+
+### Capability Categories & When to Consider Them
 
 #### 1. Large Codebase Analysis & Exploration
-
-**When to Use**: Understanding complex codebases, tracing execution paths, mapping architecture layers, finding specific implementations, understanding dependencies.
-
-**Capabilities**:
-- `superpowers`: process skills (brainstorming, systematic debugging, dispatching-parallel-agents, subagent-driven development)
-- `gstack`: router for the gstack skill suite (planning, review, QA, shipping, debugging, docs, security, design)
-**Avoid When**: Simple file edits, trivial changes, or when you already know exactly what needs to be changed.
+**When**: Understanding complex codebases, tracing execution paths, mapping architecture.
+**Capabilities**: superpowers (brainstorming, systematic-debugging, subagent-driven-development), gstack
+**Example decision**: "This Android app modifies the JVM launcher—I need to understand the full call chain before touching it" → superpowers/systematic-debugging
+**Avoid when**: You already know exactly what needs changing, or the change is localized to one file.
 
 #### 2. Android Development & Build Systems
-
-**When to Use**: Gradle/Kotlin/Java changes, Android app modifications, build system configuration, resource management.
-
-**Capabilities**:
-- `context7` (MCP): Up-to-date documentation for Android SDK, Gradle, Kotlin, Jetpack libraries
-- `code-simplifier`: Simplifying and refining Android/Kotlin code for clarity
-**Avoid When**: Non-Android changes, documentation updates, or configuration changes unrelated to build systems.
+**When**: Gradle/Kotlin/Java changes, build config, resource management, Android-specific problems.
+**Capabilities**: context7 (Android/Gradle/Kotlin docs), code-simplifier
+**Example decision**: "Gradle build is failing on a custom task—I need current documentation" → context7
+**Avoid when**: Non-Android changes, or pure configuration edits you already understand.
 
 #### 3. Security Review & Analysis
-
-**When to Use**: Changes involving downloads, binaries, command execution, JNI/native loading, networking, authentication, tunneling, permissions, file extraction, IPC, crypto, Supabase/RLS, or user-controlled input.
-
-**Capabilities**:
-- `claude-security`: Automated security scanning (scan-changes, scan-codebase, suggest-patches)
-- `security-guidance`: Expert guidance on secure implementation practices
-- `code-review`: Code review including security-focused review
-**Avoid When**: Pure UI changes, documentation updates, or changes with no security implications.
+**When**: Downloads, binaries, command execution, JNI/native loading, networking, auth, permissions, crypto, user input handling.
+**Capabilities**: claude-security (scan-changes, scan-codebase), security-guidance, code-review with security focus
+**Example decision**: "Adding file extraction and native library loading—this is security-sensitive" → claude-security scan
+**Avoid when**: Pure UI changes or non-security-relevant edits.
 
 #### 4. Supabase Development
-
-**When to Use**: Database schema changes, Supabase function modifications, RLS policies, Supabase client usage, authentication flows.
-
-**Capabilities**:
-- `supabase` (MCP): Direct interaction with Supabase for schema migrations, function execution, and database operations
-- `context7` (MCP): Supabase-specific documentation and best practices
-**Avoid When**: Non-database changes, frontend-only updates, or changes unrelated to Supabase integration.
+**When**: Database schema changes, RLS policies, Supabase client usage, authentication flows.
+**Capabilities**: supabase MCP (schema migration, function execution), context7 (Supabase docs)
+**Example decision**: "Need to update RLS policies to match new auth flow" → supabase MCP
+**Avoid when**: Non-database changes, frontend-only updates.
 
 #### 5. UI/Browser Testing & Automation
-
-**When to Use**: Frontend changes, user interface modifications, user interaction flows, visual regression testing, cross-browser compatibility.
-
-**Capabilities**:
-- `playwright`: End-to-end testing of web applications and user interfaces
-- `chrome-devtools-mcp`: Browser automation and debugging capabilities
-- `frontend-design`: UI/UX design guidance and component library recommendations
-**Avoid When**: Backend-only changes, API modifications, or non-visual changes.
+**When**: Frontend changes, user interaction flows, visual testing, cross-browser compatibility.
+**Capabilities**: playwright, chrome-devtools-mcp, frontend-design
+**Example decision**: "Need to verify login flow works on mobile and desktop" → playwright
+**Avoid when**: Backend-only changes, API modifications.
 
 #### 6. Simple Tasks & Local Edits
+**When**: Trivial file modifications, documentation, simple bug fixes, configuration changes.
+**Capabilities**: Basic file tools (Read/Edit/Write), code-simplifier for clarity
+**Example decision**: "Update a config file and run tests locally" → just use file tools
+**Avoid when**: You're unsure about scope or impact.
 
-**When to Use**: Trivial file modifications, documentation updates, configuration changes, simple bug fixes, refactoring with clear scope.
+### Integration with v4 Workflow
 
-**Capabilities**:
-- Basic text editing (Read/Edit/Write tools)
-- `code-simplifier`: For simple code clarity improvements
-- `remember`: For persisting context across conversations when needed
-- `minehost-beastmode`: This skill itself, as loadable workflow knowledge
+When Beast Mode is active, you receive:
+- **Full state context** via hook injection (work queue, completed items, current branch, prior decisions)
+- **Permission to loop** until work is verified
+- **Safe-push and CI tools** ready to use
 
-### Connection with Beast Mode Workflow
+For each work item in the queue:
+1. **Understand scope** — read the description, check what's already done
+2. **Make a decision** — "Do I need to explore first, or can I implement directly?"
+3. **Consult this guidance** — does the nature of the work suggest a specific capability?
+4. **Implement** — use only the capabilities you decided are necessary
+5. **Verify** — run tests, check CI, use real evidence (never fake outcomes)
+6. **Record progress** — update state via `bm-state write` when work is complete
+7. **Loop** — continue to next item or report completion
 
-During Beast Mode execution, you will see guidance signals like:
-- `GUIDANCE_NEEDED: implement the following objective:`
-- `GUIDANCE_PROVIDED: Objective requires Claude Code implementation`
+**No guidance signals, no "GUIDANCE_NEEDED" tags.** You drive the complete loop autonomously, consulting this guide when deciding which capabilities to employ.
 
-When you see `GUIDANCE_NEEDED`, refer to this guidance section to determine which capabilities would be most effective for implementing the objective. Consider:
-1. The nature of the change (Android, security, database, UI, etc.)
-2. The complexity and scope of the objective
-3. Whether exploration or analysis is needed first
-4. Any security or compliance implications
+## Core Loop (v4)
 
-#### What Beast Mode Does NOT Do
+1. **Activation** — User sends `/minehost-autonomous <work description>` or task is already active
+2. **State Read** — Call `bm-state read` to get current work queue and completed items
+3. **Intent Classification** — Understand if this is work continuation, a new request, or a control command
+4. **Work Planning** — Break the current item into concrete implementation steps
+5. **Implementation** — Execute the work using appropriate capabilities (or none)
+6. **Verification** — Run tests, commit changes, watch CI for real results
+7. **State Update** — Call `bm-state write` to record what was done and outcomes
+8. **Loop Decision** — More items in queue? Continue. All done? Report completion.
 
-- Beast Mode does NOT automatically invoke skills, MCP servers, plugins, or sub-agents
-- Beast Mode does NOT force the usage of any specific capability
-- Beast Mode does NOT make implementation decisions
-- Beast Mode only manages workflow state, objectives, and verification coordination
+Never simulate, never fake CI outcomes, never skip verification.
 
-#### What Claude Code Should Do
+## State Management (v4)
 
-- Claude Code should read and understand the `GUIDANCE_NEEDED`/objective description
-- Claude Code should consult this Capability Selection Guidance section to determine appropriate capabilities
-- Claude Code should freely choose which skills, MCP servers, plugins, or sub-agents (if any) to employ
-- Claude Code should provide evidence-based reasoning for capability choices in the workflow reports
-- Claude Code should never claim capability usage unless actual invocation occurred
+Beast Mode state is persisted in `.claude/beastmode_state.json` and accessed via `bm-state` tool. State schema:
 
-## Core Loop
+```json
+{
+  "status": "active|paused|complete",
+  "work_queue": [
+    {
+      "id": "work-1",
+      "description": "Clear work item description",
+      "status": "pending|in_progress|done",
+      "branch": "feature/item-name",
+      "verification": "pending|tests_passed|manual_reviewed",
+      "created_at": "ISO8601 timestamp",
+      "completed_at": "ISO8601 timestamp or null"
+    }
+  ],
+  "current_branch": "current feature branch name",
+  "last_decision": {
+    "intent": "human readable intent",
+    "action": "what was done",
+    "timestamp": "ISO8601 timestamp",
+    "result": "success|failed|pending"
+  },
+  "context": {
+    "user_request": "original work request",
+    "acceptance_criteria": "how to verify success",
+    "started_at": "ISO8601 timestamp"
+  }
+}
+```
 
-1. Read the project context (if any) from the user's message or existing state.
-2. Classify the user intent into QUESTION, WORK_REQUEST, or CONTROL_REQUEST.
-3. If Beast Mode is ON and the intent is a WORK_REQUEST, update the current task and enhance the prompt with Beast Mode context.
-4. If the intent is a CONTROL_REQUEST (specifically `/minehost-autonomous`), toggle the Beast Mode state.
-5. Otherwise, allow normal processing.
-
-## State Management
-
-Beast Mode state is persisted in `.claude/beastmode_state.json` and includes:
-   - beastModeEnabled: boolean
-   - currentTask: string
-   - objectives: array
-   - currentObjectiveId: string|null
-   - gitBranch: string
-   - lastCiRunUrl: string
-   - knownIssues: array
-   - blockers: array
-   - timestamp: string
-   - workflowStatus: string
+**Usage:**
+- `bm-state read` — Get current work queue and state
+- `bm-state write <json>` — Record decisions and outcomes
+- `bm-state append <json>` — Add new work items to queue
 
 ## Commands
 
-- `/minehost-autonomous`: Toggles Beast Mode ON/OFF.
-- `/minehost-autonomous "work request"`: Activates Beast Mode ON and sets the current task.
+- `/minehost-autonomous <work description>` — Activate Beast Mode with a work request. Claude receives full state and loops until complete.
+- `bm-state read` — Read current work queue and decision history
+- `bm-state write <json>` — Record decisions, progress, and outcomes
+- `push-gated.sh commit <message>` — Safely commit changes (refuses force-push, empty commits)
+- `push-gated.sh push` — Push to branch with safety checks
+- `ci-watch.sh` — Monitor and report real CI results
 
 ## Integration
 
-This skill works through a UserPromptSubmit hook that intercepts all user messages when Beast Mode is ON and classifies them to provide contextual prompting.
+This skill works through:
+
+1. **Hook (Activation)** — `.claude/hooks/user_prompt_submit.py` detects `/minehost-autonomous` command and injects Beast Mode state into context.
+2. **State Tool (Layer 2)** — `./tools/bm-state.sh` provides atomic read/write of work queue and decisions.
+3. **Safe-Push Tool (Layer 3)** — `./tools/push-gated.sh` commits and pushes with guard rails (no force-push, no empty commits).
+4. **CI Tool (Layer 3)** — `./tools/ci-watch.sh` monitors real CI results (never fakes outcomes).
+5. **Claude Code (Layer 4)** — You read state, decide intent, plan work, implement, verify, and loop.
+
+Beast Mode provides the environment. You provide all reasoning, decisions, and implementation.
 
 ## Notes
 
-- Beast Mode never makes implementation decisions; it only manages state and workflow.
-- Beast Mode does not invoke skills, MCP servers, plugins, or sub-agents.
+- **v4 is Claude-driven**: You read state, decide all intents, plan all work, implement all changes, commit, verify, and loop. Beast Mode is purely environmental.
+- **No v3 signals**: v4 has no `GUIDANCE_NEEDED` or `GUIDANCE_PROVIDED` tags. You drive autonomously.
+- **Capability autonomy**: You decide which capabilities to use (if any) based on actual need, not inventory.
+- **No protected-system modifications without evidence**: Read existing code and document rationale before modifying auth, DB schemas, or native launchers.
+- **All v3 references deprecated**: Old workflow files archived in `.claude/scripts-v3-archive/`. Use v4 architecture and tools only.
 
 ## Verification Integrity
 

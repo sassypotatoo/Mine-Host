@@ -1,5 +1,7 @@
 # Beast Mode v3 Architecture Documentation
 
+NOTE (v4): This section documents v3 (archived). In v4, Claude Code is the brain and decides all workflow orchestration. See BEAST_MODE_V4_ARCHITECTURE.md for current details.
+
 ## Purpose
 Beast Mode v3 is a workflow orchestration layer that manages autonomous work cycles within the MineHost repository. It serves as a state machine that tracks work requests, breaks them into objectives, manages retry logic, and coordinates verification through real Git and CI systems. Crucially, Beast Mode is NOT an autonomous AI framework - it does not make implementation decisions or execute code. Instead, it provides structured workflow management while leaving all reasoning and implementation to Claude Code.
 
@@ -124,6 +126,8 @@ Beast Mode v3 is a workflow orchestration layer that manages autonomous work cyc
 5. **Error Transparency**: Failures must be reported honestly, never hidden or simulated
 
 ## Claude Capability Selection Architecture
+
+NOTE (v4): In v4, Claude has full context (injected state) and decides ALL tactics. No capability is forced.
 
 Beast Mode v3 includes a Capability Selection Guidance system that helps Claude Code make informed decisions about when to employ various skills, MCP servers, and plugins during workflow execution. The authoritative guidance lives in the project-level skill at `.claude/skills/minehost-beastmode/SKILL.md` under "Capability Selection Guidance". Beast Mode itself never invokes capabilities — it only emits `GUIDANCE_NEEDED` signals; Claude Code reads the guidance and decides which capabilities (if any) fit the objective.
 
@@ -250,3 +254,18 @@ Stabilization audit fixes applied to `beastmode_workflow.sh` and `beastmode_util
 - Timestamp updated on every state change for auditability
 - Objective IDs generated via timestamp nanoseconds for uniqueness
 - Commit SHAs verified as non-empty before use
+
+## v4 Architecture Summary
+
+NOTE (v4): This document describes the v3 workflow layer. In v4, the architecture has fundamentally shifted.
+
+**Key v4 Changes:**
+- Claude Code IS THE BRAIN. Claude makes all workflow orchestration decisions, not Beast Mode.
+- Beast Mode provides the ENVIRONMENT — persistent state, CI/git integration, verification tracking.
+- Claude has full injected context and decides all tactics autonomously.
+- No "GUIDANCE_NEEDED" signals; Claude acts directly based on injected state and objectives.
+- Capabilities are never forced; Claude selects them freely based on task requirements.
+
+See **BEAST_MODE_V4_ARCHITECTURE.md** for authoritative v4 documentation.
+
+Quote: "Claude Code is THE BRAIN 🧠. Beast Mode provides the ENVIRONMENT 🔧."
