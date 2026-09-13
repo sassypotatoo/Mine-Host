@@ -38,6 +38,7 @@
       "Bash(gh auth status*)",
       "Bash(gh --version)",
       "Bash(./tools/ci-watch.sh*)",
+      "Bash(./tools/bm-state.sh*)",
       "Bash(./tools/push-gated.sh)",
       "Bash(bash -n tools/*.sh)",
       "Bash(chmod +x tools/*.sh)",

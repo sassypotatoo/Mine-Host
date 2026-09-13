@@ -952,7 +952,7 @@ Status after Phase 4: ✅ READY (complete, tested, documented)
 ### v3 (Old)
 - Shell script (`beastmode_workflow.sh`) drives the workflow
 - Uses `--intake` and `--advance` subcommands
-- Generates `GUIDANCE_NEEDED` signals
+- Generated guidance signals (legacy; no longer used in v4)
 - Shell decides when to retry, when to move forward
 - Claude implements per guidance, but workflow is orchestrated by shell
 
@@ -967,7 +967,7 @@ Status after Phase 4: ✅ READY (complete, tested, documented)
 
 **Before (v3):**
 - Wait for shell to tell you what to do
-- Implement when given `GUIDANCE_NEEDED`
+- Implement when shell provides guidance (legacy; v4 removed)
 - Report back when done
 
 **After (v4):**

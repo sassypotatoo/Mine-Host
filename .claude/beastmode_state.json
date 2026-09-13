@@ -1,37 +1,16 @@
 {
-    "schemaVersion": 1,
-    "beastModeEnabled": true,
-    "currentTask": "Fix Beast Mode v4 execution",
-    "taskBranch": "feature/beast-mode-fix",
-    "objectives": [
-        {
-            "id": "1789332161212218372",
-            "description": "Fix hook to v4",
-            "status": "PENDING",
-            "attempts": 0,
-            "lastCommit": "",
-            "ciStatus": "",
-            "ciUrl": "",
-            "failureReason": ""
-        },
-        {
-            "id": "1789332161850246179",
-            "description": "Create bm-state.sh tool",
-            "status": "PENDING",
-            "attempts": 0,
-            "lastCommit": "",
-            "ciStatus": "",
-            "ciUrl": "",
-            "failureReason": ""
-        }
-    ],
-    "currentObjectiveId": null,
-    "phase": "IMPLEMENT",
-    "workflowStatus": "ACTIVE",
-    "gitBranch": "",
-    "lastCiRunUrl": "",
-    "lastCommitSha": "",
-    "knownIssues": [],
-    "blockers": [],
-    "timestamp": "2026-09-13T20:42:42.034600Z"
+  "schemaVersion": 1,
+  "beastModeEnabled": false,
+  "currentTask": "",
+  "taskBranch": "",
+  "objectives": [],
+  "currentObjectiveId": null,
+  "phase": "IDLE",
+  "workflowStatus": "IDLE",
+  "gitBranch": "",
+  "lastCiRunUrl": "",
+  "lastCommitSha": "",
+  "knownIssues": [],
+  "blockers": [],
+  "timestamp": ""
 }
