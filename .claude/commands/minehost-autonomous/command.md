@@ -1,6 +1,12 @@
+---
+name: minehost-autonomous
+description: Activate Beast Mode v4 autonomous workflow (toggle ON/OFF or set task)
+group: Beast Mode
+---
+
 # Minehost-autonomous Command
 
-Toggle Beast Mode v3 workflow orchestration system.
+Toggle Beast Mode v4 workflow orchestration system.
 
 ## Usage
 
@@ -10,7 +16,7 @@ Toggle Beast Mode v3 workflow orchestration system.
 
 ## Description
 
-This command toggles the Beast Mode v3 workflow orchestration system on and off. When Beast Mode is ON, it manages autonomous workflow processing through the UserSubmit hook.
+This command toggles the Beast Mode v4 workflow orchestration system on and off. When Beast Mode is ON, it manages autonomous workflow processing through the UserPromptSubmit hook, with Claude Code as the brain making all tactical decisions.
 
 - **Without arguments**: Toggles Beast Mode state (ON ↔ OFF)
 - **With work request**: Activates Beast Mode ON and sets the current task
