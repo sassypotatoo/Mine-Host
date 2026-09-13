@@ -1,177 +1,233 @@
 #!/usr/bin/env python3
 """
-Beast Mode v3 UserPromptSubmit Hook
-Intercepts user messages to enable automatic workflow processing when Beast Mode is ON
+Beast Mode v4 — UserPromptSubmit Hook
+
+Responsibilities (lightweight — this hook is NOT the workflow brain):
+  1. Detect /minehost-autonomous toggle and update state.
+  2. When Beast Mode is ON, inject the full current state block into
+     every prompt so Claude Code can make informed decisions.
+  3. Nothing else. No --advance. No --intake. No classification.
+     No workflow driving. Claude Code is the brain.
 """
 import json
 import os
 import re
 import subprocess
 import sys
+import tempfile
 from pathlib import Path
 
-# Configuration
 PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
 STATE_FILE = PROJECT_ROOT / ".claude" / "beastmode_state.json"
 
-def read_state():
-    """Read Beast Mode state from JSON file"""
+DEFAULT_STATE = {
+    "schemaVersion": 1,
+    "beastModeEnabled": False,
+    "currentTask": "",
+    "taskBranch": "",
+    "objectives": [],
+    "currentObjectiveId": None,
+    "phase": "IDLE",
+    "workflowStatus": "IDLE",
+    "gitBranch": "",
+    "lastCiRunUrl": "",
+    "lastCommitSha": "",
+    "knownIssues": [],
+    "blockers": [],
+    "timestamp": "",
+}
+
+
+def read_state() -> dict:
+    """Read Beast Mode state. Returns default if missing or corrupt."""
     try:
         if STATE_FILE.exists():
-            return json.loads(STATE_FILE.read_text())
+            text = STATE_FILE.read_text().strip()
+            if text:
+                return json.loads(text)
     except Exception as e:
-        print(f"Error reading state: {e}", file=sys.stderr)
+        print(f"[bm-hook] state read error: {e}", file=sys.stderr)
+    return DEFAULT_STATE.copy()
 
-    # Return default state if file doesn't exist or is corrupted
-    return {
-        "beastModeEnabled": False,
-        "currentTask": "",
-        "objectives": [],
-        "currentObjectiveId": None,
-        "gitBranch": "",
-        "lastCiRunUrl": "",
-        "knownIssues": [],
-        "blockers": [],
-        "timestamp": "",
-        "workflowStatus": "IDLE"
-    }
 
-def write_state(state):
-    """Write Beast Mode state to JSON file"""
+def write_state(state: dict) -> None:
+    """Atomically write state via unique temp file + replace."""
     try:
-        state["timestamp"] = subprocess.check_output(
-            ["date", "-u", "+%Y-%m-%dT%H:%M:%SZ"],
-            text=True
+        ts = subprocess.check_output(
+            ["date", "-u", "+%Y-%m-%dT%H:%M:%SZ"], text=True
         ).strip()
-        STATE_FILE.write_text(json.dumps(state, indent=2))
-    except Exception as e:
-        print(f"Error writing state: {e}", file=sys.stderr)
-
-def run_workflow_intake(work_request):
-    """Run the workflow script with --intake to process a work request"""
-    try:
-        workflow_script = PROJECT_ROOT / ".claude" / "scripts" / "beastmode_workflow.sh"
-        result = subprocess.run(
-            [str(workflow_script), "--intake", work_request],
-            capture_output=True,
-            text=True,
-            cwd=str(PROJECT_ROOT)
+        state["timestamp"] = ts
+        fd, tmp_path = tempfile.mkstemp(
+            dir=STATE_FILE.parent, prefix=STATE_FILE.name + ".", suffix=".tmp"
         )
-        if result.returncode != 0:
-            print(f"Workflow intake failed: {result.stderr}", file=sys.stderr)
-        return result.stdout
+        try:
+            with os.fdopen(fd, "w") as f:
+                f.write(json.dumps(state, indent=2) + "\n")
+            Path(tmp_path).replace(STATE_FILE)
+        except Exception:
+            try:
+                os.unlink(tmp_path)
+            except OSError:
+                pass
+            raise
     except Exception as e:
-        print(f"Error running workflow intake: {e}", file=sys.stderr)
-        return ""
+        print(f"[bm-hook] state write error: {e}", file=sys.stderr)
 
-def run_workflow_advance():
-    """Run the workflow script with --advance to advance the workflow"""
-    try:
-        workflow_script = PROJECT_ROOT / ".claude" / "scripts" / "beastmode_workflow.sh"
-        result = subprocess.run(
-            [str(workflow_script), "--advance"],
-            capture_output=True,
-            text=True,
-            cwd=str(PROJECT_ROOT)
-        )
-        if result.returncode != 0:
-            print(f"Workflow advance failed: {result.stderr}", file=sys.stderr)
-        return result.stdout
-    except Exception as e:
-        print(f"Error running workflow advance: {e}", file=sys.stderr)
-        return ""
 
-def main():
-    """Main hook entry point"""
+def build_context_block(state: dict) -> str:
+    """Build the Beast Mode context block injected into every prompt."""
+    task = state.get("currentTask") or "(none set)"
+    phase = state.get("phase", "IDLE")
+    status = state.get("workflowStatus", "IDLE")
+    branch = state.get("taskBranch") or state.get("gitBranch") or "(none)"
+    last_sha = state.get("lastCommitSha") or "(none)"
+    last_ci = state.get("lastCiRunUrl") or "(none)"
+
+    # Current objective summary
+    obj_id = state.get("currentObjectiveId")
+    obj_summary = "(none)"
+    if obj_id:
+        for obj in state.get("objectives", []):
+            if obj.get("id") == obj_id:
+                desc = obj.get("description", "?")
+                obj_status = obj.get("status", "?")
+                attempts = obj.get("attempts", 0)
+                ci_status = obj.get("ciStatus") or "none"
+                obj_summary = (
+                    f"{obj_id} — {desc}\n"
+                    f"  Status: {obj_status} | Attempts: {attempts}/5 | CI: {ci_status}"
+                )
+                break
+
+    # All objectives summary
+    objectives = state.get("objectives", [])
+    if objectives:
+        obj_lines = []
+        for o in objectives:
+            marker = "→" if o.get("id") == obj_id else " "
+            obj_lines.append(
+                f"  {marker} [{o.get('status','?'):12s}] {o.get('id','?')} — {o.get('description','?')}"
+            )
+        obj_list = "\n".join(obj_lines)
+    else:
+        obj_list = "  (no objectives yet)"
+
+    lines = [
+        "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━",
+        "🔥 BEAST MODE ACTIVE",
+        "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━",
+        f"Task    : {task}",
+        f"Phase   : {phase}  |  Status: {status}",
+        f"Branch  : {branch}",
+        f"Last SHA: {last_sha}",
+        f"Last CI : {last_ci}",
+        "",
+        "Current Objective:",
+        f"  {obj_summary}",
+        "",
+        "All Objectives:",
+        obj_list,
+        "",
+        "State commands (call via Bash tool):",
+        "  ./tools/bm-state.sh status",
+        "  ./tools/bm-state.sh task-start \"<branch>\" \"<task>\"",
+        "  ./tools/bm-state.sh objective-add \"<description>\"",
+        "  ./tools/bm-state.sh objective-start <id>",
+        "  ./tools/bm-state.sh objective-complete <id> \"<sha>\" \"<ci-url>\"",
+        "  ./tools/bm-state.sh objective-fail <id> \"<reason>\"",
+        "  ./tools/bm-state.sh ci-update <id> <PASS|FAIL> \"<sha>\" \"<url>\"",
+        "  ./tools/bm-state.sh task-done",
+        "  ./tools/bm-state.sh task-pause",
+        "  ./tools/bm-state.sh task-resume",
+        "  ./tools/bm-state.sh task-cancel",
+        "",
+        "You are the brain. Classify this message, decide what to do, act.",
+        "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━",
+        "",
+    ]
+    return "\n".join(lines)
+
+
+def main() -> None:
     try:
-        # Read hook input from stdin (Claude Code hook format)
         hook_input = json.loads(sys.stdin.read())
         prompt = hook_input.get("prompt", "")
+        stripped = prompt.strip()
 
-        # Read current Beast Mode state
         state = read_state()
 
-        # Check if this is the toggle command to update state (works in both ON/OFF states)
-        stripped_prompt = prompt.strip()
-        if stripped_prompt in ["/minehost-autonomous", "/minehost-autonomous "]:
-            # Toggle the state
+        # ── Deterministic: bare toggle ──────────────────────────────────────
+        if stripped in ("/minehost-autonomous", "/minehost-autonomous "):
+            was_on = state.get("beastModeEnabled", False)
             new_state = state.copy()
-            new_state["beastModeEnabled"] = not new_state["beastModeEnabled"]
-
-            # If turning OFF, clear current task
-            if not new_state["beastModeEnabled"]:
+            if was_on:
+                # Turn OFF
+                new_state["beastModeEnabled"] = False
                 new_state["currentTask"] = ""
+                new_state["taskBranch"] = ""
                 new_state["currentObjectiveId"] = None
                 new_state["workflowStatus"] = "IDLE"
-
-            write_state(new_state)
-
-            # Return status message to user
-            status = "ON" if new_state["beastModeEnabled"] else "OFF"
-            hook_input["prompt"] = f"[Beast Mode {status}] Toggled Beast Mode {status}. Use /minehost-autonomous \"work request\" to activate with a task."
+                new_state["phase"] = "IDLE"
+                write_state(new_state)
+                hook_input["prompt"] = (
+                    "Beast Mode has been turned OFF.\n"
+                    "Show the user: 🛑 BEAST MODE: OFF\n"
+                    "Return to normal Claude Code behaviour."
+                )
+            else:
+                # Turn ON
+                new_state["beastModeEnabled"] = True
+                new_state["workflowStatus"] = "IDLE"
+                new_state["phase"] = "IDLE"
+                write_state(new_state)
+                hook_input["prompt"] = (
+                    "Beast Mode has been turned ON.\n"
+                    "Show the user exactly:\n"
+                    "🔥 BEAST MODE: ON\n"
+                    "⚡ Effort: MAX\n"
+                    "Then tell the user Beast Mode is active and waiting "
+                    "for their next message or task."
+                )
             print(json.dumps(hook_input))
             return
 
-        # Check for the activation-with-task form: /minehost-autonomous "work request" or /minehost-autonomous task
-        # First try quoted form
-        task_match = re.match(r'^/minehost-autonomous\s+"([^"]*)"\s*$', stripped_prompt)
-        if task_match:
-            task = task_match.group(1).strip()
-            if not task:
-                task = "(none)"
-        else:
-            # Try unquoted form: everything after the command
-            task_match = re.match(r'^/minehost-autonomous\s+(.*)$', stripped_prompt)
-            if task_match:
-                task = task_match.group(1).strip()
-                if not task:
-                    task = "(none)"
-            else:
-                task_match = None
+        # ── Deterministic: activation with task ─────────────────────────────
+        task_match = re.match(
+            r'^/minehost-autonomous\s+"([^"]*)"\s*$', stripped
+        ) or re.match(r"^/minehost-autonomous\s+(.+)$", stripped)
 
         if task_match:
+            task = task_match.group(1).strip()
             new_state = state.copy()
             new_state["beastModeEnabled"] = True
             new_state["currentTask"] = task
             new_state["workflowStatus"] = "ACTIVE"
+            new_state["phase"] = "IMPLEMENT"
             write_state(new_state)
-
-            # Process the work request through the workflow intake
-            intake_output = run_workflow_intake(task)
-
-            hook_input["prompt"] = f"[Beast Mode ON] Activated Beast Mode with task: {task}\n{intake_output}"
+            context = build_context_block(new_state)
+            hook_input["prompt"] = (
+                f"{context}"
+                f"Beast Mode just activated with task: {task}\n"
+                f"Show the user: 🔥 BEAST MODE: ON  ⚡ Effort: MAX\n"
+                f"Then immediately begin working on the task above.\n"
+                f"Original user message: {prompt}"
+            )
             print(json.dumps(hook_input))
             return
 
-        # If Beast Mode is OFF, allow normal processing
+        # ── Beast Mode OFF — pass through untouched ─────────────────────────
         if not state.get("beastModeEnabled", False):
-            # Normal processing - exit with code 0 to allow normal flow
             sys.exit(0)
 
-        # Beast Mode is ON - inject context for every request
-        current_task = state.get("currentTask", "")
-        if not current_task:
-            current_task_display = "(none)"
-        else:
-            current_task_display = current_task
-
-        context_block = f"""[BEAST MODE ACTIVE]
-
-Beast Mode is persistently enabled.
-
-Current Task:
-{current_task_display}
-
-"""
-        # Prepend the context block to the original prompt
-        hook_input["prompt"] = context_block + prompt
+        # ── Beast Mode ON — inject full context, Claude decides everything ──
+        context = build_context_block(state)
+        hook_input["prompt"] = context + prompt
         print(json.dumps(hook_input))
-        return
 
     except Exception as e:
-        # On error, fail open - allow normal processing
-        print(f"Beast Mode hook error: {e}", file=sys.stderr)
-        sys.exit(0)
+        print(f"[bm-hook] fatal error: {e}", file=sys.stderr)
+        sys.exit(0)  # fail-open: never block Claude Code
+
 
 if __name__ == "__main__":
     main()
