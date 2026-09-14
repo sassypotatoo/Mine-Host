@@ -184,7 +184,6 @@ def main() -> None:
                     "Beast Mode has been turned ON.\n"
                     "Show the user exactly:\n"
                     "🔥 BEAST MODE: ON\n"
-                    "⚡ Effort: MAX\n"
                     "Then tell the user Beast Mode is active and waiting "
                     "for their next message or task."
                 )
@@ -208,7 +207,7 @@ def main() -> None:
             hook_input["prompt"] = (
                 f"{context}"
                 f"Beast Mode just activated with task: {task}\n"
-                f"Show the user: 🔥 BEAST MODE: ON  ⚡ Effort: MAX\n"
+                f"Show the user: 🔥 BEAST MODE: ON\n"
                 f"Then immediately begin working on the task above.\n"
                 f"Original user message: {prompt}"
             )
