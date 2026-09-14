@@ -103,7 +103,7 @@ All Beast Mode v4 components are in place and verified:
 
 To use Beast Mode v4:
 
-1. **Activate:** `/minehost-autonomous "your work request"`
+1. **Toggle ON:** `/minehost-autonomous`
 2. **Claude operates** according to `CLAUDE_V4_WORKFLOW.md`
 3. **Monitor:** `./tools/bm-state.sh status`
 4. **Results:** All work verified via real GitHub Actions CI

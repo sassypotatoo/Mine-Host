@@ -214,7 +214,7 @@ Hook (user_prompt_submit.py)
 
 ```bash
 # 1. Activate Beast Mode
-/minehost-autonomous "Your work request here"
+/minehost-autonomous
 
 # 2. Claude takes over
 #    - Understands task
@@ -267,7 +267,7 @@ Hook (user_prompt_submit.py)
 
 Beast Mode v4 is **complete, documented, and ready for autonomous workflows**.
 
-Start with: `/minehost-autonomous "your work request"`
+Start with: `/minehost-autonomous`
 
 Claude Code will handle the rest.
 

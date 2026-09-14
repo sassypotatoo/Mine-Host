@@ -8,11 +8,10 @@
   "commands": [
     {
       "name": "minehost-autonomous",
-      "description": "Toggle Beast Mode v4 autonomous workflow ON/OFF and set work requests",
-      "usage": "/minehost-autonomous [work request]",
+      "description": "Toggle Beast Mode v4 ON/OFF (persistent master toggle)",
+      "usage": "/minehost-autonomous",
       "examples": [
-        "/minehost-autonomous",
-        "/minehost-autonomous \"Fix typo in README.md\""
+        "/minehost-autonomous"
       ]
     }
   ],

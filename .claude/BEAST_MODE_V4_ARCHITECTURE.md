@@ -212,19 +212,14 @@
 ## Activation Command
 
 ```
-/minehost-autonomous <work description>
+/minehost-autonomous
 ```
 
-User provides:
-- Clear work request
-- Any context needed
-- Acceptance criteria
+Toggle persistent master switch:
+- OFF → ON: Sets `beastModeEnabled = true`, shows "🔥 BEAST MODE: ON"
+- ON → OFF: Sets `beastModeEnabled = false`, shows "🛑 BEAST MODE: OFF"
 
-Claude receives:
-- Full Beast Mode context
-- All prior decisions
-- All prior outcomes
-- Permission to loop until verified
+Normal user messages are the tasks — this command does NOT start a new task.
 
 ---
 

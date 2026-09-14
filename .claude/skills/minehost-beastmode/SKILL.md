@@ -142,7 +142,7 @@ For each work item in the queue:
 
 ## Core Loop (v4)
 
-1. **Activation** — User sends `/minehost-autonomous <work description>` or task is already active
+1. **Activation** — User sends `/minehost-autonomous` to toggle Beast Mode ON, or task is already active
 2. **State Read** — Call `bm-state read` to get current work queue and completed items
 3. **Intent Classification** — Understand if this is work continuation, a new request, or a control command
 4. **Work Planning** — Break the current item into concrete implementation steps
@@ -193,7 +193,7 @@ Beast Mode state is persisted in `.claude/beastmode_state.json` and accessed via
 
 ## Commands
 
-- `/minehost-autonomous <work description>` — Activate Beast Mode with a work request. Claude receives full state and loops until complete.
+- `/minehost-autonomous` — Toggle Beast Mode ON/OFF (persistent master toggle). Normal user messages are the tasks.
 - `bm-state read` — Read current work queue and decision history
 - `bm-state write <json>` — Record decisions, progress, and outcomes
 - `push-gated.sh commit <message>` — Safely commit changes (refuses force-push, empty commits)
