@@ -1,67 +1,16 @@
 {
     "schemaVersion": 1,
-    "beastModeEnabled": true,
-    "currentTask": "Bedrock Versioning + Multi-Server Console Dashboard",
-    "taskBranch": "main",
-    "objectives": [
-        {
-            "id": "1789397595428440377",
-            "description": "Add edition selector (Java/Bedrock) to ServerCreationScreen wizard flow",
-            "status": "DONE",
-            "attempts": 1,
-            "lastCommit": "",
-            "ciStatus": "",
-            "ciUrl": "",
-            "failureReason": ""
-        },
-        {
-            "id": "1789397636564508040",
-            "description": "Filter engine templates by selected edition in creation screen",
-            "status": "DONE",
-            "attempts": 1,
-            "lastCommit": "",
-            "ciStatus": "",
-            "ciUrl": "",
-            "failureReason": ""
-        },
-        {
-            "id": "1789397671721453323",
-            "description": "Show edition-specific version options (Bedrock versions for Bedrock engines, MC versions for Java engines)",
-            "status": "DONE",
-            "attempts": 1,
-            "lastCommit": "",
-            "ciStatus": "",
-            "ciUrl": "",
-            "failureReason": ""
-        },
-        {
-            "id": "1789397687438878119",
-            "description": "Enhance ConsoleTabScreen with per-server cards showing CPU/RAM/players/status",
-            "status": "DONE",
-            "attempts": 1,
-            "lastCommit": "",
-            "ciStatus": "",
-            "ciUrl": "",
-            "failureReason": ""
-        },
-        {
-            "id": "1789397713007344139",
-            "description": "Add per-server start/stop/restart controls and command input to console cards",
-            "status": "DONE",
-            "attempts": 1,
-            "lastCommit": "",
-            "ciStatus": "",
-            "ciUrl": "",
-            "failureReason": ""
-        }
-    ],
+    "beastModeEnabled": false,
+    "currentTask": "",
+    "taskBranch": "",
+    "objectives": [],
     "currentObjectiveId": null,
-    "phase": "VERIFY",
-    "workflowStatus": "ACTIVE",
+    "phase": "IDLE",
+    "workflowStatus": "IDLE",
     "gitBranch": "",
-    "lastCiRunUrl": "",
-    "lastCommitSha": "",
+    "lastCiRunUrl": "https://github.com/sassypotatoo/Mine-Host/actions/runs/34866440219",
+    "lastCommitSha": "a1484077678e",
     "knownIssues": [],
     "blockers": [],
-    "timestamp": "2026-09-14T15:10:00.000000Z"
+    "timestamp": "2026-09-14T21:39:00.000000Z"
 }
