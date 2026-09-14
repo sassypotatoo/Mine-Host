@@ -7,7 +7,7 @@
   "license": "MIT",
   "commands": [
     {
-      "name": "minehost-autonomous",
+      "name": "minehost-beastmode",
       "description": "Toggle Beast Mode v4 ON/OFF (persistent master toggle)",
       "usage": "/minehost-beastmode",
       "examples": [
