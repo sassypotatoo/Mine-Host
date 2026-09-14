@@ -1,16 +1,67 @@
 {
-  "schemaVersion": 1,
-  "beastModeEnabled": true,
-  "currentTask": "Fix README",
-  "taskBranch": "",
-  "objectives": [],
-  "currentObjectiveId": null,
-  "phase": "IMPLEMENT",
-  "workflowStatus": "ACTIVE",
-  "gitBranch": "",
-  "lastCiRunUrl": "",
-  "lastCommitSha": "",
-  "knownIssues": [],
-  "blockers": [],
-  "timestamp": "2026-09-14T14:32:12Z"
+    "schemaVersion": 1,
+    "beastModeEnabled": true,
+    "currentTask": "Bedrock Versioning + Multi-Server Console Dashboard",
+    "taskBranch": "main",
+    "objectives": [
+        {
+            "id": "1789397595428440377",
+            "description": "Add edition selector (Java/Bedrock) to ServerCreationScreen wizard flow",
+            "status": "DONE",
+            "attempts": 1,
+            "lastCommit": "",
+            "ciStatus": "",
+            "ciUrl": "",
+            "failureReason": ""
+        },
+        {
+            "id": "1789397636564508040",
+            "description": "Filter engine templates by selected edition in creation screen",
+            "status": "DONE",
+            "attempts": 1,
+            "lastCommit": "",
+            "ciStatus": "",
+            "ciUrl": "",
+            "failureReason": ""
+        },
+        {
+            "id": "1789397671721453323",
+            "description": "Show edition-specific version options (Bedrock versions for Bedrock engines, MC versions for Java engines)",
+            "status": "DONE",
+            "attempts": 1,
+            "lastCommit": "",
+            "ciStatus": "",
+            "ciUrl": "",
+            "failureReason": ""
+        },
+        {
+            "id": "1789397687438878119",
+            "description": "Enhance ConsoleTabScreen with per-server cards showing CPU/RAM/players/status",
+            "status": "DONE",
+            "attempts": 1,
+            "lastCommit": "",
+            "ciStatus": "",
+            "ciUrl": "",
+            "failureReason": ""
+        },
+        {
+            "id": "1789397713007344139",
+            "description": "Add per-server start/stop/restart controls and command input to console cards",
+            "status": "DONE",
+            "attempts": 1,
+            "lastCommit": "",
+            "ciStatus": "",
+            "ciUrl": "",
+            "failureReason": ""
+        }
+    ],
+    "currentObjectiveId": null,
+    "phase": "VERIFY",
+    "workflowStatus": "ACTIVE",
+    "gitBranch": "",
+    "lastCiRunUrl": "",
+    "lastCommitSha": "",
+    "knownIssues": [],
+    "blockers": [],
+    "timestamp": "2026-09-14T15:10:00.000000Z"
 }
