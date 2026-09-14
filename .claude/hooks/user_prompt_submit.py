@@ -12,7 +12,7 @@ Responsibilities (lightweight — this hook is NOT the workflow brain):
 import json
 import os
 import re
-import subprocess
+from datetime import datetime, timezone
 import sys
 import tempfile
 from pathlib import Path
@@ -53,9 +53,7 @@ def read_state() -> dict:
 def write_state(state: dict) -> None:
     """Atomically write state via unique temp file + replace."""
     try:
-        ts = subprocess.check_output(
-            ["date", "-u", "+%Y-%m-%dT%H:%M:%SZ"], text=True
-        ).strip()
+        ts = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
         state["timestamp"] = ts
         fd, tmp_path = tempfile.mkstemp(
             dir=STATE_FILE.parent, prefix=STATE_FILE.name + ".", suffix=".tmp"
