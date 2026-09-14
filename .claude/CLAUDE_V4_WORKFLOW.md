@@ -25,11 +25,12 @@ Three categories:
    - Each 1-2 sentences
    - Independently verifiable via CI
    - Meaningful checkpoint
-4. Call: tools/bm-state.sh task-start "<branch>" "<task-description>"
-5. For each objective: tools/bm-state.sh objective-add "<description>"
+4. **Capability consideration**: Before starting implementation, consider whether any available capability (skill, MCP, sub-agent, plugin) would materially improve the quality or efficiency of the planned work. If yes, note which capabilities to use for each objective. Consult SKILL.md "Capability Selection Guidance".
+5. Call: tools/bm-state.sh task-start "<branch>" "<task-description>"
+6. For each objective: tools/bm-state.sh objective-add "<description>"
    - Returns objective ID (capture for later)
-6. Read back state: tools/bm-state.sh status
-7. Now structured task with objectives ready
+7. Read back state: tools/bm-state.sh status
+8. Now structured task with objectives ready
 
 ## Step 4: For Each Objective — Implement → Commit → Verify Loop
 While there are PENDING objectives:
@@ -42,10 +43,8 @@ a) Get current objective from state
 b) Plan the approach
    - Read MineHost context (CLAUDE.md, master context docs)
    - Understand what files need to change
-   - Decide: Skill? MCP? Sub-agent? None?
-   - Consult SKILL.md "Capability Selection Guidance"
-   - Example: "This is security-sensitive" → consider claude-security
-   - Important: Use only what's genuinely useful, not everything
+   - Review capabilities identified in Step 3 for this objective
+   - Decide: Skill? MCP? Sub-agent? None? (or proceed with what was planned)
 
 c) Implement the objective
    - Make code changes

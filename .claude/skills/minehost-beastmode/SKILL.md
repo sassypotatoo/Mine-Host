@@ -52,7 +52,7 @@ This section provides decision criteria for Claude Code when selecting tools, sk
 
 ### Core Decision Rule
 
-**Use only what's genuinely useful, not everything available.**
+**For every non-trivial work request, deliberately consider whether any capability available in the current Claude Code session would materially improve the result. If yes, use it. If not, proceed directly.**
 
 For each work item or sub-task:
 1. What is the nature of the change? (Android, security, database, UI, simple edit, etc.)
@@ -63,7 +63,7 @@ For each work item or sub-task:
 
 Then decide: skill? MCP? sub-agent? Just use basic tools? None of the above?
 
-**Avoid premature capability invocation.** Many tasks complete with simple file edits and tests. Load heavy capabilities only when they solve a concrete problem, not because they're available.
+**Deliberate consideration means:** Before committing to a direct-edit approach, briefly scan whether any available capability (skill, MCP server, sub-agent, plugin) would catch issues you'd otherwise miss, provide context you lack, or produce a more thorough result. Use capabilities when they'd materially improve the outcome — not reflexively, but not avoidantly either.
 
 ### Decision Points
 
@@ -82,7 +82,7 @@ These capabilities are available in this environment. Decide autonomously which 
 - **Security**: claude-security, security-guidance
 - **This skill**: minehost-beastmode (for workflow knowledge)
 
-Never reference or invoke capabilities not on this list. Use tools deliberately based on actual need, not inventory completeness.
+Use tools deliberately based on actual need, not inventory completeness. This list represents what's known to be available — if something else in the session would materially help, use it.
 
 ### Capability Categories & When to Consider Them
 
@@ -90,37 +90,37 @@ Never reference or invoke capabilities not on this list. Use tools deliberately 
 **When**: Understanding complex codebases, tracing execution paths, mapping architecture.
 **Capabilities**: superpowers (brainstorming, systematic-debugging, subagent-driven-development), gstack
 **Example decision**: "This Android app modifies the JVM launcher—I need to understand the full call chain before touching it" → superpowers/systematic-debugging
-**Avoid when**: You already know exactly what needs changing, or the change is localized to one file.
+**Consider also when**: The change seems localized but you're not certain of the full impact — a quick scan can confirm scope.
 
 #### 2. Android Development & Build Systems
 **When**: Gradle/Kotlin/Java changes, build config, resource management, Android-specific problems.
 **Capabilities**: context7 (Android/Gradle/Kotlin docs), code-simplifier
 **Example decision**: "Gradle build is failing on a custom task—I need current documentation" → context7
-**Avoid when**: Non-Android changes, or pure configuration edits you already understand.
+**Consider also when**: Kotlin/Java compilation issues where current API docs could prevent trial-and-error.
 
 #### 3. Security Review & Analysis
 **When**: Downloads, binaries, command execution, JNI/native loading, networking, auth, permissions, crypto, user input handling.
 **Capabilities**: claude-security (scan-changes, scan-codebase), security-guidance, code-review with security focus
 **Example decision**: "Adding file extraction and native library loading—this is security-sensitive" → claude-security scan
-**Avoid when**: Pure UI changes or non-security-relevant edits.
+**Consider also when**: Changes touch data flow between components — security reviews can catch issues that aren't obvious from individual file edits.
 
 #### 4. Supabase Development
 **When**: Database schema changes, RLS policies, Supabase client usage, authentication flows.
 **Capabilities**: supabase MCP (schema migration, function execution), context7 (Supabase docs)
 **Example decision**: "Need to update RLS policies to match new auth flow" → supabase MCP
-**Avoid when**: Non-database changes, frontend-only updates.
+**Consider also when**: Client-side code interacts with Supabase — the MCP can verify schema alignment.
 
 #### 5. UI/Browser Testing & Automation
 **When**: Frontend changes, user interaction flows, visual testing, cross-browser compatibility.
 **Capabilities**: playwright, chrome-devtools-mcp, frontend-design
 **Example decision**: "Need to verify login flow works on mobile and desktop" → playwright
-**Avoid when**: Backend-only changes, API modifications.
+**Consider also when**: UI changes have behavioral effects that are hard to verify by code review alone.
 
 #### 6. Simple Tasks & Local Edits
 **When**: Trivial file modifications, documentation, simple bug fixes, configuration changes.
 **Capabilities**: Basic file tools (Read/Edit/Write), code-simplifier for clarity
 **Example decision**: "Update a config file and run tests locally" → just use file tools
-**Avoid when**: You're unsure about scope or impact.
+**Consider also when**: The change seems simple but touches critical code — a quick capability check costs little and might prevent a regression.
 
 ### Integration with v4 Workflow
 

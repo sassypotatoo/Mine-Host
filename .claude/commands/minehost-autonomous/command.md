@@ -39,10 +39,11 @@ This command toggles the Beast Mode v4 workflow orchestration system on and off.
 When Beast Mode is turned ON:
 - Sets `beastModeEnabled` to true in persistent state
 - If a work request is provided, sets `currentTask` to that request
-- The UserSubmit hook will automatically classify incoming messages
-- WORK requests will be processed through the Beast Mode workflow
-- QUESTION messages will receive Beast Mode context
-- CONTROL requests (like `/minehost-autonomous` again) will toggle the state
+- The UserSubmit hook injects Beast Mode state into context
+- Claude Code classifies incoming messages as WORK REQUEST, QUESTION, or CONTROL REQUEST
+- WORK requests are processed through the Beast Mode workflow
+- QUESTION messages receive Beast Mode context
+- CONTROL requests (like `/minehost-autonomous` again) toggle the state
 
 When Beast Mode is turned OFF:
 - Sets `beastModeEnabled` to false
@@ -52,11 +53,9 @@ When Beast Mode is turned OFF:
 ## Integration
 
 This command works through the Beast Mode UserPromptSubmit hook which:
-- Intercepts all user messages when Beast Mode is ON
-- Classifies messages as QUESTION, WORK_REQUEST, or CONTROL_REQUEST
-- Routes WORK requests to the workflow processing system
-- Provides contextual prompting to Claude Code for better assistance
-- Never makes implementation decisions - only manages workflow state
+- Injects Beast Mode state block into context when ON
+- Provides state data (task, objectives, branch, CI status) for Claude Code to use
+- Never classifies, routes, or makes decisions — Claude Code is the brain
 
 ## State Management
 
