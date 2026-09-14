@@ -6,7 +6,7 @@ Beast Mode v4 is a lightweight environment layer that provides state management 
 
 ## When to Use
 
-Use for any autonomous implementation task in the MineHost repo where you want Claude Code to drive the complete workflow loop with Beast Mode providing environment support. This skill provides the `/minehost-autonomous` command and the Hook that injects Beast Mode state into context.
+Use for any autonomous implementation task in the MineHost repo where you want Claude Code to drive the complete workflow loop with Beast Mode providing environment support. This skill provides the `/minehost-beastmode` command and the Hook that injects Beast Mode state into context.
 
 ## v4 Workflow Integration
 
@@ -142,7 +142,7 @@ For each work item in the queue:
 
 ## Core Loop (v4)
 
-1. **Activation** — User sends `/minehost-autonomous` to toggle Beast Mode ON, or task is already active
+1. **Activation** — User sends `/minehost-beastmode` to toggle Beast Mode ON, or task is already active
 2. **State Read** — Call `bm-state read` to get current work queue and completed items
 3. **Intent Classification** — Understand if this is work continuation, a new request, or a control command
 4. **Work Planning** — Break the current item into concrete implementation steps
@@ -193,7 +193,7 @@ Beast Mode state is persisted in `.claude/beastmode_state.json` and accessed via
 
 ## Commands
 
-- `/minehost-autonomous` — Toggle Beast Mode ON/OFF (persistent master toggle). Normal user messages are the tasks.
+- `/minehost-beastmode` — Toggle Beast Mode ON/OFF (persistent master toggle). Normal user messages are the tasks.
 - `bm-state read` — Read current work queue and decision history
 - `bm-state write <json>` — Record decisions, progress, and outcomes
 - `push-gated.sh commit <message>` — Safely commit changes (refuses force-push, empty commits)
@@ -204,7 +204,7 @@ Beast Mode state is persisted in `.claude/beastmode_state.json` and accessed via
 
 This skill works through:
 
-1. **Hook (Activation)** — `.claude/hooks/user_prompt_submit.py` detects `/minehost-autonomous` command and injects Beast Mode state into context.
+1. **Hook (Activation)** — `.claude/hooks/user_prompt_submit.py` detects `/minehost-beastmode` command and injects Beast Mode state into context.
 2. **State Tool (Layer 2)** — `./tools/bm-state.sh` provides atomic read/write of work queue and decisions.
 3. **Safe-Push Tool (Layer 3)** — `./tools/push-gated.sh` commits and pushes with guard rails (no force-push, no empty commits).
 4. **CI Tool (Layer 3)** — `./tools/ci-watch.sh` monitors real CI results (never fakes outcomes).

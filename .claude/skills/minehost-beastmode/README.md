@@ -10,12 +10,12 @@ This skill is installed automatically as part of the MineHost autonomous workflo
 
 Toggle Beast Mode ON/OFF:
 ```
-/minehost-autonomous
+/minehost-beastmode
 ```
 
 Activate Beast Mode with a work request:
 ```
-/minehost-autonomous "Fix typo in README.md"
+/minehost-beastmode "Fix typo in README.md"
 ```
 
 ## How It Works

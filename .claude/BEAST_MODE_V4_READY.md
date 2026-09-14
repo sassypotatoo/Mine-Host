@@ -34,8 +34,8 @@
 ## Functional Verification
 
 ### Hook Layer
-- ✅ `/minehost-autonomous` toggle detected and works
-- ✅ `/minehost-autonomous "task"` activates with task
+- ✅ `/minehost-beastmode` toggle detected and works
+- ✅ `/minehost-beastmode "task"` activates with task
 - ✅ State context injected into prompts when activated
 - ✅ Hook is fail-open (never blocks Claude)
 
@@ -81,7 +81,7 @@ All Beast Mode v4 components are in place and verified:
 
 ```bash
 # Check hook activation
-/minehost-autonomous
+/minehost-beastmode
 # Should show: Beast Mode activation detected
 
 # Check state tools
@@ -103,7 +103,7 @@ All Beast Mode v4 components are in place and verified:
 
 To use Beast Mode v4:
 
-1. **Toggle ON:** `/minehost-autonomous`
+1. **Toggle ON:** `/minehost-beastmode`
 2. **Claude operates** according to `CLAUDE_V4_WORKFLOW.md`
 3. **Monitor:** `./tools/bm-state.sh status`
 4. **Results:** All work verified via real GitHub Actions CI

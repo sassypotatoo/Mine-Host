@@ -15,7 +15,7 @@ Three categories:
    → Answer normally, don't start Beast Mode workflow
 2. WORK REQUEST — "Fix authentication flow", "Implement dark mode", "Add Supabase integration"
    → Go to Step 3
-3. CONTROL REQUEST — "/minehost-autonomous", "pause task", "stop and save", "switch tasks"
+3. CONTROL REQUEST — "/minehost-beastmode", "pause task", "stop and save", "switch tasks"
    → Handle control (use bm-state.sh commands)
 
 ## Step 3: Decompose Work into Objectives (For Work Requests)

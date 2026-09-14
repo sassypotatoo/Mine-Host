@@ -3,7 +3,7 @@
 Beast Mode v4 — UserPromptSubmit Hook
 
 Responsibilities (lightweight — this hook is NOT the workflow brain):
-  1. Detect /minehost-autonomous toggle and update state.
+  1. Detect /minehost-beastmode toggle and update state.
   2. When Beast Mode is ON, inject the full current state block into
      every prompt so Claude Code can make informed decisions.
   3. Nothing else. No --advance. No --intake. No classification.
@@ -155,9 +155,9 @@ def main() -> None:
         state = read_state()
 
         # ── Deterministic: Beast Mode persistent toggle ─────────────────────
-        # `/minehost-autonomous` is the master ON/OFF switch.
+        # `/minehost-beastmode` is the master ON/OFF switch.
         # No task-start semantics are allowed here; normal user messages are the tasks.
-        toggle_match = re.match(r'^/minehost-autonomous\s*$', stripped)
+        toggle_match = re.match(r'^/minehost-beastmode\s*$', stripped)
         if toggle_match:
             was_on = state.get("beastModeEnabled", False)
 

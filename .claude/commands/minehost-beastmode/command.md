@@ -1,17 +1,17 @@
 ---
-name: minehost-autonomous
+name: minehost-beastmode
 description: Toggle Beast Mode v4 ON/OFF (persistent master toggle)
 group: Beast Mode
 ---
 
-# Minehost-autonomous Command
+# Minehost-beastmode Command
 
 Persistent master toggle for Beast Mode v4.
 
 ## Usage
 
 ```
-/minehost-autonomous
+/minehost-beastmode
 ```
 
 ## Behavior

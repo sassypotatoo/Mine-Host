@@ -9,9 +9,9 @@
     {
       "name": "minehost-autonomous",
       "description": "Toggle Beast Mode v4 ON/OFF (persistent master toggle)",
-      "usage": "/minehost-autonomous",
+      "usage": "/minehost-beastmode",
       "examples": [
-        "/minehost-autonomous"
+        "/minehost-beastmode"
       ]
     }
   ],

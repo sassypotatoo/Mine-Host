@@ -27,7 +27,7 @@
 **File:** `.claude/hooks/user_prompt_submit.py`
 
 **Responsibility:**
-- Detects `/minehost-autonomous` command in user input
+- Detects `/minehost-beastmode` command in user input
 - Injects Beast Mode state into context
 - Passes control to Claude immediately
 - Never drives workflow logic
@@ -134,7 +134,7 @@
 ### Request: "Build auth system with Beast Mode"
 
 **Claude receives:**
-- `/minehost-autonomous` detection
+- `/minehost-beastmode` detection
 - Current state (empty or prior work)
 - Full conversation context
 
@@ -212,7 +212,7 @@
 ## Activation Command
 
 ```
-/minehost-autonomous
+/minehost-beastmode
 ```
 
 Toggle persistent master switch:

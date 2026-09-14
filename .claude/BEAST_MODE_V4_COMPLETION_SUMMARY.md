@@ -137,7 +137,7 @@ Beast Mode v4 has been fully implemented, documented, and validated. The archite
 User Input
     ↓
 Hook (user_prompt_submit.py)
-    ├─ Detects /minehost-autonomous toggle
+    ├─ Detects /minehost-beastmode toggle
     ├─ Injects full state block into prompt
     └─ Passes control to Claude
         ↓
@@ -214,7 +214,7 @@ Hook (user_prompt_submit.py)
 
 ```bash
 # 1. Activate Beast Mode
-/minehost-autonomous
+/minehost-beastmode
 
 # 2. Claude takes over
 #    - Understands task
@@ -229,7 +229,7 @@ Hook (user_prompt_submit.py)
 ./tools/bm-state.sh status
 
 # 4. Control workflow (if needed)
-/minehost-autonomous        # Toggle OFF
+/minehost-beastmode        # Toggle OFF
 # OR
 ./tools/bm-state.sh task-pause    # Pause
 ./tools/bm-state.sh task-resume   # Resume
@@ -267,7 +267,7 @@ Hook (user_prompt_submit.py)
 
 Beast Mode v4 is **complete, documented, and ready for autonomous workflows**.
 
-Start with: `/minehost-autonomous`
+Start with: `/minehost-beastmode`
 
 Claude Code will handle the rest.
 
