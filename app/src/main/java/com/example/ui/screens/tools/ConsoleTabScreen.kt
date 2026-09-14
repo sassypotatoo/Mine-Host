@@ -48,6 +48,7 @@ fun ConsoleTabScreen(viewModel: MainViewModel, onNavigate: (String) -> Unit) {
     val profiles by viewModel.profiles.collectAsState()
 
     MineHostScreen(
+        scrollable = false,
         contentPadding = PaddingValues(horizontal = 0.dp, vertical = 0.dp),
         modifier = Modifier.background(MineHostBackgroundTop)
     ) {
