@@ -70,6 +70,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
 import coil.compose.AsyncImage
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun ServerCreationScreen(
     viewModel: MainViewModel,

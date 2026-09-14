@@ -1,6 +1,7 @@
 package com.example.ui.servercreation
 
 import android.net.Uri
+import com.example.data.ServerEdition
 import com.example.server.template.ServerTemplate
 
 import com.example.server.engine.WorldSeedMode

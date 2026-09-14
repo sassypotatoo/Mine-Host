@@ -1,8 +1,6 @@
 package com.example.ui.servercreation.steps
 
 import androidx.compose.foundation.layout.*
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.WarningAmber
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
@@ -57,10 +55,7 @@ fun EditionStep(
 
         if (draft.edition == ServerEdition.JAVA) {
             WizardInfoBanner(
-                text = "Java Edition requires more power and is recommended only for high-end Android devices.",
-                icon = Icons.Default.WarningAmber,
-                containerColor = MaterialTheme.colorScheme.tertiaryContainer,
-                textColor = MaterialTheme.colorScheme.onTertiaryContainer
+                text = "Java Edition requires more power and is recommended only for high-end Android devices."
             )
         }
     }

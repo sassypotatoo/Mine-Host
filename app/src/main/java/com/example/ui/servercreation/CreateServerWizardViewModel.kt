@@ -7,6 +7,7 @@ import androidx.lifecycle.viewModelScope
 import com.example.MainViewModel
 import com.example.server.Downloader
 import com.example.data.ServerCreationDraft
+import com.example.data.ServerEdition
 import com.example.server.template.ServerTemplate
 import com.example.server.template.TemplateRegistry
 import com.example.server.version.BedrockVersionOption
