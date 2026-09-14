@@ -12,6 +12,8 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Dns
 import androidx.compose.material.icons.outlined.Info
@@ -23,6 +25,7 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Slider
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -36,12 +39,14 @@ import com.example.data.ServerCreationDraft
 import com.example.data.ServerProfileChanges
 import com.example.server.Downloader
 import com.example.server.ServerStatus
+import com.example.server.engine.EngineCatalog
 import com.example.server.template.TemplateRegistry
 import com.example.ui.components.GlassCard
 import com.example.ui.components.MineHostBrandHeader
 import com.example.ui.components.MineHostButton
 import com.example.ui.components.MineHostPageTitle
 import com.example.ui.components.PastelIcon
+import com.example.data.ServerEdition
 import com.example.server.version.EngineVersionCatalogRepository
 import com.example.server.version.EngineInstallability
 import com.example.server.version.installability
@@ -89,6 +94,9 @@ fun ServerCreationScreen(
     var maxPlayers by remember(existingProfile) { mutableStateOf(existingProfile?.maxPlayers ?: 10) }
     var port by remember(existingProfile) { mutableStateOf(existingProfile?.port ?: 19132) }
     var selectedIconUri by remember { mutableStateOf<Uri?>(null) }
+    var edition by remember(existingProfile) {
+        mutableStateOf(existingProfile?.edition ?: ServerEdition.BEDROCK)
+    }
 
     val context = androidx.compose.ui.platform.LocalContext.current
     val catalog = (context.applicationContext as? com.example.MineHostApplication)?.catalogRepository
@@ -107,6 +115,27 @@ fun ServerCreationScreen(
             val defaultVersion = catalog?.getDefaultVersion(newEngineId)
             engineVersionId = defaultVersion?.id ?: ""
             bedrockVersion = defaultVersion?.recommendedBedrockVersion ?: ""
+        }
+    }
+
+    // Reset engine when edition changes — pick first available for new edition
+    LaunchedEffect(edition) {
+        val firstEngine = TemplateRegistry.ALL_TEMPLATES.firstOrNull { template ->
+            val isJava = TemplateRegistry.isJavaEditionEngine(template.id)
+            val matchesEdition = (edition == ServerEdition.JAVA) == isJava
+            matchesEdition && catalog?.getVersionsForEngine(template.id)?.any { version ->
+                version.installability() != EngineInstallability.UNAVAILABLE &&
+                    Downloader.getTrustedChecksumForInstall(context, version) != null
+            } == true
+        }
+        if (firstEngine != null && engineId != firstEngine.id) {
+            engineId = firstEngine.id
+            val defaultVersion = catalog?.getDefaultVersion(firstEngine.id)
+            engineVersionId = defaultVersion?.id ?: ""
+            bedrockVersion = defaultVersion?.recommendedBedrockVersion ?: ""
+            // Set default port based on edition
+            val spec = EngineCatalog.getSpec(firstEngine.id)
+            port = spec?.defaultPort ?: if (edition == ServerEdition.JAVA) 25565 else 19132
         }
     }
 
@@ -211,10 +240,37 @@ fun ServerCreationScreen(
                         shape = RoundedCornerShape(16.dp)
                     )
                     Spacer(Modifier.size(15.dp))
+                    Text("Server edition", style = MaterialTheme.typography.titleMedium)
+                    Spacer(Modifier.size(8.dp))
+                    FlowRow(
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        FilterChip(
+                            selected = edition == ServerEdition.BEDROCK,
+                            onClick = { edition = ServerEdition.BEDROCK },
+                            label = { Text("Bedrock Edition") },
+                            leadingIcon = {
+                                Icon(Icons.Outlined.Dns, contentDescription = null)
+                            }
+                        )
+                        FilterChip(
+                            selected = edition == ServerEdition.JAVA,
+                            onClick = { edition = ServerEdition.JAVA },
+                            label = { Text("Java Edition") },
+                            leadingIcon = {
+                                Icon(Icons.Outlined.Dns, contentDescription = null)
+                            }
+                        )
+                    }
+                    Spacer(Modifier.size(15.dp))
                     Text("Server engine", style = MaterialTheme.typography.titleMedium)
                     Spacer(Modifier.size(8.dp))
-                    val availableTemplates = remember(catalog, isEditMode, existingProfile?.engineId) {
+                    val isJavaEdition = edition == ServerEdition.JAVA
+                    val availableTemplates = remember(catalog, isEditMode, existingProfile?.engineId, isJavaEdition) {
                         TemplateRegistry.ALL_TEMPLATES.filter { template ->
+                            val templateIsJava = TemplateRegistry.isJavaEditionEngine(template.id)
+                            val matchesEdition = isJavaEdition == templateIsJava
+                            if (!matchesEdition) return@filter false
                             val hasInstallableBuild = catalog?.getVersionsForEngine(template.id)?.any { version ->
                                 version.installability() != EngineInstallability.UNAVAILABLE &&
                                     Downloader.getTrustedChecksumForInstall(context, version) != null
@@ -320,7 +376,12 @@ fun ServerCreationScreen(
                                 maxPlayers = maxPlayers,
                                 port = port,
                                 engineVersionId = engineVersionId,
-                                bedrockVersion = bedrockVersion
+                                bedrockVersion = bedrockVersion,
+                                edition = edition,
+                                networkType = if (edition == ServerEdition.JAVA)
+                                    com.example.data.ServerNetworkType.JAVA_TCP
+                                else
+                                    com.example.data.ServerNetworkType.BEDROCK_RAKNET_UDP
                             ),
                             selectedIconUri
                         )
@@ -336,7 +397,12 @@ fun ServerCreationScreen(
                                 bedrockVersion = bedrockVersion,
                                 worldSeed = com.example.world.WorldSeedFactory.next(),
                                 worldSeedMode = com.example.server.engine.WorldSeedMode.RANDOM,
-                                worldSeedKnown = true
+                                worldSeedKnown = true,
+                                edition = edition,
+                                networkType = if (edition == ServerEdition.JAVA)
+                                    com.example.data.ServerNetworkType.JAVA_TCP
+                                else
+                                    com.example.data.ServerNetworkType.BEDROCK_RAKNET_UDP
                             ),
                             selectedIconUri
                         )
