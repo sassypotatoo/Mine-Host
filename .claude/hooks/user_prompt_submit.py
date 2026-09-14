@@ -154,9 +154,13 @@ def main() -> None:
 
         state = read_state()
 
-        # ── Deterministic: bare toggle ──────────────────────────────────────
-        if stripped in ("/minehost-autonomous", "/minehost-autonomous "):
+        # ── Deterministic: Beast Mode persistent toggle ─────────────────────
+        # `/minehost-autonomous` is the master ON/OFF switch.
+        # No task-start semantics are allowed here; normal user messages are the tasks.
+        toggle_match = re.match(r'^/minehost-autonomous\s*$', stripped)
+        if toggle_match:
             was_on = state.get("beastModeEnabled", False)
+
             new_state = state.copy()
             if was_on:
                 # Turn OFF
@@ -167,48 +171,21 @@ def main() -> None:
                 new_state["workflowStatus"] = "IDLE"
                 new_state["phase"] = "IDLE"
                 write_state(new_state)
-                hook_input["prompt"] = (
-                    "Beast Mode has been turned OFF.\n"
-                    "Show the user: 🛑 BEAST MODE: OFF\n"
-                    "Return to normal Claude Code behaviour."
-                )
-            else:
-                # Turn ON
-                new_state["beastModeEnabled"] = True
-                new_state["workflowStatus"] = "IDLE"
-                new_state["phase"] = "IDLE"
-                write_state(new_state)
-                hook_input["prompt"] = (
-                    "Beast Mode has been turned ON.\n"
-                    "Show the user exactly:\n"
-                    "🔥 BEAST MODE: ON\n"
-                    "Then tell the user Beast Mode is active and waiting "
-                    "for their next message or task."
-                )
-            print(json.dumps(hook_input))
-            return
 
-        # ── Deterministic: activation with task ─────────────────────────────
-        task_match = re.match(
-            r'^/minehost-autonomous\s+"([^"]*)"\s*$', stripped
-        ) or re.match(r"^/minehost-autonomous\s+(.+)$", stripped)
+                hook_input["prompt"] = "🛑 BEAST MODE: OFF"
+                print(json.dumps(hook_input))
+                return
 
-        if task_match:
-            task = task_match.group(1).strip()
-            new_state = state.copy()
+            # Turn ON
             new_state["beastModeEnabled"] = True
-            new_state["currentTask"] = task
-            new_state["workflowStatus"] = "ACTIVE"
-            new_state["phase"] = "IMPLEMENT"
+            new_state["currentTask"] = ""
+            new_state["taskBranch"] = ""
+            new_state["currentObjectiveId"] = None
+            new_state["workflowStatus"] = "IDLE"
+            new_state["phase"] = "IDLE"
             write_state(new_state)
-            context = build_context_block(new_state)
-            hook_input["prompt"] = (
-                f"{context}"
-                f"Beast Mode just activated with task: {task}\n"
-                f"Show the user: 🔥 BEAST MODE: ON\n"
-                f"Then immediately begin working on the task above.\n"
-                f"Original user message: {prompt}"
-            )
+
+            hook_input["prompt"] = "🔥 BEAST MODE: ON"
             print(json.dumps(hook_input))
             return
 
@@ -220,6 +197,9 @@ def main() -> None:
         context = build_context_block(state)
         hook_input["prompt"] = context + prompt
         print(json.dumps(hook_input))
+
+        return
+
 
     except Exception as e:
         print(f"[bm-hook] fatal error: {e}", file=sys.stderr)
