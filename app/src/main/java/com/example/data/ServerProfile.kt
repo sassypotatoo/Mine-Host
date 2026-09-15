@@ -56,6 +56,7 @@ data class ServerProfile(
     val minecraftVersion: String? = null,
     val resolvedIdentity: ResolvedEngineVersion? = null,
     val minecraftEulaAccepted: Boolean = false,
+    val worldAdapterEnabled: Boolean = true,
 ) {
     fun toJson(): String {
         val obj = JSONObject().apply {
@@ -88,6 +89,7 @@ data class ServerProfile(
             put("networkType", networkType.name)
             put("minecraftVersion", minecraftVersion)
             put("minecraftEulaAccepted", minecraftEulaAccepted)
+            put("worldAdapterEnabled", worldAdapterEnabled)
             resolvedIdentity?.let { identity ->
                 put("resolvedIdentity", JSONObject().apply {
                     put("resolvedBuildNumber", identity.resolvedBuildNumber)
@@ -129,6 +131,7 @@ data class ServerProfile(
             networkType: ServerNetworkType = ServerNetworkType.BEDROCK_RAKNET_UDP,
             minecraftVersion: String? = null,
             minecraftEulaAccepted: Boolean = false,
+            worldAdapterEnabled: Boolean = true,
         ): ServerProfile {
             val now = System.currentTimeMillis()
             return ServerProfile(
@@ -158,6 +161,7 @@ data class ServerProfile(
                 networkType = networkType,
                 minecraftVersion = minecraftVersion,
                 minecraftEulaAccepted = minecraftEulaAccepted,
+                worldAdapterEnabled = worldAdapterEnabled,
             )
         }
     }
@@ -190,4 +194,5 @@ data class ServerProfileChanges(
     val minecraftVersion: String? = null,
     val resolvedIdentity: ResolvedEngineVersion? = null,
     val minecraftEulaAccepted: Boolean? = null,
+    val worldAdapterEnabled: Boolean? = null,
 )

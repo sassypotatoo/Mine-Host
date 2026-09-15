@@ -223,6 +223,10 @@ abstract class BedrockJavaEngineBase(
     ): String? = null
 
     override suspend fun onPrepareWorldAndLaunchJar(serverJar: File): File {
+        if (!serverConfig.worldAdapterEnabled) {
+            onLog("[WorldAdapter] World adapter disabled — skipping world inspection, launching raw jar.")
+            return serverJar
+        }
         val activeWorldName = readActiveWorldNameStrict()
         val decision = WorldLaunchOwnershipPolicy.classify(serverDir, activeWorldName)
 

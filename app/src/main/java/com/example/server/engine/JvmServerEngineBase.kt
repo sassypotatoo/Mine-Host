@@ -235,6 +235,21 @@ abstract class JvmServerEngineBase(
             return
         }
 
+        // Crash-loop guard: refuse to start if too many crashes in a short window.
+        synchronized(crashTimestamps) {
+            val now = System.currentTimeMillis()
+            crashTimestamps.removeAll { now - it > CRASH_LOOP_WINDOW_MS }
+            if (crashTimestamps.size >= CRASH_LOOP_THRESHOLD) {
+                startupMutex.unlock()
+                onLog(
+                    "[Server] Crash loop detected (${crashTimestamps.size} crashes " +
+                        "in ${CRASH_LOOP_WINDOW_MS / 1000}s). Manual intervention required."
+                )
+                healthMonitor.setStatus(ServerStatus.CRASHED)
+                return
+            }
+        }
+
         startupJob = scope.launch(Dispatchers.IO) {
             try {
                 DownloadServiceLeaseController.acquire(context, runtimeSessionId, "Preparing ${spec.displayName}")
@@ -316,6 +331,9 @@ abstract class JvmServerEngineBase(
                     // G1 uses spare cores for collection; Serial only wins on tiny heaps.
                     javaArguments += "-XX:+UseG1GC"
                     javaArguments += "-XX:MaxGCPauseMillis=200"
+                    // G1NewSizePercent / G1MaxNewSizePercent are experimental in Java 21+;
+                    // UnlockExperimentalVMOptions is harmless on Java 17 (stable flags).
+                    javaArguments += "-XX:+UnlockExperimentalVMOptions"
                     javaArguments += "-XX:G1NewSizePercent=30"
                     javaArguments += "-XX:G1MaxNewSizePercent=40"
                     javaArguments += "-XX:+ParallelRefProcEnabled"
@@ -574,6 +592,19 @@ abstract class JvmServerEngineBase(
             }
         }
 
+        // Track crashes for crash-loop detection.
+        val isCrash = session.terminationCause == TerminationCause.UNEXPECTED_EXIT ||
+            session.terminationCause == TerminationCause.RUNTIME_FAILURE_STOP ||
+            session.terminationCause == TerminationCause.STARTUP_FAILURE_STOP ||
+            session.terminationCause == TerminationCause.STARTUP_TIMEOUT
+        if (isCrash) {
+            val now = System.currentTimeMillis()
+            synchronized(crashTimestamps) {
+                crashTimestamps.add(now)
+                crashTimestamps.removeAll { now - it > CRASH_LOOP_WINDOW_MS }
+            }
+        }
+
         // Always clean the exited session. cleanupProcess() protects shared
         // current-session state and clears the run-state marker only if this
         // exact process session owns it.
@@ -640,6 +671,8 @@ abstract class JvmServerEngineBase(
                             when (healthEvent) {
                                 HealthEvent.ENGINE_READY -> {
                                     session.engineReady = true
+                                    // Server started successfully — clear crash-loop tracker.
+                                    synchronized(crashTimestamps) { crashTimestamps.clear() }
 
                                     if (
                                         getStatus() ==
@@ -1027,9 +1060,14 @@ abstract class JvmServerEngineBase(
         return input.replace("\u001B\\[[;\\d]*[A-Za-z]".toRegex(), "")
     }
 
+    // ── Crash-loop detection ────────────────────────────────────────────
+    private val crashTimestamps = mutableListOf<Long>()
+
     protected companion object {
         const val STARTUP_TIMEOUT_MS = 120_000L
         const val RESTART_STOP_TIMEOUT_MS = 30_000L
         const val MAX_COMPATIBILITY_ERROR_LENGTH = 16_000
+        const val CRASH_LOOP_WINDOW_MS = 60_000L
+        const val CRASH_LOOP_THRESHOLD = 3
     }
 }

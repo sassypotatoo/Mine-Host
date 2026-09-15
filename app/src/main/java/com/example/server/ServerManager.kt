@@ -97,6 +97,39 @@ class ServerManager(
 
     fun setProfileRepositoryProvider(provider: () -> List<ServerProfile>) {
         profileRepositoryProvider = provider
+        restorePersistedState()
+    }
+
+    /**
+     * Restore persisted server status and logs from disk after Android process death.
+     * Called automatically when the profile repository provider is set.
+     */
+    private fun restorePersistedState() {
+        val profiles = profileRepositoryProvider?.invoke() ?: return
+        for (profile in profiles) {
+            val serverDir = File(profile.serverDirectory)
+            if (!serverDir.exists()) continue
+
+            // Restore persisted logs
+            val persistedLogs = com.example.world.ServerRunStateStore.readPersistedLogs(serverDir)
+            if (persistedLogs.isNotEmpty()) {
+                val queue = recentLogs.getOrPut(profile.id) { ArrayDeque() }
+                synchronized(queue) {
+                    queue.clear()
+                    persistedLogs.forEach { queue.addLast(it) }
+                }
+            }
+
+            // Restore persisted status — if the process is dead, mark as STOPPED
+            val persisted = com.example.world.ServerRunStateStore.readPersistedStatus(serverDir)
+            if (persisted != null && !com.example.world.ServerRunStateStore.isRunning(serverDir)) {
+                // Process died — update the runtime state cache with persisted info
+                runtimeStateCache[profile.id] = ActiveServerRuntimeState(
+                    serverId = profile.id,
+                    status = ServerStatus.STOPPED,
+                )
+            }
+        }
     }
 
     fun setSelectedProfileProvider(provider: () -> ServerProfile?) {
@@ -108,11 +141,32 @@ class ServerManager(
     fun addStatusListener(listener: (ServerRuntimeEvent) -> Unit) { statusListeners += listener }
     fun removeStatusListener(listener: (ServerRuntimeEvent) -> Unit) { statusListeners -= listener }
 
+    fun clearLogs(serverId: String) {
+        recentLogs[serverId]?.let { queue ->
+            synchronized(queue) { queue.clear() }
+        }
+    }
+
+    private val logPersistCounter = ConcurrentHashMap<String, Int>()
+
     private fun emitLog(serverId: String, sessionId: String, line: String) {
         val queue = recentLogs.getOrPut(serverId) { ArrayDeque() }
         synchronized(queue) {
             queue.addLast(line)
             while (queue.size > 1_000) queue.removeFirst()
+        }
+        // Persist logs to disk every 50 lines so at most 50 lines are lost on process death.
+        val count = logPersistCounter.compute(serverId) { _, prev -> (prev ?: 0) + 1 } ?: 0
+        if (count % 50 == 0) {
+            try {
+                val serverDir = profileRepositoryProvider?.invoke()
+                    ?.firstOrNull { it.id == serverId }
+                    ?.let { File(it.serverDirectory) }
+                if (serverDir != null) {
+                    val snapshot = synchronized(queue) { queue.toList() }
+                    com.example.world.ServerRunStateStore.persistLogs(serverDir, snapshot)
+                }
+            } catch (_: Exception) { /* best-effort persistence */ }
         }
         trackPlayers(serverId, line)
         if (SAVE_COMPLETE.containsMatchIn(line)) {
@@ -146,6 +200,20 @@ class ServerManager(
             advertisedMinecraftVersion = networkInfo?.minecraftVersion,
             advertisedProtocol = networkInfo?.protocol
         )
+
+        // Persist status to disk so it survives Android process death.
+        try {
+            val profile = profileRepositoryProvider?.invoke()?.firstOrNull { it.id == enriched.serverId }
+            if (profile != null) {
+                val serverDir = File(profile.serverDirectory)
+                com.example.world.ServerRunStateStore.persistStatus(
+                    serverDir,
+                    enriched.status.name,
+                    handle?.engineId ?: profile.engineId,
+                    profile.id,
+                )
+            }
+        } catch (_: Exception) { /* best-effort persistence */ }
         if (enriched.status.canStart()) playerTrackers.remove(enriched.serverId)
         statusListeners.forEach { listener -> runCatching { listener(enriched) } }
 
@@ -389,7 +457,8 @@ class ServerManager(
                 difficulty = profile.difficulty,
                 levelType = profile.levelType,
                 maxPlayers = profile.maxPlayers,
-                motd = profile.name
+                motd = profile.name,
+                worldAdapterEnabled = profile.worldAdapterEnabled,
             )
 
             val engine = ServerFactory.createEngine(

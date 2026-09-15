@@ -95,7 +95,8 @@ fun ConsoleTabScreen(viewModel: MainViewModel, onNavigate: (String) -> Unit) {
                             onStart = { viewModel.startServer(profile.id) },
                             onStop = { viewModel.stopServer(profile.id) },
                             onRestart = { viewModel.restartServer(profile.id) },
-                            onSendCommand = { cmd -> viewModel.sendCommand(cmd, profile.id) }
+                            onSendCommand = { cmd -> viewModel.sendCommand(cmd, profile.id) },
+                            onClearLogs = { viewModel.clearLogs(profile.id) }
                         )
                     }
 
@@ -121,7 +122,8 @@ private fun ServerConsoleCard(
     onStart: () -> Unit,
     onStop: () -> Unit,
     onRestart: () -> Unit,
-    onSendCommand: (String) -> Unit
+    onSendCommand: (String) -> Unit,
+    onClearLogs: () -> Unit = {}
 ) {
     var expanded by remember { mutableStateOf(false) }
     var command by remember { mutableStateOf("") }
@@ -263,6 +265,27 @@ private fun ServerConsoleCard(
             // ── Expanded Section: Console + Command Input ──
             if (expanded) {
                 HorizontalDivider(color = MineHostDivider)
+
+                // Console output header with clear button
+                if (logs.isNotEmpty()) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = "${logs.size} log lines",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MineHostTextSecondary
+                        )
+                        TextButton(
+                            onClick = { onClearLogs() },
+                            contentPadding = PaddingValues(horizontal = 8.dp, vertical = 0.dp)
+                        ) {
+                            Text("Clear", style = MaterialTheme.typography.labelSmall)
+                        }
+                    }
+                }
 
                 // Console output
                 Box(

@@ -15,5 +15,6 @@ data class EngineServerConfig(
     val difficulty: String = "1",
     val levelType: String = "DEFAULT",
     val maxPlayers: Int = 10,
-    val motd: String = "A MineHost Java Server"
+    val motd: String = "A MineHost Java Server",
+    val worldAdapterEnabled: Boolean = true,
 )

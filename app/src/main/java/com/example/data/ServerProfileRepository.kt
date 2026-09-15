@@ -210,6 +210,7 @@ class ServerProfileRepository(
                     updatedAt = System.currentTimeMillis(),
                     resolvedIdentity = changes.resolvedIdentity ?: current.resolvedIdentity,
                     minecraftEulaAccepted = changes.minecraftEulaAccepted ?: current.minecraftEulaAccepted,
+                    worldAdapterEnabled = changes.worldAdapterEnabled ?: current.worldAdapterEnabled,
                 )
 
                 val profileDir = File(current.serverDirectory).canonicalFile
@@ -505,6 +506,7 @@ class ServerProfileRepository(
             minecraftVersion = obj.optString("minecraftVersion").takeIf(String::isNotBlank) ?: bedrockVersion,
             resolvedIdentity = if (obj.has("resolvedIdentity") && !obj.isNull("resolvedIdentity")) parseResolvedIdentity(obj.getJSONObject("resolvedIdentity")) else null,
             minecraftEulaAccepted = obj.optBoolean("minecraftEulaAccepted", false),
+            worldAdapterEnabled = obj.optBoolean("worldAdapterEnabled", true),
         )
     }
 
@@ -558,6 +560,7 @@ class ServerProfileRepository(
         put("networkType", profile.networkType.name)
         put("minecraftVersion", profile.minecraftVersion ?: profile.bedrockVersion)
         put("minecraftEulaAccepted", profile.minecraftEulaAccepted)
+        put("worldAdapterEnabled", profile.worldAdapterEnabled)
         profile.resolvedIdentity?.let { put("resolvedIdentity", serializeResolvedIdentity(it)) }
     }
 
