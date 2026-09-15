@@ -390,9 +390,9 @@ abstract class JvmServerEngineBase(
 
                 val builder = JavaRuntimeManager.createLauncherProcessBuilder(
                     context = context,
-                    launcherFile = runtimeReady.launcherFile,
-                    runtimeHome = runtimeReady.runtimeHome,
-                    javaMajor = runtimeReady.javaMajor,
+                    launcherFile = preparedRuntime.launcherFile,
+                    runtimeHome = preparedRuntime.runtimeHome,
+                    javaMajor = preparedRuntime.javaMajor,
                     javaArguments = javaArguments,
                     workingDir = serverDir
                 )
