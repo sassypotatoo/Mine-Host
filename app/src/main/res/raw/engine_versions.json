@@ -131,13 +131,15 @@
       "supportedBedrockVersions": [],
       "recommendedBedrockVersion": "AUTO",
       "compatibilityMode": "MULTI_VERSION",
+      "minimumSupportedBedrockVersion": "1.20.70",
+      "maximumSupportedBedrockVersion": "1.26.30",
       "releaseTag": "1241",
       "sourceType": "JENKINS_BUILD",
       "available": true,
       "deprecated": false,
       "releaseChannel": "STABLE",
       "sha256": "4c3cd0d53034ff76ca0f5461aafaac09a5a62809349440450768027f75fec23f",
-      "compatibilitySummary": "Cloudburst Nukkit server engine verified build 1241. Protocol versions are discovered at runtime from the RakNet advertisement."
+      "compatibilitySummary": "Cloudburst Nukkit server engine verified build 1241. Supports Bedrock clients from 1.20.70 through 1.26.30. Protocol versions are discovered at runtime from the RakNet advertisement."
     },
     {
       "id": "nukkit-mot:1361",

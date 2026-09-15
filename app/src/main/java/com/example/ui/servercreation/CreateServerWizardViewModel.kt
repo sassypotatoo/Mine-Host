@@ -84,7 +84,30 @@ class CreateServerWizardViewModel(application: Application) : AndroidViewModel(a
         }
 
         val defaultEngineVersion = catalogRepository.getDefaultVersion(template.id)
-        val defaultBedrockVersion = when {
+        val preSelectedBedrockVersion = _draft.value.bedrockVersion
+
+        // Respect pre-selected Bedrock version from VERSION step when compatible
+        val defaultBedrockVersion = if (preSelectedBedrockVersion != null && template.id != "java_paper") {
+            // Check if the pre-selected version is compatible with this engine
+            val allVersions = catalogRepository.versions.value
+            val isCompatible = allVersions.any { v ->
+                v.engineId == template.id && v.available && !v.historical &&
+                when (v.compatibilityMode) {
+                    com.example.server.version.CompatibilityMode.SINGLE_VERSION ->
+                        v.supportedBedrockVersions.contains(preSelectedBedrockVersion) ||
+                            v.recommendedBedrockVersion == preSelectedBedrockVersion
+                    com.example.server.version.CompatibilityMode.MULTI_VERSION ->
+                        preSelectedBedrockVersion == "AUTO" ||
+                            v.supportedBedrockVersions.contains(preSelectedBedrockVersion)
+                    else -> false
+                }
+            }
+            if (isCompatible) preSelectedBedrockVersion else when {
+                defaultEngineVersion == null -> null
+                defaultEngineVersion.compatibilityMode == com.example.server.version.CompatibilityMode.MULTI_VERSION -> "AUTO"
+                else -> defaultEngineVersion.recommendedBedrockVersion ?: defaultEngineVersion.supportedBedrockVersions.firstOrNull()
+            }
+        } else when {
             template.id == "java_paper" -> null
             defaultEngineVersion == null -> null
             defaultEngineVersion.compatibilityMode == com.example.server.version.CompatibilityMode.MULTI_VERSION -> "AUTO"
@@ -100,6 +123,48 @@ class CreateServerWizardViewModel(application: Application) : AndroidViewModel(a
                 manualEngineJarUri = null,
                 manualEngineSha256 = ""
             )
+        }
+    }
+
+    /**
+     * Select only the Bedrock version (without selecting an engine).
+     * Used in the VERSION step before the ENGINE step.
+     */
+    fun selectBedrockVersionOnly(option: BedrockVersionOption) {
+        // For Paper (Java edition), also set engineVersionId from the Paper catalog entry
+        val isJava = _draft.value.edition == ServerEdition.JAVA
+        val paperMetaId = if (isJava) {
+            catalogRepository.getVersionsForEngine("java_paper").firstOrNull()?.id ?: "java_paper:api"
+        } else null
+
+        updateDraft {
+            it.copy(
+                bedrockVersion = option.bedrockVersion,
+                engineVersionId = if (isJava) paperMetaId else it.engineVersionId,
+                // Don't clear engine if already set — user may be re-selecting
+                manualEngineInstallAcknowledged = false,
+                manualEngineJarUri = null,
+                manualEngineSha256 = ""
+            )
+        }
+    }
+
+    /**
+     * Check if a specific engine supports a given Bedrock version.
+     * Used in the ENGINE step to filter templates by selected version.
+     */
+    fun isEngineCompatibleWithVersion(engineId: String, version: String): Boolean {
+        val allVersions = catalogRepository.versions.value
+        return allVersions.any { v ->
+            v.engineId == engineId && v.available && !v.historical &&
+            when (v.compatibilityMode) {
+                com.example.server.version.CompatibilityMode.SINGLE_VERSION ->
+                    v.supportedBedrockVersions.contains(version) ||
+                        v.recommendedBedrockVersion == version
+                com.example.server.version.CompatibilityMode.MULTI_VERSION ->
+                    version == "AUTO" || v.supportedBedrockVersions.contains(version)
+                else -> false
+            }
         }
     }
 
@@ -138,54 +203,103 @@ class CreateServerWizardViewModel(application: Application) : AndroidViewModel(a
         catalogRepository.versions,
         _dynamicVersions
     ) { currentDraft, versions, dynamic ->
-        val engineId = currentDraft.engine?.id ?: return@combine emptyList<BedrockVersionOption>()
+        val engineId = currentDraft.engine?.id
 
+        // Java Paper: show dynamic versions (engine already selected)
         if (engineId == "java_paper") {
             return@combine dynamic
         }
 
-        val engineVersions = versions.filter { it.engineId == engineId }
-        
-        val result = mutableListOf<BedrockVersionOption>()
-        for (ev in engineVersions) {
-            when (ev.compatibilityMode) {
-                com.example.server.version.CompatibilityMode.SINGLE_VERSION -> {
-                    val bv = ev.recommendedBedrockVersion ?: ev.supportedBedrockVersions.firstOrNull()
-                    if (bv != null) {
+        // Engine selected: show versions for that engine
+        if (engineId != null) {
+            val engineVersions = versions.filter { it.engineId == engineId }
+            val result = mutableListOf<BedrockVersionOption>()
+            for (ev in engineVersions) {
+                when (ev.compatibilityMode) {
+                    com.example.server.version.CompatibilityMode.SINGLE_VERSION -> {
+                        val bv = ev.recommendedBedrockVersion ?: ev.supportedBedrockVersions.firstOrNull()
+                        if (bv != null) {
+                            result.add(BedrockVersionOption(
+                                bedrockVersion = bv,
+                                engineVersionId = ev.id,
+                                engineBuildName = ev.displayName,
+                                recommended = ev.recommended,
+                                compatibilityMode = ev.compatibilityMode,
+                                compatibilitySummary = ev.compatibilitySummary,
+                                historical = ev.historical,
+                                installability = effectiveInstallability(ev)
+                            ))
+                        }
+                    }
+                    com.example.server.version.CompatibilityMode.MULTI_VERSION -> {
                         result.add(BedrockVersionOption(
-                            bedrockVersion = bv,
+                            bedrockVersion = "AUTO",
                             engineVersionId = ev.id,
                             engineBuildName = ev.displayName,
                             recommended = ev.recommended,
                             compatibilityMode = ev.compatibilityMode,
-                            compatibilitySummary = ev.compatibilitySummary,
+                            compatibilitySummary = ev.compatibilitySummary ?: "One build accepts multiple supported Bedrock client versions.",
                             historical = ev.historical,
                             installability = effectiveInstallability(ev)
                         ))
                     }
+                    else -> {}
+                }
+            }
+            return@combine result
+        }
+
+        // No engine selected (VERSION step before ENGINE): show all Bedrock versions
+        val edition = currentDraft.edition
+        if (edition != ServerEdition.BEDROCK) return@combine emptyList<BedrockVersionOption>()
+
+        // Aggregate all Bedrock versions across all engines
+        data class AggEntry(val version: String, val engines: MutableSet<String>, val hasAuto: Boolean, val recommended: Boolean, val summary: String?)
+
+        val aggregated = mutableMapOf<String, AggEntry>()
+
+        for (v in versions) {
+            // Skip Java edition engines
+            if (com.example.server.template.TemplateRegistry.isJavaEditionEngine(v.engineId)) continue
+            if (!v.available || v.historical || v.deprecated) continue
+
+            when (v.compatibilityMode) {
+                com.example.server.version.CompatibilityMode.SINGLE_VERSION -> {
+                    val bv = v.recommendedBedrockVersion ?: v.supportedBedrockVersions.firstOrNull() ?: continue
+                    val entry = aggregated.getOrPut(bv) { AggEntry(bv, mutableSetOf(), false, bv == "1.26.30", null) }
+                    entry.engines.add(v.engineId)
                 }
                 com.example.server.version.CompatibilityMode.MULTI_VERSION -> {
-                    result.add(BedrockVersionOption(
-                        bedrockVersion = "AUTO",
-                        engineVersionId = ev.id,
-                        engineBuildName = ev.displayName,
-                        recommended = ev.recommended,
-                        compatibilityMode = ev.compatibilityMode,
-                        compatibilitySummary = ev.compatibilitySummary ?: "One build accepts multiple supported Bedrock client versions.",
-                        historical = ev.historical,
-                        installability = effectiveInstallability(ev)
-                    ))
+                    val entry = aggregated.getOrPut("AUTO") { AggEntry("AUTO", mutableSetOf(), true, true, v.compatibilitySummary) }
+                    entry.engines.add(v.engineId)
+                    if (v.supportedBedrockVersions.isEmpty() && v.minimumSupportedBedrockVersion != null && v.maximumSupportedBedrockVersion != null) {
+                        entry.summary = entry.summary ?: v.compatibilitySummary
+                    }
                 }
                 else -> {}
             }
         }
-        result
+
+        aggregated.values.map { entry ->
+            BedrockVersionOption(
+                bedrockVersion = entry.version,
+                engineVersionId = "", // No engine selected yet
+                engineBuildName = entry.engines.joinToString(", ") { eid ->
+                    com.example.server.template.TemplateRegistry.ALL_TEMPLATES.find { it.id == eid }?.name ?: eid
+                },
+                recommended = entry.recommended,
+                compatibilityMode = if (entry.hasAuto) com.example.server.version.CompatibilityMode.MULTI_VERSION else com.example.server.version.CompatibilityMode.SINGLE_VERSION,
+                compatibilitySummary = entry.summary ?: "${entry.engines.size} engine(s) support this version",
+                historical = false,
+                installability = EngineInstallability.AUTOMATIC_DOWNLOAD
+            )
+        }.sortedByDescending { it.bedrockVersion }
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
     private var paperVersionLoadJob: Job? = null
 
     fun loadPaperVersions() {
-        if (_draft.value.engine?.id != "java_paper") return
+        if (_draft.value.edition != ServerEdition.JAVA) return
 
         paperVersionLoadJob?.let { it.cancel() }
         paperVersionLoadJob = viewModelScope.launch {
@@ -194,12 +308,12 @@ class CreateServerWizardViewModel(application: Application) : AndroidViewModel(a
             val paperMetaId = paperMeta?.id ?: "java_paper:api"
             val res = PaperResolver.getAvailableVersions()
 
-            if (_draft.value.engine?.id != "java_paper") {
+            if (_draft.value.edition != ServerEdition.JAVA) {
                 return@launch
             }
 
             if (res.isSuccess && res.getOrNull()?.isNotEmpty() == true) {
-                if (_draft.value.engine?.id != "java_paper") {
+                if (_draft.value.edition != ServerEdition.JAVA) {
                     return@launch
                 }
                 val versions = res.getOrThrow()
@@ -219,7 +333,7 @@ class CreateServerWizardViewModel(application: Application) : AndroidViewModel(a
                 _dynamicVersionState.value = DynamicVersionState.LOADED(mappedVersions)
 
                 val currentVer = _draft.value.bedrockVersion
-                if (_draft.value.engine?.id == "java_paper") {
+                if (_draft.value.edition == ServerEdition.JAVA) {
                     if (currentVer.isNullOrBlank() || currentVer.equals("AUTO", ignoreCase = true) || !versions.contains(currentVer)) {
                         updateDraft { it.copy(
                             bedrockVersion = versions.first(),
@@ -228,7 +342,7 @@ class CreateServerWizardViewModel(application: Application) : AndroidViewModel(a
                     }
                 }
             } else {
-                if (_draft.value.engine?.id != "java_paper") {
+                if (_draft.value.edition != ServerEdition.JAVA) {
                     return@launch
                 }
                 val errorMsg = res.exceptionOrNull()?.message ?: "Failed to fetch PaperMC versions"
@@ -243,11 +357,11 @@ class CreateServerWizardViewModel(application: Application) : AndroidViewModel(a
     }
 
     init {
-        // Dynamic version loader for Paper API
-        draft.map { it.engine?.id }
+        // Dynamic version loader for Paper API — load when Java edition is selected
+        draft.map { it.edition }
             .distinctUntilChanged()
-            .onEach { engineId ->
-                if (engineId == "java_paper") {
+            .onEach { edition ->
+                if (edition == ServerEdition.JAVA) {
                     loadPaperVersions()
                 } else {
                     paperVersionLoadJob?.let { it.cancel() }
@@ -299,7 +413,7 @@ class CreateServerWizardViewModel(application: Application) : AndroidViewModel(a
     }
 
     fun retryPaperFetch() {
-        if (_draft.value.engine?.id == "java_paper") {
+        if (_draft.value.edition == ServerEdition.JAVA) {
             loadPaperVersions()
         }
     }
@@ -371,20 +485,14 @@ class CreateServerWizardViewModel(application: Application) : AndroidViewModel(a
             WizardStep.ENGINE -> draft.engine?.id?.let(::isEngineAvailable) == true
             WizardStep.VERSION -> {
                 val bedrockVersion = draft.bedrockVersion
-                val engineVersionId = draft.engineVersionId
-                if (bedrockVersion.isNullOrBlank() || engineVersionId == null) return@combine false
-                
-                val version = catalogRepository.findVersion(engineVersionId)
-                if (version == null || version.engineId != draft.engine?.id ||
-                    version.installability() == EngineInstallability.UNAVAILABLE
-                ) return@combine false
-                
-                if (draft.engine?.id == "java_paper") {
+                if (bedrockVersion.isNullOrBlank()) return@combine false
+
+                if (draft.edition == ServerEdition.JAVA) {
+                    // Java: Paper version must be set and not AUTO
                     !bedrockVersion.equals("AUTO", ignoreCase = true)
-                } else if (version.compatibilityMode == com.example.server.version.CompatibilityMode.MULTI_VERSION) {
-                    bedrockVersion == "AUTO"
                 } else {
-                    version.supportedBedrockVersions.contains(bedrockVersion) || version.recommendedBedrockVersion == bedrockVersion
+                    // Bedrock: version must exist in the aggregated version list
+                    bedrockVersionOptions.value.any { it.bedrockVersion == bedrockVersion }
                 }
             }
             WizardStep.WORLD -> {

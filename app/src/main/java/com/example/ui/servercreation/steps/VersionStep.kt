@@ -10,20 +10,17 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.data.ServerEdition
 import com.example.server.version.BedrockVersionOption
 import com.example.server.version.CompatibilityMode
-import com.example.server.version.EngineVersion
 import com.example.server.version.EngineInstallability
-import com.example.server.version.ReleaseChannel
 import com.example.ui.servercreation.CreateServerDraft
 import com.example.ui.servercreation.CreateServerWizardViewModel
 import com.example.ui.servercreation.WizardTheme
-import com.example.server.template.TemplateRegistry
 
 @Composable
 fun VersionStep(
@@ -33,10 +30,9 @@ fun VersionStep(
     onRetryPaperFetch: () -> Unit = {},
     onBedrockVersionSelected: (BedrockVersionOption) -> Unit
 ) {
-    val engineId = draft.engine?.id
-    val isPaperApi = engineId == "java_paper"
-    val isJava = TemplateRegistry.isJavaEditionEngine(engineId)
-    
+    val isJavaEdition = draft.edition == ServerEdition.JAVA
+    val isPaperApi = isJavaEdition // In the new flow, VERSION comes before ENGINE; Java edition means Paper versions
+
     Column(
         modifier = Modifier.fillMaxWidth(),
         verticalArrangement = Arrangement.spacedBy(12.dp)
@@ -49,9 +45,8 @@ fun VersionStep(
             )
             Text(
                 when {
-                    engineId == "java_paper" -> "Choose a Minecraft Java Edition version supported by PaperMC."
-                    isJava -> "Choose a Minecraft Java Edition version supported by this server engine."
-                    else -> "Choose a Minecraft Bedrock version supported by this server engine."
+                    isJavaEdition -> "Choose a Minecraft Java Edition version supported by PaperMC."
+                    else -> "Choose a Minecraft Bedrock version to play on."
                 },
                 style = MaterialTheme.typography.bodySmall,
                 color = WizardTheme.SecondaryText
@@ -102,13 +97,13 @@ fun VersionStep(
                 }
                 is CreateServerWizardViewModel.DynamicVersionState.LOADED -> {
                     if (dynamicVersionState.versions.isEmpty()) {
-                        EmptyVersionsBox(isJava)
+                        EmptyVersionsBox(isJavaEdition)
                     } else {
                         dynamicVersionState.versions.forEach { option ->
                             BedrockVersionCard(
                                 option = option,
-                                isJava = isJava,
-                                selected = draft.bedrockVersion == option.bedrockVersion && draft.engineVersionId == option.engineVersionId,
+                                isJava = isJavaEdition,
+                                selected = draft.bedrockVersion == option.bedrockVersion,
                                 onClick = { onBedrockVersionSelected(option) }
                             )
                         }
@@ -116,13 +111,13 @@ fun VersionStep(
                 }
                 else -> {
                     if (bedrockVersions.isEmpty()) {
-                        EmptyVersionsBox(isJava)
+                        EmptyVersionsBox(isJavaEdition)
                     } else {
                         bedrockVersions.forEach { option ->
                             BedrockVersionCard(
                                 option = option,
-                                isJava = isJava,
-                                selected = draft.bedrockVersion == option.bedrockVersion && draft.engineVersionId == option.engineVersionId,
+                                isJava = isJavaEdition,
+                                selected = draft.bedrockVersion == option.bedrockVersion,
                                 onClick = { onBedrockVersionSelected(option) }
                             )
                         }
@@ -131,13 +126,13 @@ fun VersionStep(
             }
         } else {
             if (bedrockVersions.isEmpty()) {
-                EmptyVersionsBox(isJava)
+                EmptyVersionsBox(isJavaEdition)
             } else {
                 bedrockVersions.forEach { option ->
                     BedrockVersionCard(
                         option = option,
-                        isJava = isJava,
-                        selected = draft.bedrockVersion == option.bedrockVersion && draft.engineVersionId == option.engineVersionId,
+                        isJava = isJavaEdition,
+                        selected = draft.bedrockVersion == option.bedrockVersion,
                         onClick = { onBedrockVersionSelected(option) }
                     )
                 }
