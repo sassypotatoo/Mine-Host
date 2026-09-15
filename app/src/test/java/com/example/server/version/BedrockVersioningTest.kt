@@ -78,7 +78,8 @@ class BedrockVersioningTest {
         val multiVersionEngines = versions.filter {
             it.optString("compatibilityMode") == "MULTI_VERSION" &&
                 it.optBoolean("available", true) &&
-                !it.optBoolean("historical", false)
+                !it.optBoolean("historical", false) &&
+                !it.getString("id").startsWith("java_")
         }
         assertTrue("Must have at least one MULTI_VERSION engine", multiVersionEngines.isNotEmpty())
 
