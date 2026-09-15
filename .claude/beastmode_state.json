@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
-  "beastModeEnabled": false,
-  "currentTask": "CRITICAL WORK REQUEST - 16 reliability requirements",
-  "taskBranch": "main",
+  "beastModeEnabled": true,
+  "currentTask": "",
+  "taskBranch": "",
   "objectives": [
     {
       "id": "req-1",
@@ -102,12 +102,12 @@
     }
   ],
   "currentObjectiveId": null,
-  "phase": "COMPLETE",
-  "workflowStatus": "COMPLETE",
+  "phase": "IDLE",
+  "workflowStatus": "IDLE",
   "gitBranch": "main",
   "lastCiRunUrl": "",
   "lastCommitSha": "36a6fb4",
   "knownIssues": [],
   "blockers": [],
-  "timestamp": "2026-09-15T11:18:22Z"
+  "timestamp": "2026-09-15T16:19:22Z"
 }
