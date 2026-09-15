@@ -7,12 +7,19 @@ import com.example.server.engine.EngineServerConfig
 import com.example.server.engine.WorldSeedMode
 import com.example.world.ServerRunStateStore
 import org.json.JSONObject
+import android.content.Context
+import androidx.test.core.app.ApplicationProvider
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertTrue
+import org.junit.Before
 import org.junit.Test
+import org.junit.runner.RunWith
+import org.robolectric.RobolectricTestRunner
 import java.io.File
+
+@RunWith(RobolectricTestRunner::class)
 
 /**
  * Regression tests for the core MineHost fixes:
@@ -24,7 +31,16 @@ import java.io.File
  */
 class MineHostCoreFixesTest {
 
+    @Suppress("unused")
+    private lateinit var context: Context
+
+    @Before
+    fun setup() {
+        context = ApplicationProvider.getApplicationContext()
+    }
+
     // ── Phase 2: JVM argument ordering ──────────────────────────────────
+
 
     @Test
     fun jvmArgs_unlockExperimentalVMOptions_precedesG1NewSizePercent() {
