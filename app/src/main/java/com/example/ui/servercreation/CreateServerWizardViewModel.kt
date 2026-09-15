@@ -319,11 +319,15 @@ class CreateServerWizardViewModel(application: Application) : AndroidViewModel(a
                 val allVersions = res.getOrThrow()
 
                 // Filter versions to only those with at least one STABLE build.
-                // Check concurrently with a semaphore to avoid overwhelming the API.
-                val semaphore = kotlinx.coroutines.sync.Semaphore(3)
-                val stableVersions = allVersions.filter { version ->
-                    kotlinx.coroutines.sync.withContext(semaphore) {
-                        PaperResolver.hasStableBuild(version)
+                // Check concurrently (up to 3 at a time) to avoid overwhelming the API.
+                val stableVersions = kotlinx.coroutines.coroutineScope {
+                    allVersions.map { version ->
+                        kotlinx.coroutines.async {
+                            version to PaperResolver.hasStableBuild(version)
+                        }
+                    }.mapNotNull { deferred ->
+                        val (version, hasStable) = deferred.await()
+                        version.takeIf { hasStable }
                     }
                 }
 
