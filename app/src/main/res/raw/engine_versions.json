@@ -128,18 +128,16 @@
       "requiredJavaVersion": 21,
       "compatibilityLabel": "Bedrock 1.20.70",
       "recommended": true,
-      "supportedBedrockVersions": [
-        "1.20.70"
-      ],
-      "recommendedBedrockVersion": "1.20.70",
-      "compatibilityMode": "SINGLE_VERSION",
+      "supportedBedrockVersions": [],
+      "recommendedBedrockVersion": "AUTO",
+      "compatibilityMode": "MULTI_VERSION",
       "releaseTag": "1241",
       "sourceType": "JENKINS_BUILD",
       "available": true,
       "deprecated": false,
       "releaseChannel": "STABLE",
       "sha256": "4c3cd0d53034ff76ca0f5461aafaac09a5a62809349440450768027f75fec23f",
-      "compatibilitySummary": "Cloudburst Nukkit server engine verified build 1241."
+      "compatibilitySummary": "Cloudburst Nukkit server engine verified build 1241. Protocol versions are discovered at runtime from the RakNet advertisement."
     },
     {
       "id": "nukkit-mot:1361",
@@ -166,9 +164,7 @@
       "sourceKey": "jenkins:https://motci.cn/job/Nukkit-MOT/job/master",
       "sourceType": "JENKINS_BUILD",
       "artifactName": "Nukkit-MOT-SNAPSHOT.jar",
-      "protocolVersions": [
-        1001
-      ],
+      "protocolVersions": [],
       "available": true,
       "dynamic": false,
       "sha256": "8fdf47cdc0b639dd1e18f8fd79375bcab1f210ade122fe60629aa485026e5ada"

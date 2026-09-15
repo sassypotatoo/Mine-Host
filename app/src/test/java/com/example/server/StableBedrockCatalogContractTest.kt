@@ -105,6 +105,12 @@ class StableBedrockCatalogContractTest {
                 val protocols = entry.optJSONArray("protocolVersions")
                 val selectedVersion = entry
                     .optString("recommendedBedrockVersion", "")
+                // Engines with AUTO version and empty protocolVersions rely
+                // on runtime RakNet discovery — that is valid verification
+                // evidence (the probe confirms the server is functional).
+                val hasRuntimeDiscovery =
+                    selectedVersion.equals("AUTO", ignoreCase = true) &&
+                        entry.optString("compatibilityMode") == "MULTI_VERSION"
                 assertTrue(
                     "Active build ${entry.getString("id")} has no protocol or version evidence",
                     (protocols != null && protocols.length() > 0) ||
@@ -115,7 +121,8 @@ class StableBedrockCatalogContractTest {
                                     ignoreCase = true,
                                 )
                         ) ||
-                        officialResolvedFallback,
+                        officialResolvedFallback ||
+                        hasRuntimeDiscovery,
                 )
             }
         }

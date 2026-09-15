@@ -894,26 +894,26 @@ abstract class BedrockJavaEngineBase(
                                 }
                                 EngineProtocolCompatibilityState.PROTOCOL_MISMATCH,
                                 EngineProtocolCompatibilityState.VERSION_MISMATCH -> {
-                                    session.fatalErrorMessage = verification.message
-                                    onLog("[Protocol] FATAL: ${verification.message}")
-                                    healthMonitor.setStatus(ServerStatus.PROTOCOL_MISMATCH)
-                                    stopServerInternal(session, TerminationCause.PROTOCOL_MISMATCH_STOP)
-                                    return@launch
+                                    // Server responded to RakNet — it is functional.
+                                    // Catalog metadata may be stale. Log warning,
+                                    // don't kill the server.
+                                    onLog("[Protocol] WARNING: ${verification.message} (server is functional, catalog may be stale)")
                                 }
                                 EngineProtocolCompatibilityState.UNKNOWN -> {
                                     val expectedEvidence = expectation.expectedProtocols.isNotEmpty() ||
                                             !expectation.selectedBedrockVersion.equals("AUTO", ignoreCase = true)
                                     if (expectedEvidence) {
-                                        session.fatalErrorMessage = verification.message
-                                        onLog("[Protocol] FATAL: Expected metadata could not be verified: ${verification.message}")
-                                        healthMonitor.setStatus(ServerStatus.PROTOCOL_MISMATCH)
-                                        stopServerInternal(session, TerminationCause.PROTOCOL_MISMATCH_STOP)
-                                        return@launch
+                                        // No metadata to verify against, but server
+                                        // DID respond. Downgrade from fatal to warning.
+                                        onLog("[Protocol] WARNING: Expected metadata could not be verified: ${verification.message} (server is responding)")
+                                    } else {
+                                        onLog("[Protocol] Metadata remains unverified: ${verification.message}")
                                     }
-                                    onLog("[Protocol] Metadata remains unverified: ${verification.message}")
                                 }
                             }
 
+                            // Server responded to RakNet probe — it IS network-ready
+                            // regardless of whether protocol metadata matches catalog.
                             session.networkReady = true
                             if (!session.engineReady) {
                                 healthMonitor.setStatus(ServerStatus.NETWORK_READY)

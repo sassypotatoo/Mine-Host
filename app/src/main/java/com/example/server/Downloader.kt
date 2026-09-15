@@ -573,8 +573,18 @@ object Downloader {
             val paperBuildRes = com.example.javaedition.PaperResolver.resolveLatestStableBuild(mcVer)
             if (paperBuildRes.isFailure) {
                 val err = paperBuildRes.exceptionOrNull()?.message ?: "Paper API resolution failed"
-                onProgress("ERROR: Paper resolution failed: $err")
-                return ServerJarDownloadResult.Failure("Paper API build resolution failed: $err")
+                // Attempt to list available versions for a more helpful error message
+                val availableHint = try {
+                    val versions = com.example.javaedition.PaperResolver.getAvailableVersions().getOrNull()
+                    if (!versions.isNullOrEmpty()) {
+                        val closest = versions.take(5).joinToString(", ")
+                        " Available MineHost-supported versions: $closest"
+                    } else {
+                        ""
+                    }
+                } catch (_: Exception) { "" }
+                onProgress("ERROR: Paper resolution failed: $err$availableHint")
+                return ServerJarDownloadResult.Failure("Paper API build resolution failed for Minecraft $mcVer: $err$availableHint")
             }
 
             val buildInfo = paperBuildRes.getOrThrow()
@@ -1009,9 +1019,9 @@ object Downloader {
         }
 
         destination.delete()
-        onProgress("ERROR: All server artifact candidates failed validation.")
+        onProgress("ERROR: All server artifact candidates failed for ${version.displayName} (id=${version.id}). Checked ${candidateUrls.size} candidate URL(s).")
         return ServerJarDownloadResult.Failure(
-            "Engine download or validation failed"
+            "Engine download or validation failed for ${version.displayName}: all ${candidateUrls.size} candidate URLs failed"
         )
     }
 
