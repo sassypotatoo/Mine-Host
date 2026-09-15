@@ -46,6 +46,11 @@ b) Plan the approach
    - Review capabilities identified in Step 3 for this objective
    - Decide: Skill? MCP? Sub-agent? None? (or proceed with what was planned)
 
+⚠️ PRE-IMPLEMENTATION GATE — Before writing ANY code, answer:
+   "Which capabilities (if any) would materially improve this task?"
+   Options: code-review, code-simplifier, claude-security, context7, sub-agent, none.
+   If you skip this check, you MUST go back and answer it before proceeding.
+
 c) Implement the objective
    - Make code changes
    - Run local tests if available
@@ -58,6 +63,12 @@ d) Commit when ready
    - Get SHA: git rev-parse HEAD
    - Push: ./tools/push-gated.sh
    - If fails: diagnose and fix
+
+⚠️ POST-PUSH CHECKLIST — After EVERY push, before moving on:
+   1. Run: ./tools/ci-watch.sh <sha> (MUST verify CI result — never skip)
+   2. If FAIL → diagnose and fix (go to Step 5)
+   3. If PASS → mark objective complete
+   Skipping ci-watch.sh means you CANNOT claim verification. Report UNVERIFIED if you didn't run it.
 
 e) Mark objective IN_PROGRESS
    - Call: tools/bm-state.sh objective-start <objective-id>

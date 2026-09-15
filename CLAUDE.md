@@ -10,6 +10,7 @@ No fake state, no PRoot/Termux dependency in the product, protected systems stay
 - This Termux device has NO JDK/Gradle/adb: local compile/test/device gates are UNAVAILABLE — say so, rely on CI, keep Runtime Verification `UNVERIFIED` without real device evidence.
 - Known baseline CI failure: gradle-wrapper.jar validation at "Set up Gradle". Autonomous repair is authorized once CI evidence confirms root cause; retry limits still hard.
 - Completed successful tasks are committed and pushed through `tools/push-gated.sh` automatically — do not ask the operator for routine confirmation (standing instruction 2026-08-25).
+- **Beast Mode hard gates**: In Beast Mode: (1) always run `ci-watch.sh` after every push before reporting completion — skipping it means UNVERIFIED, never claim verification without it; (2) always consider capabilities (skills, MCPs, sub-agents, plugins) before writing code — if none apply, say so explicitly.
 
 ## Environment notes
 
