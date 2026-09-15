@@ -7,8 +7,8 @@
         {
             "id": "1789504091718631939",
             "description": "Fix Cloudburst catalog gap (min/max range fields)",
-            "status": "PENDING",
-            "attempts": 0,
+            "status": "IN_PROGRESS",
+            "attempts": 1,
             "lastCommit": "",
             "ciStatus": "",
             "ciUrl": "",
@@ -17,8 +17,8 @@
         {
             "id": "1789504092515936554",
             "description": "Reorder WizardStep: VERSION before ENGINE",
-            "status": "PENDING",
-            "attempts": 0,
+            "status": "IN_PROGRESS",
+            "attempts": 1,
             "lastCommit": "",
             "ciStatus": "",
             "ciUrl": "",
@@ -65,7 +65,7 @@
             "failureReason": ""
         }
     ],
-    "currentObjectiveId": null,
+    "currentObjectiveId": "1789504092515936554",
     "phase": "IMPLEMENT",
     "workflowStatus": "ACTIVE",
     "gitBranch": "main",
@@ -73,5 +73,5 @@
     "lastCommitSha": "36a6fb4",
     "knownIssues": [],
     "blockers": [],
-    "timestamp": "2026-09-15T20:28:15.383081Z"
+    "timestamp": "2026-09-15T21:45:25.093684Z"
 }

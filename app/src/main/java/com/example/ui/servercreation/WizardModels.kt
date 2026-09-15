@@ -10,8 +10,8 @@ import java.security.SecureRandom
 enum class WizardStep(val title: String) {
     BASICS("Basics"),
     EDITION("Edition"),
-    VERSION("Version"),
     ENGINE("Engine"),
+    VERSION("Version"),
     WORLD("World"),
     PERFORMANCE("Performance"),
     NETWORK("Network"),

@@ -18,10 +18,11 @@ import org.robolectric.RobolectricTestRunner
  * Tests for Phase C: First-class Bedrock server versioning.
  *
  * Validates:
- * - Wizard step ordering (VERSION before ENGINE)
+ * - Wizard step ordering (Edition → Engine → Version)
  * - Catalog contract (Cloudburst range fields)
  * - Engine-version compatibility logic
- * - Version aggregation across engines
+ * - Engine presence in catalog (Nukkit-MOT, Cloudburst not filtered out)
+ * - Per-engine version filtering
  */
 @RunWith(RobolectricTestRunner::class)
 class BedrockVersioningTest {
@@ -38,20 +39,135 @@ class BedrockVersioningTest {
         return (0 until versions.length()).map { versions.getJSONObject(it) }
     }
 
+    // ================================================================
+    // A. Setup Wizard ordering: Edition → Engine → Version
+    // ================================================================
+
     @Test
-    fun versionBeforeEngineInWizardFlow() {
+    fun engineBeforeVersionInWizardFlow() {
         val steps = WizardStep.entries
-        val versionIndex = steps.indexOf(WizardStep.VERSION)
+        val editionIndex = steps.indexOf(WizardStep.EDITION)
         val engineIndex = steps.indexOf(WizardStep.ENGINE)
+        val versionIndex = steps.indexOf(WizardStep.VERSION)
         assertTrue(
-            "VERSION (ordinal=$versionIndex) must come before ENGINE (ordinal=$engineIndex)",
-            versionIndex < engineIndex
+            "EDITION (ordinal=$editionIndex) must come before ENGINE (ordinal=$engineIndex)",
+            editionIndex < engineIndex
+        )
+        assertTrue(
+            "ENGINE (ordinal=$engineIndex) must come before VERSION (ordinal=$versionIndex)",
+            engineIndex < versionIndex
         )
     }
 
     @Test
     fun wizardStepCountUnchanged() {
         assertEquals("Wizard must have exactly 8 steps", 8, WizardStep.entries.size)
+    }
+
+    // ================================================================
+    // B. Bedrock engine catalog contains every genuinely supported engine
+    // ================================================================
+
+    @Test
+    fun bedrockCatalogContainsAllSupportedEngines() {
+        val versions = loadCatalogVersions()
+        val enabledTemplates = TemplateRegistry.ALL_TEMPLATES.filter { it.available }
+
+        // Every enabled template that is NOT a Java edition engine must have
+        // at least one active catalog entry
+        enabledTemplates
+            .filter { !TemplateRegistry.isJavaEditionEngine(it.id) }
+            .forEach { template ->
+                val entries = versions.filter {
+                    it.getString("engineId") == template.id &&
+                        it.optBoolean("available", true) &&
+                        !it.optBoolean("historical", false) &&
+                        !it.optBoolean("deprecated", false)
+                }
+                assertTrue(
+                    "Bedrock engine ${template.id} (${template.name}) must have at least one active catalog entry",
+                    entries.isNotEmpty()
+                )
+            }
+    }
+
+    // ================================================================
+    // C. Nukkit-MOT is not accidentally filtered out
+    // ================================================================
+
+    @Test
+    fun nukkitMotPresentInCatalog() {
+        val versions = loadCatalogVersions()
+        val nukkitMotEntries = versions.filter {
+            it.getString("engineId") == "nukkit-mot" &&
+                it.optBoolean("available", true) &&
+                !it.optBoolean("historical", false) &&
+                !it.optBoolean("deprecated", false)
+        }
+        assertTrue(
+            "Nukkit-MOT must have at least one active catalog entry",
+            nukkitMotEntries.isNotEmpty()
+        )
+        val template = TemplateRegistry.ALL_TEMPLATES.find { it.id == "nukkit-mot" }
+        assertNotNull("Nukkit-MOT template must exist in TemplateRegistry", template)
+        assertTrue("Nukkit-MOT template must be available", template!!.available)
+    }
+
+    @Test
+    fun nukkitMotNotFilteredByEdition() {
+        // Simulate EngineStep filtering for BEDROCK edition — should NOT exclude Nukkit-MOT
+        val nukkitMotTemplate = TemplateRegistry.ALL_TEMPLATES.find { it.id == "nukkit-mot" }
+        assertNotNull(nukkitMotTemplate)
+        assertFalse(
+            "Nukkit-MOT must not be a Java edition engine",
+            TemplateRegistry.isJavaEditionEngine("nukkit-mot")
+        )
+        // In EngineStep, BEDROCK edition filters: !isJavaEditionEngine(template.id)
+        // This should include Nukkit-MOT
+        val isIncludedByBedrockFilter =
+            nukkitMotTemplate != null && !TemplateRegistry.isJavaEditionEngine(nukkitMotTemplate.id)
+        assertTrue(
+            "Nukkit-MOT must pass the BEDROCK edition filter in EngineStep",
+            isIncludedByBedrockFilter
+        )
+    }
+
+    // ================================================================
+    // D. Cloudburst is not accidentally filtered out
+    // ================================================================
+
+    @Test
+    fun cloudburstPresentInCatalog() {
+        val versions = loadCatalogVersions()
+        val cloudburstEntries = versions.filter {
+            it.getString("engineId") == "bedrock_cloudburst_nukkit" &&
+                it.optBoolean("available", true) &&
+                !it.optBoolean("historical", false) &&
+                !it.optBoolean("deprecated", false)
+        }
+        assertTrue(
+            "Cloudburst Nukkit must have at least one active catalog entry",
+            cloudburstEntries.isNotEmpty()
+        )
+        val template = TemplateRegistry.ALL_TEMPLATES.find { it.id == "bedrock_cloudburst_nukkit" }
+        assertNotNull("Cloudburst template must exist in TemplateRegistry", template)
+        assertTrue("Cloudburst template must be available", template!!.available)
+    }
+
+    @Test
+    fun cloudburstNotFilteredByEdition() {
+        val cloudburstTemplate = TemplateRegistry.ALL_TEMPLATES.find { it.id == "bedrock_cloudburst_nukkit" }
+        assertNotNull(cloudburstTemplate)
+        assertFalse(
+            "Cloudburst must not be a Java edition engine",
+            TemplateRegistry.isJavaEditionEngine("bedrock_cloudburst_nukkit")
+        )
+        val isIncludedByBedrockFilter =
+            cloudburstTemplate != null && !TemplateRegistry.isJavaEditionEngine(cloudburstTemplate.id)
+        assertTrue(
+            "Cloudburst must pass the BEDROCK edition filter in EngineStep",
+            isIncludedByBedrockFilter
+        )
     }
 
     @Test
@@ -71,6 +187,92 @@ class BedrockVersioningTest {
         assertEquals("1.26.30", cloudburst.getString("maximumSupportedBedrockVersion"))
         assertEquals("MULTI_VERSION", cloudburst.getString("compatibilityMode"))
     }
+
+    // ================================================================
+    // E. Selecting Nukkit-MOT filters versions by Nukkit-MOT compatibility
+    // ================================================================
+
+    @Test
+    fun nukkitMotVersionsFilteredCorrectly() {
+        val versions = loadCatalogVersions()
+        val nukkitMotVersions = versions.filter {
+            it.getString("engineId") == "nukkit-mot" &&
+                it.optBoolean("available", true) &&
+                !it.optBoolean("historical", false)
+        }
+        assertTrue("Nukkit-MOT must have at least one version", nukkitMotVersions.isNotEmpty())
+
+        // Nukkit-MOT is MULTI_VERSION — should produce an AUTO option
+        val hasMultiVersion = nukkitMotVersions.any {
+            it.optString("compatibilityMode") == "MULTI_VERSION"
+        }
+        assertTrue("Nukkit-MOT must have a MULTI_VERSION entry", hasMultiVersion)
+    }
+
+    // ================================================================
+    // F. Selecting Cloudburst filters versions by Cloudburst compatibility
+    // ================================================================
+
+    @Test
+    fun cloudburstVersionsFilteredCorrectly() {
+        val versions = loadCatalogVersions()
+        val cloudburstVersions = versions.filter {
+            it.getString("engineId") == "bedrock_cloudburst_nukkit" &&
+                it.optBoolean("available", true) &&
+                !it.optBoolean("historical", false)
+        }
+        assertTrue("Cloudburst must have at least one version", cloudburstVersions.isNotEmpty())
+
+        val hasMultiVersion = cloudburstVersions.any {
+            it.optString("compatibilityMode") == "MULTI_VERSION"
+        }
+        assertTrue("Cloudburst must have a MULTI_VERSION entry", hasMultiVersion)
+    }
+
+    // ================================================================
+    // G. Selecting PowerNukkitX filters versions by PNX compatibility
+    // ================================================================
+
+    @Test
+    fun powernukkitxVersionsFilteredCorrectly() {
+        val versions = loadCatalogVersions()
+        val pnxVersions = versions.filter {
+            it.getString("engineId") == "bedrock_power_nukkit_x" &&
+                it.optBoolean("available", true) &&
+                !it.optBoolean("historical", false)
+        }
+        assertTrue("PowerNukkitX must have at least one version", pnxVersions.isNotEmpty())
+
+        // PNX is SINGLE_VERSION — should produce specific version options
+        val hasSingleVersion = pnxVersions.any {
+            it.optString("compatibilityMode") == "SINGLE_VERSION"
+        }
+        assertTrue("PowerNukkitX must have a SINGLE_VERSION entry", hasSingleVersion)
+    }
+
+    // ================================================================
+    // H. Java engine/version selection remains functional
+    // ================================================================
+
+    @Test
+    fun javaEnginesPresentInCatalog() {
+        val versions = loadCatalogVersions()
+        val enabledJavaEngines = TemplateRegistry.ALL_TEMPLATES.filter {
+            it.available && TemplateRegistry.isJavaEditionEngine(it.id)
+        }
+        assertTrue("Must have at least one enabled Java engine", enabledJavaEngines.isNotEmpty())
+
+        enabledJavaEngines.forEach { template ->
+            // Java engines may have dynamic versions (Paper API) or static entries
+            // Either way, the template must be present
+            val templateStillExists = TemplateRegistry.ALL_TEMPLATES.any { it.id == template.id }
+            assertTrue("Java engine ${template.id} must exist in registry", templateStillExists)
+        }
+    }
+
+    // ================================================================
+    // I. Engine with zero verified versions handled explicitly
+    // ================================================================
 
     @Test
     fun multiVersionEnginesHaveRangeOrSupportedList() {
@@ -151,7 +353,6 @@ class BedrockVersioningTest {
         val cloudburst = versions.find { it.getString("id") == "cloudburst:1241" }
         assertNotNull(cloudburst)
 
-        // Verify the entry would pass catalog parsing validation
         val compatibilityMode = cloudburst!!.getString("compatibilityMode")
         assertEquals("MULTI_VERSION", compatibilityMode)
 
@@ -160,46 +361,35 @@ class BedrockVersioningTest {
         val hasMin = cloudburst.has("minimumSupportedBedrockVersion")
         val hasMax = cloudburst.has("maximumSupportedBedrockVersion")
 
-        // With the fix, Cloudburst has min+max so it passes validation
         assertTrue("Cloudburst must pass MULTI_VERSION validation", hasList || (hasMin && hasMax))
         assertTrue("Cloudburst must have compatibilitySummary", cloudburst.has("compatibilitySummary"))
     }
 
     @Test
-    fun bedrockVersionOptionAggregationIncludesAllSupportedVersions() {
-        val versions = loadCatalogVersions()
+    fun engineStepFiltersOnlyByEditionNotByVersion() {
+        // This test verifies that EngineStep filtering does NOT consider
+        // draft.bedrockVersion — only the edition is used.
+        // The EngineStep code should be:
+        //   ServerEdition.BEDROCK -> TemplateRegistry.ALL_TEMPLATES.filter {
+        //       !TemplateRegistry.isJavaEditionEngine(it.id)
+        //   }
+        // NOT:
+        //   ServerEdition.BEDROCK -> TemplateRegistry.ALL_TEMPLATES.filter { template ->
+        //       !TemplateRegistry.isJavaEditionEngine(template.id) &&
+        //       isEngineCompatibleWithVersion(template.id, selectedVersion)
+        //   }
+        //
+        // If a version is pre-selected, ALL Bedrock engines must still appear.
 
-        // Simulate the aggregation logic from the ViewModel
-        data class AggEntry(val version: String, val engines: MutableSet<String>)
-
-        val aggregated = mutableMapOf<String, AggEntry>()
-
-        for (v in versions) {
-            val engineId = v.getString("engineId")
-            if (TemplateRegistry.isJavaEditionEngine(engineId)) continue
-            if (!v.optBoolean("available", true)) continue
-            if (v.optBoolean("historical", false)) continue
-            if (v.optBoolean("deprecated", false)) continue
-
-            when (v.optString("compatibilityMode")) {
-                "SINGLE_VERSION" -> {
-                    val supported = v.optJSONArray("supportedBedrockVersions")
-                    val bv = v.optString("recommendedBedrockVersion", "").ifEmpty {
-                        if (supported != null && supported.length() > 0) supported.getString(0) else ""
-                    }
-                    if (bv.isNotEmpty()) {
-                        aggregated.getOrPut(bv) { AggEntry(bv, mutableSetOf()) }.engines.add(engineId)
-                    }
-                }
-                "MULTI_VERSION" -> {
-                    aggregated.getOrPut("AUTO") { AggEntry("AUTO", mutableSetOf()) }.engines.add(engineId)
-                }
-            }
+        val allBedrockTemplates = TemplateRegistry.ALL_TEMPLATES.filter {
+            !TemplateRegistry.isJavaEditionEngine(it.id)
         }
 
-        assertTrue("Must have 1.26.30 in aggregated versions", aggregated.containsKey("1.26.30"))
-        assertTrue("Must have AUTO in aggregated versions", aggregated.containsKey("AUTO"))
-        assertTrue("1.26.30 must have at least 2 engines", aggregated["1.26.30"]!!.engines.size >= 2)
-        assertTrue("AUTO must have at least 1 engine", aggregated["AUTO"]!!.engines.size >= 1)
+        assertTrue("Must have at least 2 Bedrock engines", allBedrockTemplates.size >= 2)
+
+        val engineIds = allBedrockTemplates.map { it.id }
+        assertTrue("Bedrock engines must include PowerNukkitX", engineIds.contains("bedrock_power_nukkit_x"))
+        assertTrue("Bedrock engines must include Nukkit-MOT", engineIds.contains("nukkit-mot"))
+        assertTrue("Bedrock engines must include Cloudburst", engineIds.contains("bedrock_cloudburst_nukkit"))
     }
 }

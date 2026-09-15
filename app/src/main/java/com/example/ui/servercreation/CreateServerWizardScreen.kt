@@ -163,7 +163,6 @@ fun CreateServerWizardScreen(
                         WizardStep.ENGINE -> EngineStep(
                             draft = draft,
                             isEngineAvailable = { availableEngineIds.contains(it) },
-                            isEngineCompatibleWithVersion = wizardViewModel::isEngineCompatibleWithVersion,
                             requiresManualVerification = { manualVerificationEngineIds.contains(it) },
                             onEngineSelected = wizardViewModel::selectEngine
                         )
@@ -174,7 +173,7 @@ fun CreateServerWizardScreen(
                                 bedrockVersions = bedrockVersionOptions,
                                 dynamicVersionState = dynamicVersionState,
                                 onRetryPaperFetch = wizardViewModel::retryPaperFetch,
-                                onBedrockVersionSelected = wizardViewModel::selectBedrockVersionOnly
+                                onBedrockVersionSelected = wizardViewModel::selectBedrockVersion
                             )
                         }
                         WizardStep.WORLD -> WorldStep(draft, wizardViewModel::setDraft)

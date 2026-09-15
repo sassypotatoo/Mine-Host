@@ -4,7 +4,6 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -20,20 +19,16 @@ import com.example.ui.servercreation.components.WizardInfoBanner
 fun EngineStep(
     draft: CreateServerDraft,
     isEngineAvailable: (String) -> Boolean,
-    isEngineCompatibleWithVersion: (String, String) -> Boolean = { _, _ -> true },
     requiresManualVerification: (String) -> Boolean,
     onEngineSelected: (com.example.server.template.ServerTemplate) -> Unit
 ) {
-    val selectedVersion = draft.bedrockVersion
-
-    // Filter templates based on selected edition and version compatibility
+    // Filter templates based on selected edition
     val templates = when (draft.edition) {
         ServerEdition.JAVA -> TemplateRegistry.ALL_TEMPLATES.filter {
             TemplateRegistry.isJavaEditionEngine(it.id)
         }
-        ServerEdition.BEDROCK -> TemplateRegistry.ALL_TEMPLATES.filter { template ->
-            !TemplateRegistry.isJavaEditionEngine(template.id) &&
-            (selectedVersion.isNullOrBlank() || isEngineCompatibleWithVersion(template.id, selectedVersion))
+        ServerEdition.BEDROCK -> TemplateRegistry.ALL_TEMPLATES.filter {
+            !TemplateRegistry.isJavaEditionEngine(it.id)
         }
         else -> TemplateRegistry.ALL_TEMPLATES
     }
@@ -49,11 +44,7 @@ fun EngineStep(
                 color = WizardTheme.PrimaryText
             )
             Text(
-                if (selectedVersion != null && draft.edition == ServerEdition.BEDROCK) {
-                    "Select an engine that supports Bedrock $selectedVersion."
-                } else {
-                    "Select the engine software that will run your server."
-                },
+                "Select the engine software that will run your server.",
                 style = MaterialTheme.typography.bodySmall,
                 color = WizardTheme.SecondaryText
             )
@@ -84,19 +75,6 @@ fun EngineStep(
                     )
                 }
             )
-        }
-
-        if (templates.isEmpty()) {
-            Box(
-                modifier = Modifier.fillMaxWidth().height(100.dp).padding(16.dp),
-                contentAlignment = Alignment.Center
-            ) {
-                Text(
-                    "No compatible engines found for the selected version.",
-                    color = WizardTheme.SecondaryText,
-                    style = MaterialTheme.typography.bodySmall
-                )
-            }
         }
 
         WizardInfoBanner(

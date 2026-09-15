@@ -299,7 +299,7 @@ class CreateServerWizardViewModel(application: Application) : AndroidViewModel(a
     private var paperVersionLoadJob: Job? = null
 
     fun loadPaperVersions() {
-        if (_draft.value.edition != ServerEdition.JAVA) return
+        if (_draft.value.engine?.id != "java_paper") return
 
         paperVersionLoadJob?.let { it.cancel() }
         paperVersionLoadJob = viewModelScope.launch {
@@ -308,12 +308,12 @@ class CreateServerWizardViewModel(application: Application) : AndroidViewModel(a
             val paperMetaId = paperMeta?.id ?: "java_paper:api"
             val res = PaperResolver.getAvailableVersions()
 
-            if (_draft.value.edition != ServerEdition.JAVA) {
+            if (_draft.value.engine?.id != "java_paper") {
                 return@launch
             }
 
             if (res.isSuccess && res.getOrNull()?.isNotEmpty() == true) {
-                if (_draft.value.edition != ServerEdition.JAVA) {
+                if (_draft.value.engine?.id != "java_paper") {
                     return@launch
                 }
                 val versions = res.getOrThrow()
@@ -333,7 +333,7 @@ class CreateServerWizardViewModel(application: Application) : AndroidViewModel(a
                 _dynamicVersionState.value = DynamicVersionState.LOADED(mappedVersions)
 
                 val currentVer = _draft.value.bedrockVersion
-                if (_draft.value.edition == ServerEdition.JAVA) {
+                if (_draft.value.engine?.id == "java_paper") {
                     if (currentVer.isNullOrBlank() || currentVer.equals("AUTO", ignoreCase = true) || !versions.contains(currentVer)) {
                         updateDraft { it.copy(
                             bedrockVersion = versions.first(),
@@ -342,7 +342,7 @@ class CreateServerWizardViewModel(application: Application) : AndroidViewModel(a
                     }
                 }
             } else {
-                if (_draft.value.edition != ServerEdition.JAVA) {
+                if (_draft.value.engine?.id != "java_paper") {
                     return@launch
                 }
                 val errorMsg = res.exceptionOrNull()?.message ?: "Failed to fetch PaperMC versions"
@@ -357,11 +357,11 @@ class CreateServerWizardViewModel(application: Application) : AndroidViewModel(a
     }
 
     init {
-        // Dynamic version loader for Paper API — load when Java edition is selected
-        draft.map { it.edition }
+        // Dynamic version loader for Paper API
+        draft.map { it.engine?.id }
             .distinctUntilChanged()
-            .onEach { edition ->
-                if (edition == ServerEdition.JAVA) {
+            .onEach { engineId ->
+                if (engineId == "java_paper") {
                     loadPaperVersions()
                 } else {
                     paperVersionLoadJob?.let { it.cancel() }
@@ -413,7 +413,7 @@ class CreateServerWizardViewModel(application: Application) : AndroidViewModel(a
     }
 
     fun retryPaperFetch() {
-        if (_draft.value.edition == ServerEdition.JAVA) {
+        if (_draft.value.engine?.id == "java_paper") {
             loadPaperVersions()
         }
     }
