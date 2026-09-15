@@ -15,3 +15,9 @@ No fake state, no PRoot/Termux dependency in the product, protected systems stay
 
 - ripgrep is unavailable on arm64-android: Glob/Grep tools error here — use Bash `grep`, `find`, or Explore agents.
 - `jq` missing: use `gh ... --jq` or python3.
+
+## Beast Mode
+
+State file: `.claude/beastmode_state.json` — read on every session start.
+If `beastModeEnabled` is true: run `./tools/bm-state.sh status`, then continue from current objective.
+Toggle: `/minehost-beastmode`
