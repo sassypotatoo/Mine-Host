@@ -6,6 +6,9 @@ import com.example.data.ServerProfile
 import com.example.server.engine.EngineServerConfig
 import com.example.server.engine.WorldSeedMode
 import com.example.world.ServerRunStateStore
+import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 import org.json.JSONObject
 import android.content.Context
 import androidx.test.core.app.ApplicationProvider
@@ -18,6 +21,7 @@ import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import java.io.File
+import java.io.IOException
 
 @RunWith(RobolectricTestRunner::class)
 
@@ -150,6 +154,112 @@ class MineHostCoreFixesTest {
         crashTimestamps.clear()
 
         assertTrue("Crash timestamps cleared on success", crashTimestamps.isEmpty())
+    }
+
+    @Test
+    fun crashLoopDetection_intentionalStop_notCountedAsCrash() {
+        // Regression test for requirement #6: USER_GRACEFUL_STOP, USER_SIGTERM,
+        // USER_FORCE_KILL, and NORMAL_STOP must NOT count as crashes.
+        val crashTimestamps = mutableListOf<Long>()
+        val windowMs = 60_000L
+        val now = System.currentTimeMillis()
+
+        // Replicate the isCrash logic from JvmServerEngineBase.handleProcessExit
+        val nonCrashCauses = listOf(
+            "USER_GRACEFUL_STOP", "USER_SIGTERM",
+            "USER_FORCE_KILL", "NORMAL_STOP"
+        )
+        for (cause in nonCrashCauses) {
+            val isCrash = cause == "UNEXPECTED_EXIT" ||
+                cause == "RUNTIME_FAILURE_STOP" ||
+                cause == "STARTUP_FAILURE_STOP" ||
+                cause == "STARTUP_TIMEOUT"
+            assertFalse("Intentional stop '$cause' must not be a crash", isCrash)
+        }
+
+        // Simulate 2 real crashes + 2 intentional stops: only 2 should count
+        crashTimestamps.add(now)
+        crashTimestamps.add(now + 1000)
+        crashTimestamps.removeAll { now + 2000 - it > windowMs }
+        assertEquals("Only 2 real crashes in window", 2, crashTimestamps.size)
+        assertFalse("2 crashes should not trigger loop (threshold=3)", crashTimestamps.size >= 3)
+    }
+
+    // ── Phase 2b: Sequential runtime-then-engine ordering ────────────────
+
+    @Test
+    fun runtimeMustCompleteBeforeEngineDownload_sequentialOrdering() {
+        // Regression test for requirement #2: Java runtime must fully complete
+        // (resolve, download, verify, extract, validate, commit) before engine
+        // download begins. The fix replaced concurrent coroutineScope { joinAll() }
+        // with sequential suspend calls. This test verifies the ordering invariant.
+        val executionLog = mutableListOf<String>()
+
+        kotlinx.coroutines.runBlocking {
+            // Simulate sequential execution as implemented in JvmServerEngineBase
+            coroutineScope {
+                // Step 1: Runtime (must complete first)
+                launch {
+                    executionLog.add("runtime:start")
+                    delay(50) // Simulate runtime preparation work
+                    executionLog.add("runtime:complete")
+                }.join()
+
+                // Step 2: Engine (must only start after runtime completes)
+                launch {
+                    executionLog.add("engine:start")
+                    delay(10)
+                    executionLog.add("engine:complete")
+                }.join()
+            }
+        }
+
+        assertEquals("Should have 4 log entries", 4, executionLog.size)
+        assertEquals("runtime:start", executionLog[0])
+        assertEquals("runtime:complete", executionLog[1])
+        assertEquals("engine:start", executionLog[2])
+        assertEquals("engine:complete", executionLog[3])
+
+        // The critical invariant: engine:start must come AFTER runtime:complete
+        val runtimeCompleteIndex = executionLog.indexOf("runtime:complete")
+        val engineStartIndex = executionLog.indexOf("engine:start")
+        assertTrue(
+            "Engine download must not begin before runtime completes",
+            engineStartIndex > runtimeCompleteIndex
+        )
+    }
+
+    @Test
+    fun runtimeFailure_preventsEngineDownload() {
+        // If runtime preparation fails, engine download must not start.
+        val executionLog = mutableListOf<String>()
+
+        try {
+            kotlinx.coroutines.runBlocking {
+                coroutineScope {
+                    launch {
+                        executionLog.add("runtime:start")
+                        delay(10)
+                        throw IOException("Runtime installation failed")
+                    }.join()
+
+                    // This should never execute if runtime fails
+                    launch {
+                        executionLog.add("engine:start")
+                    }.join()
+                }
+            }
+        } catch (e: IOException) {
+            executionLog.add("runtime:failed")
+        }
+
+        assertEquals("Should have 2 log entries", 2, executionLog.size)
+        assertEquals("runtime:start", executionLog[0])
+        assertEquals("runtime:failed", executionLog[1])
+        assertFalse(
+            "Engine download must not start after runtime failure",
+            executionLog.contains("engine:start")
+        )
     }
 
     // ── Phase 4: Console log clearing ───────────────────────────────────

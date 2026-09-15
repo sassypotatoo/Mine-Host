@@ -284,35 +284,31 @@ abstract class JvmServerEngineBase(
                     healthMonitor.setStatus(ServerStatus.DOWNLOADING)
                 }
 
-                // Runtime installation and engine provisioning are independent; run concurrently.
-                var preparedRuntime: RuntimePreparationResult.Ready? = null
-                coroutineScope {
-                    val runtimeJob = launch {
-                        preparedRuntime = when (
-                            val result = JavaRuntimeManager.ensureRuntimeReady(
-                                context,
-                                targetJavaMajor,
-                                onLog
-                            )
-                        ) {
-                            is RuntimePreparationResult.Ready -> result
-                            is RuntimePreparationResult.Unsupported -> throw IOException(result.message)
-                            is RuntimePreparationResult.Failure -> throw IOException(result.message)
-                        }
-                    }
-                    val engineJob = launch {
-                        if (needsDownload) {
-                            provisionVerifiedEngineJar(selectedVer, serverJar, targetJavaMajor)
-                        }
-                    }
-                    listOf(runtimeJob, engineJob).joinAll()
+                // Runtime installation must complete before engine provisioning
+                // begins — the engine JAR is executed by the runtime, so a failed
+                // or cancelled runtime must not be followed by an engine download.
+                // ensureRuntimeReady is suspend and mutex-guarded per Java major,
+                // so sequential await is safe and does not block other profiles.
+                val preparedRuntime = when (
+                    val result = JavaRuntimeManager.ensureRuntimeReady(
+                        context,
+                        targetJavaMajor,
+                        onLog
+                    )
+                ) {
+                    is RuntimePreparationResult.Ready -> result
+                    is RuntimePreparationResult.Unsupported -> throw IOException(result.message)
+                    is RuntimePreparationResult.Failure -> throw IOException(result.message)
                 }
 
-                val runtimeReady = requireNotNull(preparedRuntime)
-                require(runtimeReady.javaMajor == targetJavaMajor) {
-                    "Runtime Java major mismatch: expected $targetJavaMajor, got ${runtimeReady.javaMajor}"
+                if (needsDownload) {
+                    provisionVerifiedEngineJar(selectedVer, serverJar, targetJavaMajor)
                 }
-                onLog("[Runtime] Java ${runtimeReady.javaMajor} ready at ${runtimeReady.runtimeHome.absolutePath}, launcher: ${runtimeReady.launcherFile.absolutePath}")
+
+                require(preparedRuntime.javaMajor == targetJavaMajor) {
+                    "Runtime Java major mismatch: expected $targetJavaMajor, got ${preparedRuntime.javaMajor}"
+                }
+                onLog("[Runtime] Java ${preparedRuntime.javaMajor} ready at ${preparedRuntime.runtimeHome.absolutePath}, launcher: ${preparedRuntime.launcherFile.absolutePath}")
 
                 onApplyEngineConfig()
 
