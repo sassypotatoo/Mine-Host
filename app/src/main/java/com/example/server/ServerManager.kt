@@ -292,9 +292,6 @@ class ServerManager(
         return state.isTrackingAvailable && (now - state.lastEvidenceAt <= STALE_PLAYER_TIMEOUT_MS)
     }
 
-    fun clearLogs(serverId: String) {
-        recentLogs.remove(serverId)?.let { queue -> synchronized(queue) { queue.clear() } }
-    }
 
     suspend fun requestConsistentSave(serverId: String, timeoutMs: Long = 20_000L): Result<Unit> {
         val handle = runtimes[serverId] ?: return Result.success(Unit)
