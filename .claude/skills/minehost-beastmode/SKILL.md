@@ -73,52 +73,86 @@ Beast Mode provides no guidance signals. Claude Code decides autonomously based 
 - Risk level (low → proceed, high → read and plan first)
 - Available evidence (missing → investigate, present → decide)
 
-### Available Capabilities in This Environment
+### Dynamic Capability Discovery and Session Inventory
 
-These capabilities are available in this environment. Decide autonomously which (if any) to use:
+The documented lists of capabilities in this skill are **examples only** and must never be treated as authoritative or exhaustive. The actual Claude Code session is the source of truth for current capability availability.
 
-- **Skills**: superpowers, code-review, remember, code-simplifier, frontend-design, gstack
-- **MCP Servers**: context7, supabase, playwright, chrome-devtools-mcp
-- **Security**: claude-security, security-guidance
-- **This skill**: minehost-beastmode (for workflow knowledge)
+When a work request requires capability consideration, Claude must determine what is actually available right now by using session-level discovery before selecting tools. Newly installed capabilities must automatically become discoverable, and removed or unavailable capabilities must automatically disappear from consideration.
 
-Use tools deliberately based on actual need, not inventory completeness. This list represents what's known to be available — if something else in the session would materially help, use it.
+Typical discovery sources include (when available and permitted):
+- Installed plugin registry (for example `~/.claude/plugins/installed_plugins.json` when accessible)
+- Plugin cache filesystem and skill locations under `~/.claude/plugins/cache/...` and project-level `.claude/skills/`
+- Claude CLI introspection commands (for example `claude plugin list --json`, `claude plugin details <name>`, `claude mcp list`) when the current permission model permits them
+- Any other visible session surface that reflects what is present in the current Claude Code session
+
+If a useful capability does not exist in the current session, Claude must simply continue without it.
+
+### Capability States
+
+Track each candidate capability conceptually with these states:
+
+- **AVAILABLE** = present in the current session right now
+- **DISCOVERED** = surfaced by introspection
+- **RELEVANT** = potentially useful for this task or objective
+- **SELECTED** = chosen for use in this task or objective
+- **INVOKED** = actually used during implementation
+- **UNAVAILABLE** = absent from the current session
+- **FAILED** = attempted and failed
+- **SKIPPED** = considered and intentionally not used
+
+Never conflate:
+- AVAILABLE ≠ USED
+- DOCUMENTED ≠ AVAILABLE
+- RELEVANT ≠ REQUIRED
+- UNAVAILABLE ≠ WORKFLOW FAILURE
+
+### Command-Availability and Graceful Fallback Rules
+
+- If a command is not present or not permitted, treat it as **UNAVAILABLE** for this session.
+- Skip gracefully and continue the workflow with available means.
+- Never repeatedly attempt a nonexistent command in a loop.
+- Never report success or usage for a command that was not actually executed.
+- Never claim a capability was invoked when it was only documented or only formerly installed.
+
+Use tools deliberately based on actual need and actual session presence, not inventory completeness.
 
 ### Capability Categories & When to Consider Them
 
+These categories help frame the decision. The named capabilities are **examples only** and may not all be present in a given session.
+
 #### 1. Large Codebase Analysis & Exploration
 **When**: Understanding complex codebases, tracing execution paths, mapping architecture.
-**Capabilities**: superpowers (brainstorming, systematic-debugging, subagent-driven-development), gstack
-**Example decision**: "This Android app modifies the JVM launcher—I need to understand the full call chain before touching it" → superpowers/systematic-debugging
+**Examples from past sessions**: brainstorming, systematic-debugging, subagent-driven-development, code exploration helpers
+**Example decision**: "This Android app modifies the JVM launcher—I need to understand the full call chain before touching it" → systematic exploration/debugging capability
 **Consider also when**: The change seems localized but you're not certain of the full impact — a quick scan can confirm scope.
 
 #### 2. Android Development & Build Systems
 **When**: Gradle/Kotlin/Java changes, build config, resource management, Android-specific problems.
-**Capabilities**: context7 (Android/Gradle/Kotlin docs), code-simplifier
-**Example decision**: "Gradle build is failing on a custom task—I need current documentation" → context7
+**Examples from past sessions**: documentation lookup skills/MCPs, simplification helpers
+**Example decision**: "Gradle build is failing on a custom task—I need current documentation" → documentation-focused capability
 **Consider also when**: Kotlin/Java compilation issues where current API docs could prevent trial-and-error.
 
 #### 3. Security Review & Analysis
 **When**: Downloads, binaries, command execution, JNI/native loading, networking, auth, permissions, crypto, user input handling.
-**Capabilities**: claude-security (scan-changes, scan-codebase), security-guidance, code-review with security focus
-**Example decision**: "Adding file extraction and native library loading—this is security-sensitive" → claude-security scan
+**Examples from past sessions**: security scanning skills, security review tools, code-review with security focus
+**Example decision**: "Adding file extraction and native library loading—this is security-sensitive" → security scan capability
 **Consider also when**: Changes touch data flow between components — security reviews can catch issues that aren't obvious from individual file edits.
 
 #### 4. Supabase Development
 **When**: Database schema changes, RLS policies, Supabase client usage, authentication flows.
-**Capabilities**: supabase MCP (schema migration, function execution), context7 (Supabase docs)
-**Example decision**: "Need to update RLS policies to match new auth flow" → supabase MCP
+**Examples from past sessions**: Supabase MCPs, documentation MCPs
+**Example decision**: "Need to update RLS policies to match new auth flow" → Supabase-connected capability
 **Consider also when**: Client-side code interacts with Supabase — the MCP can verify schema alignment.
 
 #### 5. UI/Browser Testing & Automation
 **When**: Frontend changes, user interaction flows, visual testing, cross-browser compatibility.
-**Capabilities**: playwright, chrome-devtools-mcp, frontend-design
-**Example decision**: "Need to verify login flow works on mobile and desktop" → playwright
+**Examples from past sessions**: browser automation tools, design helpers
+**Example decision**: "Need to verify login flow works on mobile and desktop" → browser automation capability
 **Consider also when**: UI changes have behavioral effects that are hard to verify by code review alone.
 
 #### 6. Simple Tasks & Local Edits
 **When**: Trivial file modifications, documentation, simple bug fixes, configuration changes.
-**Capabilities**: Basic file tools (Read/Edit/Write), code-simplifier for clarity
+**Examples from past sessions**: basic file tools, simplification helpers
 **Example decision**: "Update a config file and run tests locally" → just use file tools
 **Consider also when**: The change seems simple but touches critical code — a quick capability check costs little and might prevent a regression.
 

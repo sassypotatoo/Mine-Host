@@ -25,7 +25,25 @@ Three categories:
    - Each 1-2 sentences
    - Independently verifiable via CI
    - Meaningful checkpoint
-4. **Capability consideration**: Before starting implementation, consider whether any available capability (skill, MCP, sub-agent, plugin) would materially improve the quality or efficiency of the planned work. If yes, note which capabilities to use for each objective. Consult SKILL.md "Capability Selection Guidance".
+4. **Dynamic capability discovery**: Before planning implementation, run real session introspection to determine what is actually available right now:
+   - Plugins: `claude plugin list --json` (+ optional per-plugin detail reads)
+   - MCP servers: `claude mcp list` (+ plugin cache filesystem / installed_plugins.json as fallback only when CLI output is unavailable)
+   - Session skills: inspect project-level `.claude/skills/` and any cache-discoverable installed skills for this session
+   - Newly installed capabilities must automatically appear; removed/unavailable ones must automatically disappear
+   - Track conceptual capability states for each candidate:
+     - AVAILABLE = present in session right now
+     - DISCOVERED = surfaced by introspection
+     - RELEVANT = potentially useful for this objective
+     - SELECTED = chosen for this objective
+     - INVOKED = actually used during implementation
+     - UNAVAILABLE = absent from current session
+     - FAILED = attempted and failed
+     - SKIPPED = considered and intentionally not used
+   - Never conflate AVAILABLE != USED, DOCUMENTED != AVAILABLE, RELEVANT != REQUIRED, or UNAVAILABLE != WORKFLOW FAILURE
+   - If a discovery command is unavailable or not permitted, continue with visible session surfaces and skip gracefully
+   - Never repeatedly retry nonexistent commands, and never report usage of a command or capability that was not actually executed
+   - Note which capabilities to use per objective, if any; if none apply, say so explicitly
+   - Consult SKILL.md "Capability Selection Guidance"
 5. Call: tools/bm-state.sh task-start "<branch>" "<task-description>"
 6. For each objective: tools/bm-state.sh objective-add "<description>"
    - Returns objective ID (capture for later)
@@ -48,7 +66,8 @@ b) Plan the approach
 
 ⚠️ PRE-IMPLEMENTATION GATE — Before writing ANY code, answer:
    "Which capabilities (if any) would materially improve this task?"
-   Options: code-review, code-simplifier, claude-security, context7, sub-agent, none.
+   Use dynamic capability discovery from the current session, not a hardcoded list.
+   If none apply, say so explicitly.
    If you skip this check, you MUST go back and answer it before proceeding.
 
 c) Implement the objective

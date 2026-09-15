@@ -13,13 +13,15 @@ Claude Code must pass BOTH gates at the stated points. No exceptions, no shortcu
 "Which capabilities (if any) would materially improve this task?"
 ```
 
-Available options: code-review, code-simplifier, claude-security, context7, sub-agent, superpowers, none.
+Dynamic capability discovery: determine available capabilities from the current Claude Code session, not from a hardcoded inventory.
 
 **Rules:**
-- If a capability applies → use it
+- If a capability applies and is actually available in the current session → use it
 - If none apply → state "Capability check: none needed" explicitly
+- If a candidate capability is unavailable, skip gracefully and continue
 - If you skip this check → go back and answer it before proceeding
 - Do NOT default to basic file tools without first asking "would something else help?"
+- Do NOT use a capability merely because it appears in documentation or examples
 
 ---
 

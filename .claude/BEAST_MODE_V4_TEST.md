@@ -97,6 +97,58 @@ Log method entry, context creation, and layout inflation. Verify no compilation 
 
 ## STEPS 1-10: Execution Flow
 
+### DYNAMIC CAPABILITY DISCOVERY — Regression Validation (12 Scenarios)
+
+The Beast Mode workflow must validate dynamic capability discovery and graceful fallback with the following coverage. Each scenario lists the required acceptance check.
+
+1. **Existing capability**
+   - Requirement: A capability present in the current session may be selected and invoked.
+   - Acceptance: When a selected capability is present and permitted, report it as **INVOKED** only if it was actually used.
+
+2. **Newly-added capability**
+   - Requirement: A capability installed after session start must become discoverable before implementation when checked.
+   - Acceptance: Discovery reflects newly installed capabilities without manual edits to capability inventories.
+
+3. **Removed capability**
+   - Requirement: A capability removed from the environment must not remain listed as available.
+   - Acceptance: Removed capability is recorded as **UNAVAILABLE** and is not selected for implementation.
+
+4. **Missing capability**
+   - Requirement: If a referenced capability is missing from the session, the workflow continues.
+   - Acceptance: Task proceeds without that capability and does not fail solely due to its absence.
+
+5. **Skipped capability**
+   - Requirement: A capability may be considered and intentionally not used.
+   - Acceptance: Capability is recorded as **SKIPPED**, not as used or invoked.
+
+6. **AVAILABLE vs USED**
+   - Requirement: Availability must not be conflated with usage.
+   - Acceptance: A capability can be **AVAILABLE** without becoming **SELECTED** or **INVOKED**.
+
+7. **Failed invocation not reported successful**
+   - Requirement: If a command or capability fails, the workflow must not claim success.
+   - Acceptance: Failure is recorded as **FAILED** and not as verified success.
+
+8. **No capability used merely because it is documented**
+   - Requirement: Documentation must not drive selection.
+   - Acceptance: No capability is invoked solely because it appears in examples or prior inventory text.
+
+9. **Works with zero useful capabilities**
+   - Requirement: Beast Mode must remain functional if no candidate capability helps the current task.
+   - Acceptance: Workflow completes using only basic tools when no capability is materially useful.
+
+10. **QUESTION/DISCUSSION does not trigger implementation**
+    - Requirement: Clarifying questions or discussion must not start implementation.
+    - Acceptance: Claude stays in classification/question mode until a real work request is present.
+
+11. **Persistent toggle remains persistent**
+    - Requirement: `/minehost-beastmode` and `/minehost-autonomous` remain persistent toggles.
+    - Acceptance: Toggle state survives across subsequent prompts until explicitly changed.
+
+12. **No unauthorized permission weakening**
+    - Requirement: Dynamic discovery must not introduce `--dangerously-skip-permissions`, blind `bypassPermissions`, or automatic approval of risky actions.
+    - Acceptance: Existing permission model remains intact; discovery is observational only.
+
 ### STEP 1: Activate Beast Mode
 
 **User action:**
