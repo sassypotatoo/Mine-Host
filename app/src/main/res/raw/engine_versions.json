@@ -76,24 +76,26 @@
       "visibleInUi": false
     },
     {
-      "id": "pm1e:4437",
+      "id": "pm1e:4508",
       "engineId": "bedrock_nukkit",
-      "versionName": "4437",
-      "displayName": "Nukkit PM1E Build 4437",
+      "versionName": "4508",
+      "displayName": "Nukkit PM1E Build 4508",
       "channel": "STABLE",
-      "downloadUrl": "https://github.com/PetteriM1/NukkitPetteriM1Edition/releases/download/4437/Nukkit-PM1E.jar",
+      "downloadUrl": "https://github.com/PetteriM1/NukkitPetteriM1Edition/releases/download/4508/Nukkit-PM1E.jar",
       "jarFileName": "nukkit-pm1e.jar",
       "requiredJavaVersion": 17,
-      "compatibilityLabel": "Bedrock 1.26.30",
+      "compatibilityLabel": "Bedrock 1.26.50",
       "recommended": true,
       "supportedBedrockVersions": [
-        "1.26.30"
+        "1.26.30",
+        "1.26.50"
       ],
       "recommendedBedrockVersion": "1.26.30",
       "compatibilityMode": "SINGLE_VERSION",
-      "releaseTag": "4437",
+      "releaseTag": "4508",
       "sourceType": "GITHUB_RELEASE",
-      "sha256": "3adf9def44b60cf01017a4204d0be4cf331c1c89ca37be13eca9b774d59105d4"
+      "sha256": "728b70d267d34a11b3d53e9076b8102aca03fc24394d46018e1eecfc9973be5b",
+      "compatibilitySummary": "PM1E 4508 verified build for Bedrock 1.26.50. Compatible with Bedrock 1.26.30 clients."
     },
     {
       "id": "pm1e:4413",

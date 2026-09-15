@@ -392,4 +392,115 @@ class BedrockVersioningTest {
         assertTrue("Bedrock engines must include Nukkit-MOT", engineIds.contains("nukkit-mot"))
         assertTrue("Bedrock engines must include Cloudburst", engineIds.contains("bedrock_cloudburst_nukkit"))
     }
+
+    // ================================================================
+    // J. PM1E artifact is reachable (HTTP 200/302, not 404)
+    // ================================================================
+
+    @Test
+    fun pm1eCatalogEntryHasValidDownloadUrl() {
+        val versions = loadCatalogVersions()
+        val pm1e = versions.find { it.getString("engineId") == "bedrock_nukkit" && it.optBoolean("available", true) }
+        assertNotNull("PM1E must have an available catalog entry", pm1e)
+
+        val url = pm1e!!.getString("downloadUrl")
+        assertTrue("PM1E download URL must use HTTPS", url.startsWith("https://"))
+        assertTrue(
+            "PM1E download URL must be from a trusted host",
+            url.contains("github.com") || url.contains("opencollab.dev")
+        )
+
+        // Verify SHA-256 is present and valid
+        val sha = pm1e.optString("sha256", "")
+        assertTrue("PM1E must have a valid SHA-256 checksum", sha.matches(Regex("^[a-fA-F0-9]{64}$")))
+    }
+
+    @Test
+    fun pm1eEntryIdMatchesReleaseTag() {
+        val versions = loadCatalogVersions()
+        val pm1e = versions.find { it.getString("engineId") == "bedrock_nukkit" && it.optBoolean("available", true) }
+        assertNotNull(pm1e)
+
+        val id = pm1e!!.getString("id")
+        val releaseTag = pm1e.getString("releaseTag")
+        // ID format must be "pm1e:<tag>" — this ensures catalog consistency
+        assertEquals("PM1E ID must be pm1e:<releaseTag>", "pm1e:$releaseTag", id)
+    }
+
+    // ================================================================
+    // K. Cloudburst version option appears when engine is selected
+    // ================================================================
+
+    @Test
+    fun cloudburstMultiVersionProducesAutoOption() {
+        val versions = loadCatalogVersions()
+        val cloudburstVersions = versions.filter {
+            it.getString("engineId") == "bedrock_cloudburst_nukkit" &&
+                it.optBoolean("available", true) &&
+                !it.optBoolean("historical", false)
+        }
+        assertTrue("Cloudburst must have at least one available version", cloudburstVersions.isNotEmpty())
+
+        // MULTI_VERSION with AUTO should produce an AUTO version option
+        val multiVersion = cloudburstVersions.find {
+            it.optString("compatibilityMode") == "MULTI_VERSION" &&
+                it.optString("recommendedBedrockVersion") == "AUTO"
+        }
+        assertNotNull("Cloudburst must have a MULTI_VERSION entry with AUTO", multiVersion)
+        assertTrue(
+            "Cloudburst AUTO entry must have compatibilitySummary",
+            multiVersion!!.has("compatibilitySummary")
+        )
+        assertTrue(
+            "Cloudburst AUTO entry must have sha256",
+            multiVersion.has("sha256")
+        )
+    }
+
+    // ================================================================
+    // L. All Bedrock engines have at least one selectable version
+    // ================================================================
+
+    @Test
+    fun allBedrockEnginesHaveAtLeastOneSelectableVersion() {
+        val versions = loadCatalogVersions()
+        val enabledBedrockTemplates = TemplateRegistry.ALL_TEMPLATES.filter {
+            it.available && !TemplateRegistry.isJavaEditionEngine(it.id)
+        }
+
+        enabledBedrockTemplates.forEach { template ->
+            val selectableVersions = versions.filter {
+                it.getString("engineId") == template.id &&
+                    it.optBoolean("available", true) &&
+                    !it.optBoolean("historical", false)
+            }
+            assertTrue(
+                "Bedrock engine ${template.id} (${template.name}) must have at least one selectable version",
+                selectableVersions.isNotEmpty()
+            )
+        }
+    }
+
+    // ================================================================
+    // M. No catalog entry has a broken SHA-256
+    // ================================================================
+
+    @Test
+    fun allAvailableEntriesHaveValidSha256() {
+        val versions = loadCatalogVersions()
+        val available = versions.filter {
+            it.optBoolean("available", true) && !it.optBoolean("historical", false)
+        }
+
+        available.forEach { entry ->
+            val id = entry.getString("id")
+            if (entry.has("sha256") && !entry.isNull("sha256")) {
+                val sha = entry.getString("sha256")
+                assertTrue(
+                    "Entry $id has invalid SHA-256: $sha",
+                    sha.matches(Regex("^[a-fA-F0-9]{64}$"))
+                )
+            }
+        }
+    }
 }

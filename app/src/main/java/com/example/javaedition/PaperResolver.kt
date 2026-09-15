@@ -334,6 +334,57 @@ object PaperResolver {
         }
     }
 
+    /**
+     * Check if a specific Minecraft version has at least one STABLE Paper build.
+     * Used to filter out versions that only have ALPHA/SNAPSHOT builds.
+     */
+    suspend fun hasStableBuild(minecraftVersion: String): Boolean =
+        withContext(Dispatchers.IO) {
+            try {
+                val request =
+                    Request.Builder()
+                        .url("$projectUrl/versions/$minecraftVersion/builds")
+                        .header("User-Agent", userAgent())
+                        .header("Accept", "application/json")
+                        .get()
+                        .build()
+
+                val call = client.newCall(request)
+                val handle = coroutineContext.job.invokeOnCompletion { cause ->
+                    if (cause is CancellationException) {
+                        call.cancel()
+                    }
+                }
+
+                try {
+                    call.execute().use { response ->
+                        if (!response.isSuccessful) return@withContext false
+                        val body = response.body?.string() ?: return@withContext false
+                        val parsed = JSONTokener(body).nextValue()
+                        val builds = if (parsed is JSONObject) {
+                            parsed.optJSONArray("builds") ?: return@withContext false
+                        } else {
+                            parsed as? JSONArray ?: return@withContext false
+                        }
+
+                        for (index in 0 until builds.length()) {
+                            val build = builds.optJSONObject(index) ?: continue
+                            if (build.optString("channel").equals("STABLE", ignoreCase = false)) {
+                                return@withContext true
+                            }
+                        }
+                        false
+                    }
+                } finally {
+                    handle.dispose()
+                }
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Throwable) {
+                false
+            }
+        }
+
     suspend fun getAvailableVersions():
         Result<List<String>> =
         withContext(Dispatchers.IO) {

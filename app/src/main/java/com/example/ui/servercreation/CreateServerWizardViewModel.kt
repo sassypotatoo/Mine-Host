@@ -316,8 +316,34 @@ class CreateServerWizardViewModel(application: Application) : AndroidViewModel(a
                 if (_draft.value.engine?.id != "java_paper") {
                     return@launch
                 }
-                val versions = res.getOrThrow()
-                val mappedVersions = versions.mapIndexed { index, v ->
+                val allVersions = res.getOrThrow()
+
+                // Filter versions to only those with at least one STABLE build.
+                // Check concurrently with a semaphore to avoid overwhelming the API.
+                val semaphore = kotlinx.coroutines.sync.Semaphore(3)
+                val stableVersions = allVersions.filter { version ->
+                    kotlinx.coroutines.sync.withContext(semaphore) {
+                        PaperResolver.hasStableBuild(version)
+                    }
+                }
+
+                if (_draft.value.engine?.id != "java_paper") {
+                    return@launch
+                }
+
+                if (stableVersions.isEmpty()) {
+                    _dynamicVersions.value = emptyList()
+                    _dynamicVersionState.value = DynamicVersionState.ERROR(
+                        "Paper versions are available but none have a verified STABLE build yet."
+                    )
+                    updateDraft { it.copy(
+                        bedrockVersion = null,
+                        engineVersionId = paperMetaId
+                    ) }
+                    return@launch
+                }
+
+                val mappedVersions = stableVersions.mapIndexed { index, v ->
                     BedrockVersionOption(
                         bedrockVersion = v,
                         engineVersionId = paperMetaId,
@@ -334,9 +360,9 @@ class CreateServerWizardViewModel(application: Application) : AndroidViewModel(a
 
                 val currentVer = _draft.value.bedrockVersion
                 if (_draft.value.engine?.id == "java_paper") {
-                    if (currentVer.isNullOrBlank() || currentVer.equals("AUTO", ignoreCase = true) || !versions.contains(currentVer)) {
+                    if (currentVer.isNullOrBlank() || currentVer.equals("AUTO", ignoreCase = true) || !stableVersions.contains(currentVer)) {
                         updateDraft { it.copy(
-                            bedrockVersion = versions.first(),
+                            bedrockVersion = stableVersions.first(),
                             engineVersionId = paperMetaId
                         ) }
                     }
@@ -426,13 +452,25 @@ class CreateServerWizardViewModel(application: Application) : AndroidViewModel(a
         return catalogRepository.findVersion(versionId)
     }
 
-    val availableEngineIds = catalogRepository.versions.map { versions ->
+    val availableEngineIds: StateFlow<Set<String>> = catalogRepository.versions.map { versions ->
         TemplateRegistry.ALL_TEMPLATES.filter { template ->
             template.available && versions.any {
                 it.engineId == template.id && it.installability() != EngineInstallability.UNAVAILABLE
             }
         }.map { it.id }.toSet()
-    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptySet())
+    }.stateIn(
+        viewModelScope,
+        SharingStarted.WhileSubscribed(5000),
+        // Seed from the current catalog value so engines are available on first render
+        run {
+            val seedVersions = catalogRepository.versions.value
+            TemplateRegistry.ALL_TEMPLATES.filter { template ->
+                template.available && seedVersions.any {
+                    it.engineId == template.id && it.installability() != EngineInstallability.UNAVAILABLE
+                }
+            }.map { it.id }.toSet()
+        }
+    )
 
     val manualVerificationEngineIds = catalogRepository.versions.map { versions ->
         TemplateRegistry.ALL_TEMPLATES.mapNotNull { template ->

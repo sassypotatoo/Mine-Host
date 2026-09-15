@@ -1,13 +1,13 @@
 {
     "schemaVersion": 1,
     "beastModeEnabled": true,
-    "currentTask": "Phase C: First-class Bedrock server versioning",
+    "currentTask": "9-section runtime/catalog investigation — targeted fixes",
     "taskBranch": "main",
     "objectives": [
         {
-            "id": "1789504091718631939",
-            "description": "Fix Cloudburst catalog gap (min/max range fields)",
-            "status": "IN_PROGRESS",
+            "id": "investigation-001",
+            "description": "PM1E 4437 artifact404 — update to build 4508 with verified SHA-256",
+            "status": "COMPLETE",
             "attempts": 1,
             "lastCommit": "",
             "ciStatus": "",
@@ -15,9 +15,9 @@
             "failureReason": ""
         },
         {
-            "id": "1789504092515936554",
-            "description": "Reorder WizardStep: VERSION before ENGINE",
-            "status": "IN_PROGRESS",
+            "id": "investigation-002",
+            "description": "Cloudburst version lock — seed availableEngineIds from catalog on init",
+            "status": "COMPLETE",
             "attempts": 1,
             "lastCommit": "",
             "ciStatus": "",
@@ -25,53 +25,36 @@
             "failureReason": ""
         },
         {
-            "id": "1789504093202488899",
-            "description": "Add selectBedrockVersionOnly and isEngineCompatibleWithVersion to ViewModel",
-            "status": "PENDING",
-            "attempts": 0,
+            "id": "investigation-003",
+            "description": "Paper 26.3 — filter versions without STABLE builds using hasStableBuild()",
+            "status": "COMPLETE",
+            "attempts": 1,
             "lastCommit": "",
             "ciStatus": "",
             "ciUrl": "",
             "failureReason": ""
         },
         {
-            "id": "1789504093886472245",
-            "description": "Update VersionStep, EngineStep, Screen for version-first flow",
-            "status": "PENDING",
-            "attempts": 0,
-            "lastCommit": "",
-            "ciStatus": "",
-            "ciUrl": "",
-            "failureReason": ""
-        },
-        {
-            "id": "1789504094537234475",
-            "description": "Add 8 Bedrock versioning tests",
-            "status": "PENDING",
-            "attempts": 0,
-            "lastCommit": "",
-            "ciStatus": "",
-            "ciUrl": "",
-            "failureReason": ""
-        },
-        {
-            "id": "1789504095236803706",
-            "description": "CI verification pass",
-            "status": "PENDING",
-            "attempts": 0,
+            "id": "investigation-004",
+            "description": "Add regression tests J-M for PM1E URL, Cloudburst AUTO, engine availability, SHA-256",
+            "status": "COMPLETE",
+            "attempts": 1,
             "lastCommit": "",
             "ciStatus": "",
             "ciUrl": "",
             "failureReason": ""
         }
     ],
-    "currentObjectiveId": "1789504092515936554",
-    "phase": "IMPLEMENT",
-    "workflowStatus": "ACTIVE",
+    "currentObjectiveId": "investigation-005",
+    "phase": "IN_PROGRESS",
+    "workflowStatus": "PUSH_PENDING",
     "gitBranch": "main",
-    "lastCiRunUrl": "",
-    "lastCommitSha": "36a6fb4",
-    "knownIssues": [],
+    "lastCiRunUrl": "https://github.com/sassypotatoo/Mine-Host/actions/runs/35028438872",
+    "lastCommitSha": "dafa5cd",
+    "knownIssues": [
+        "PowerNukkitX port mismatch (19132 vs 19133) — requires real-device testing, code path verified correct",
+        "Bedrock versioning architecture — requested vs advertised versions kept distinct in current code"
+    ],
     "blockers": [],
-    "timestamp": "2026-09-15T21:45:25.093684Z"
+    "timestamp": "2026-09-15T22:40:00.000000Z"
 }
