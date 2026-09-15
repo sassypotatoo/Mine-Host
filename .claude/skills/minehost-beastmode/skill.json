@@ -13,6 +13,14 @@
       "examples": [
         "/minehost-beastmode"
       ]
+    },
+    {
+      "name": "minehost-autonomous",
+      "description": "Legacy alias for Beast Mode toggle (acts like /minehost-beastmode)",
+      "usage": "/minehost-autonomous",
+      "examples": [
+        "/minehost-autonomous"
+      ]
     }
   ],
   "stateFile": ".claude/beastmode_state.json",
