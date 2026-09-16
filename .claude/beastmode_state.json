@@ -1,37 +1,37 @@
 {
     "schemaVersion": 1,
     "beastModeEnabled": true,
-    "currentTask": "9-section runtime/catalog investigation — targeted fixes",
+    "currentTask": "9-section runtime/catalog investigation \u2014 targeted fixes",
     "taskBranch": "main",
     "objectives": [
         {
             "id": "investigation-001",
-            "description": "PM1E 4437 artifact404 — update to build 4508 with verified SHA-256",
+            "description": "PM1E 4437 artifact404 \u2014 update to build 4508 with verified SHA-256",
             "status": "COMPLETE",
             "attempts": 1,
-            "lastCommit": "",
-            "ciStatus": "",
-            "ciUrl": "",
+            "lastCommit": "aa6b916",
+            "ciStatus": "PASSED",
+            "ciUrl": "https://github.com/sassypotatoo/Mine-Host/actions/runs/35028438872",
             "failureReason": ""
         },
         {
             "id": "investigation-002",
-            "description": "Cloudburst version lock — seed availableEngineIds from catalog on init",
+            "description": "Cloudburst version lock \u2014 seed availableEngineIds from catalog on init",
             "status": "COMPLETE",
             "attempts": 1,
-            "lastCommit": "",
-            "ciStatus": "",
-            "ciUrl": "",
+            "lastCommit": "aa6b916",
+            "ciStatus": "PASSED",
+            "ciUrl": "https://github.com/sassypotatoo/Mine-Host/actions/runs/35028438872",
             "failureReason": ""
         },
         {
             "id": "investigation-003",
-            "description": "Paper 26.3 — filter versions without STABLE builds using hasStableBuild()",
+            "description": "Paper 26.3 \u2014 filter versions without STABLE builds using hasStableBuild()",
             "status": "COMPLETE",
             "attempts": 1,
-            "lastCommit": "",
-            "ciStatus": "",
-            "ciUrl": "",
+            "lastCommit": "186e3e9",
+            "ciStatus": "PASSED",
+            "ciUrl": "https://github.com/sassypotatoo/Mine-Host/actions/runs/35056680423",
             "failureReason": ""
         },
         {
@@ -39,9 +39,9 @@
             "description": "Add regression tests J-M for PM1E URL, Cloudburst AUTO, engine availability, SHA-256",
             "status": "COMPLETE",
             "attempts": 1,
-            "lastCommit": "",
-            "ciStatus": "",
-            "ciUrl": "",
+            "lastCommit": "186e3e9",
+            "ciStatus": "PASSED",
+            "ciUrl": "https://github.com/sassypotatoo/Mine-Host/actions/runs/35056680423",
             "failureReason": ""
         }
     ],
@@ -49,12 +49,12 @@
     "phase": "IN_PROGRESS",
     "workflowStatus": "PUSH_PENDING",
     "gitBranch": "main",
-    "lastCiRunUrl": "https://github.com/sassypotatoo/Mine-Host/actions/runs/35028438872",
-    "lastCommitSha": "dafa5cd",
+    "lastCiRunUrl": "https://github.com/sassypotatoo/Mine-Host/actions/runs/35056680423",
+    "lastCommitSha": "186e3e9",
     "knownIssues": [
-        "PowerNukkitX port mismatch (19132 vs 19133) — requires real-device testing, code path verified correct",
-        "Bedrock versioning architecture — requested vs advertised versions kept distinct in current code"
+        "PowerNukkitX port mismatch (19132 vs 19133) \u2014 requires real-device testing, code path verified correct",
+        "Bedrock versioning architecture \u2014 requested vs advertised versions kept distinct in current code"
     ],
     "blockers": [],
-    "timestamp": "2026-09-15T22:40:00.000000Z"
+    "timestamp": "2026-09-16T00:00:00.000000Z"
 }
