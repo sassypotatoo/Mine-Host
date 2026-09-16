@@ -475,6 +475,40 @@ class BedrockEngineHardeningTest {
         assertFalse(session.onlineModeConfirmed)
     }
 
+    /**
+     * Regression: When MineHost assigns port X and the engine correctly binds to
+     * port X, the server must NOT become PORT_MISMATCH. This proves the configured
+     * engine port equals the assigned MineHost port through the full lifecycle:
+     * MineHost assigns port → writes to server.properties → engine reads and binds →
+     * BOUND_PORT_DETECTED fires → status remains non-PORT_MISMATCH.
+     */
+    @Test
+    fun correctBoundPortDoesNotBecomePortMismatch() {
+        val engine = TestBedrockEngine(
+            context,
+            serverDir,
+            engineVersion,
+            port,
+            profileId,
+            runtimeSessionId,
+        )
+        val session = newSession(alive = false)
+
+        engine.installCurrentSession(session)
+
+        engine.onHealthEvent(
+            HealthEvent.BOUND_PORT_DETECTED,
+            "Opening server on 0.0.0.0:$port",
+            session,
+        )
+
+        assertEquals(port, session.boundPort)
+        assertNotEquals(
+            ServerStatus.PORT_MISMATCH,
+            engine.getStatus(),
+        )
+    }
+
     @Test
     fun staleSessionCannotMutateNewSession() {
         val engine = TestBedrockEngine(
