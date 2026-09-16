@@ -18,7 +18,7 @@ import org.robolectric.RobolectricTestRunner
  * Tests for Phase C: First-class Bedrock server versioning.
  *
  * Validates:
- * - Wizard step ordering (Edition → Engine → Version)
+ * - Wizard step ordering (Edition → Version → Engine)
  * - Catalog contract (Cloudburst range fields)
  * - Engine-version compatibility logic
  * - Engine presence in catalog (Nukkit-MOT, Cloudburst not filtered out)
@@ -44,18 +44,18 @@ class BedrockVersioningTest {
     // ================================================================
 
     @Test
-    fun engineBeforeVersionInWizardFlow() {
+    fun versionBeforeEngineInWizardFlow() {
         val steps = WizardStep.entries
         val editionIndex = steps.indexOf(WizardStep.EDITION)
-        val engineIndex = steps.indexOf(WizardStep.ENGINE)
         val versionIndex = steps.indexOf(WizardStep.VERSION)
+        val engineIndex = steps.indexOf(WizardStep.ENGINE)
         assertTrue(
-            "EDITION (ordinal=$editionIndex) must come before ENGINE (ordinal=$engineIndex)",
-            editionIndex < engineIndex
+            "EDITION (ordinal=$editionIndex) must come before VERSION (ordinal=$versionIndex)",
+            editionIndex < versionIndex
         )
         assertTrue(
-            "ENGINE (ordinal=$engineIndex) must come before VERSION (ordinal=$versionIndex)",
-            engineIndex < versionIndex
+            "VERSION (ordinal=$versionIndex) must come before ENGINE (ordinal=$engineIndex)",
+            versionIndex < engineIndex
         )
     }
 

@@ -251,8 +251,14 @@ class CreateServerWizardViewModel(application: Application) : AndroidViewModel(a
             return@combine result
         }
 
-        // No engine selected (VERSION step before ENGINE): show all Bedrock versions
+        // No engine selected (VERSION step before ENGINE): show versions for the edition
         val edition = currentDraft.edition
+
+        // Java edition without engine: show Paper dynamic versions
+        if (edition == ServerEdition.JAVA) {
+            return@combine dynamic
+        }
+
         if (edition != ServerEdition.BEDROCK) return@combine emptyList<BedrockVersionOption>()
 
         // Aggregate all Bedrock versions across all engines
@@ -301,7 +307,9 @@ class CreateServerWizardViewModel(application: Application) : AndroidViewModel(a
     private var paperVersionLoadJob: Job? = null
 
     fun loadPaperVersions() {
-        if (_draft.value.engine?.id != "java_paper") return
+        val isJavaEdition = _draft.value.edition == ServerEdition.JAVA
+        val isPaperEngine = _draft.value.engine?.id == "java_paper"
+        if (!isJavaEdition && !isPaperEngine) return
 
         paperVersionLoadJob?.let { it.cancel() }
         paperVersionLoadJob = viewModelScope.launch {
@@ -310,12 +318,12 @@ class CreateServerWizardViewModel(application: Application) : AndroidViewModel(a
             val paperMetaId = paperMeta?.id ?: "java_paper:api"
             val res = PaperResolver.getAvailableVersions()
 
-            if (_draft.value.engine?.id != "java_paper") {
+            if (_draft.value.edition != ServerEdition.JAVA) {
                 return@launch
             }
 
             if (res.isSuccess && res.getOrNull()?.isNotEmpty() == true) {
-                if (_draft.value.engine?.id != "java_paper") {
+                if (_draft.value.edition != ServerEdition.JAVA) {
                     return@launch
                 }
                 val allVersions = res.getOrThrow()
@@ -333,7 +341,7 @@ class CreateServerWizardViewModel(application: Application) : AndroidViewModel(a
                     }
                 }
 
-                if (_draft.value.engine?.id != "java_paper") {
+                if (_draft.value.edition != ServerEdition.JAVA) {
                     return@launch
                 }
 
@@ -365,7 +373,7 @@ class CreateServerWizardViewModel(application: Application) : AndroidViewModel(a
                 _dynamicVersionState.value = DynamicVersionState.LOADED(mappedVersions)
 
                 val currentVer = _draft.value.bedrockVersion
-                if (_draft.value.engine?.id == "java_paper") {
+                if (_draft.value.edition == ServerEdition.JAVA) {
                     if (currentVer.isNullOrBlank() || currentVer.equals("AUTO", ignoreCase = true) || !stableVersions.contains(currentVer)) {
                         updateDraft { it.copy(
                             bedrockVersion = stableVersions.first(),
@@ -374,7 +382,7 @@ class CreateServerWizardViewModel(application: Application) : AndroidViewModel(a
                     }
                 }
             } else {
-                if (_draft.value.engine?.id != "java_paper") {
+                if (_draft.value.edition != ServerEdition.JAVA) {
                     return@launch
                 }
                 val errorMsg = res.exceptionOrNull()?.message ?: "Failed to fetch PaperMC versions"
@@ -389,17 +397,27 @@ class CreateServerWizardViewModel(application: Application) : AndroidViewModel(a
     }
 
     init {
-        // Dynamic version loader for Paper API
-        draft.map { it.engine?.id }
+        // Dynamic version loader for Paper API — triggers on JAVA edition or paper engine
+        draft.map { it.edition }
             .distinctUntilChanged()
-            .onEach { engineId ->
-                if (engineId == "java_paper") {
+            .onEach { edition ->
+                if (edition == ServerEdition.JAVA) {
                     loadPaperVersions()
-                } else {
+                } else if (edition != null) {
+                    // Non-Java edition: cancel Paper loading
                     paperVersionLoadJob?.let { it.cancel() }
                     paperVersionLoadJob = null
                     _dynamicVersions.value = emptyList()
                     _dynamicVersionState.value = DynamicVersionState.IDLE
+                }
+            }.launchIn(viewModelScope)
+
+        // Also trigger Paper loading if engine changes to java_paper (backward compat)
+        draft.map { it.engine?.id }
+            .distinctUntilChanged()
+            .onEach { engineId ->
+                if (engineId == "java_paper" && _draft.value.edition == ServerEdition.JAVA) {
+                    loadPaperVersions()
                 }
             }.launchIn(viewModelScope)
 
@@ -445,7 +463,7 @@ class CreateServerWizardViewModel(application: Application) : AndroidViewModel(a
     }
 
     fun retryPaperFetch() {
-        if (_draft.value.engine?.id == "java_paper") {
+        if (_draft.value.edition == ServerEdition.JAVA) {
             loadPaperVersions()
         }
     }

@@ -160,12 +160,6 @@ fun CreateServerWizardScreen(
                     when (currentStep) {
                         WizardStep.BASICS -> BasicsStep(draft, wizardViewModel::setDraft)
                         WizardStep.EDITION -> EditionStep(draft, wizardViewModel::setDraft)
-                        WizardStep.ENGINE -> EngineStep(
-                            draft = draft,
-                            isEngineAvailable = { availableEngineIds.contains(it) },
-                            requiresManualVerification = { manualVerificationEngineIds.contains(it) },
-                            onEngineSelected = wizardViewModel::selectEngine
-                        )
                         WizardStep.VERSION -> {
                             val dynamicVersionState by wizardViewModel.dynamicVersionState.collectAsState()
                             VersionStep(
@@ -173,9 +167,15 @@ fun CreateServerWizardScreen(
                                 bedrockVersions = bedrockVersionOptions,
                                 dynamicVersionState = dynamicVersionState,
                                 onRetryPaperFetch = wizardViewModel::retryPaperFetch,
-                                onBedrockVersionSelected = wizardViewModel::selectBedrockVersion
+                                onBedrockVersionSelected = wizardViewModel::selectBedrockVersionOnly
                             )
                         }
+                        WizardStep.ENGINE -> EngineStep(
+                            draft = draft,
+                            isEngineAvailable = { availableEngineIds.contains(it) },
+                            requiresManualVerification = { manualVerificationEngineIds.contains(it) },
+                            onEngineSelected = wizardViewModel::selectEngine
+                        )
                         WizardStep.WORLD -> WorldStep(draft, wizardViewModel::setDraft)
                         WizardStep.PERFORMANCE -> PerformanceStep(draft, wizardViewModel::setDraft)
                         WizardStep.NETWORK -> NetworkStep(draft, wizardViewModel::setDraft)

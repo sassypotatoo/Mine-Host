@@ -31,8 +31,10 @@ fun VersionStep(
     onBedrockVersionSelected: (BedrockVersionOption) -> Unit
 ) {
     val engineId = draft.engine?.id
-    val isPaperApi = engineId == "java_paper"
-    val isJava = TemplateRegistry.isJavaEditionEngine(engineId)
+    val isPaperApi = engineId == "java_paper" ||
+        (engineId == null && draft.edition == com.example.data.ServerEdition.JAVA)
+    val isJava = draft.edition == com.example.data.ServerEdition.JAVA ||
+        TemplateRegistry.isJavaEditionEngine(engineId)
 
     Column(
         modifier = Modifier.fillMaxWidth(),
@@ -48,6 +50,7 @@ fun VersionStep(
                 when {
                     engineId == "java_paper" -> "Choose a Minecraft Java Edition version supported by PaperMC."
                     isJava -> "Choose a Minecraft Java Edition version supported by this server engine."
+                    engineId == null -> "Choose a Minecraft Bedrock version, then select a compatible engine."
                     else -> "Choose a Minecraft Bedrock version supported by this server engine."
                 },
                 style = MaterialTheme.typography.bodySmall,
