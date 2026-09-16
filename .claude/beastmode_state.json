@@ -43,14 +43,24 @@
             "ciStatus": "PASSED",
             "ciUrl": "https://github.com/sassypotatoo/Mine-Host/actions/runs/35056680423",
             "failureReason": ""
+        },
+        {
+            "id": "investigation-005",
+            "description": "Bedrock versioning architecture, readiness vs compatibility, world generation, safety, git/CI",
+            "status": "COMPLETE",
+            "attempts": 1,
+            "lastCommit": "71afeb9",
+            "ciStatus": "PASSED",
+            "ciUrl": "https://github.com/sassypotatoo/Mine-Host/actions/runs/35065430586",
+            "failureReason": ""
         }
     ],
-    "currentObjectiveId": "investigation-005",
-    "phase": "IN_PROGRESS",
-    "workflowStatus": "PUSH_PENDING",
+    "currentObjectiveId": null,
+    "phase": "COMPLETE",
+    "workflowStatus": "COMPLETE",
     "gitBranch": "main",
-    "lastCiRunUrl": "https://github.com/sassypotatoo/Mine-Host/actions/runs/35056680423",
-    "lastCommitSha": "186e3e9",
+    "lastCiRunUrl": "https://github.com/sassypotatoo/Mine-Host/actions/runs/35065430586",
+    "lastCommitSha": "4f71c90",
     "knownIssues": [
         "PowerNukkitX port mismatch (19132 vs 19133) \u2014 requires real-device testing, code path verified correct",
         "Bedrock versioning architecture \u2014 requested vs advertised versions kept distinct in current code"
