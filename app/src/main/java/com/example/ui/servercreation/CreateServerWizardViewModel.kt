@@ -19,6 +19,8 @@ import com.example.server.version.VersionSourceType
 import com.example.javaedition.PaperResolver
 import com.example.MineHostApplication
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.async
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 
@@ -320,9 +322,9 @@ class CreateServerWizardViewModel(application: Application) : AndroidViewModel(a
 
                 // Filter versions to only those with at least one STABLE build.
                 // Check concurrently (up to 3 at a time) to avoid overwhelming the API.
-                val stableVersions = kotlinx.coroutines.coroutineScope {
+                val stableVersions = coroutineScope {
                     allVersions.map { version ->
-                        kotlinx.coroutines.async {
+                        async {
                             version to PaperResolver.hasStableBuild(version)
                         }
                     }.mapNotNull { deferred ->
