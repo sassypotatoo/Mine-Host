@@ -113,7 +113,8 @@ data class ServerSettingsState(
     val difficulty: String = "normal",
     val whitelistEnabled: Boolean = false,
     val autoRestart: Boolean = true,
-    val autoBackup: Boolean = false
+    val autoBackup: Boolean = false,
+    val worldAdapterEnabled: Boolean = true
 )
 
 data class PlayerSession(

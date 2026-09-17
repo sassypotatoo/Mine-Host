@@ -174,6 +174,7 @@ fun CreateServerWizardScreen(
                             draft = draft,
                             isEngineAvailable = { availableEngineIds.contains(it) },
                             requiresManualVerification = { manualVerificationEngineIds.contains(it) },
+                            isEngineCompatibleWithVersion = wizardViewModel::isEngineCompatibleWithVersion,
                             onEngineSelected = wizardViewModel::selectEngine
                         )
                         WizardStep.WORLD -> WorldStep(draft, wizardViewModel::setDraft)

@@ -1288,6 +1288,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 onlineMode = profile.onlineMode,
                 autoRestart = profile.autoRestart,
                 autoBackup = profile.autoBackup,
+                worldAdapterEnabled = profile.worldAdapterEnabled,
             )
             val files = toFileInfo(service.list(""), "")
             val plugins = service.listPlugins()
@@ -1818,6 +1819,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                     onlineMode = safe.onlineMode,
                     autoRestart = safe.autoRestart,
                     autoBackup = safe.autoBackup,
+                    worldAdapterEnabled = safe.worldAdapterEnabled,
                 ),
             )
             val result = update.fold(

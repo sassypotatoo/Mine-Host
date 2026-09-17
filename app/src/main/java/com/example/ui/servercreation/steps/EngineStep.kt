@@ -20,15 +20,17 @@ fun EngineStep(
     draft: CreateServerDraft,
     isEngineAvailable: (String) -> Boolean,
     requiresManualVerification: (String) -> Boolean,
+    isEngineCompatibleWithVersion: (String, String) -> Boolean,
     onEngineSelected: (com.example.server.template.ServerTemplate) -> Unit
 ) {
-    // Filter templates based on selected edition
+    // Filter templates based on selected edition and version compatibility
     val templates = when (draft.edition) {
         ServerEdition.JAVA -> TemplateRegistry.ALL_TEMPLATES.filter {
             TemplateRegistry.isJavaEditionEngine(it.id)
         }
         ServerEdition.BEDROCK -> TemplateRegistry.ALL_TEMPLATES.filter {
-            !TemplateRegistry.isJavaEditionEngine(it.id)
+            !TemplateRegistry.isJavaEditionEngine(it.id) &&
+                    isEngineCompatibleWithVersion(it.id, draft.bedrockVersion ?: "AUTO")
         }
         else -> TemplateRegistry.ALL_TEMPLATES
     }

@@ -14,6 +14,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Backup
 import androidx.compose.material.icons.outlined.BarChart
+import androidx.compose.material.icons.outlined.Build
 import androidx.compose.material.icons.outlined.Check
 import androidx.compose.material.icons.outlined.CleaningServices
 import androidx.compose.material.icons.outlined.CloudUpload
@@ -149,6 +150,14 @@ fun ServerSettingsScreen(viewModel: MainViewModel, serverId: String) {
                     icon = Icons.Outlined.Refresh,
                     checked = draft.autoRestart,
                     onChecked = { draft = draft.copy(autoRestart = it) }
+                )
+                HorizontalDivider(color = MineHostDivider)
+                SwitchRow(
+                    title = "World Adapter",
+                    subtitle = "Bypass protected world copy for direct editing",
+                    icon = Icons.Outlined.Build,
+                    checked = draft.worldAdapterEnabled,
+                    onChecked = { draft = draft.copy(worldAdapterEnabled = it) }
                 )
             }
         }
