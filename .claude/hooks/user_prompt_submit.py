@@ -184,7 +184,14 @@ def main() -> None:
                 new_state["phase"] = "IDLE"
                 write_state(new_state)
 
-                hook_input["prompt"] = "🛑 BEAST MODE: OFF (control command; Claude must not start/continue any work)"
+                hook_input["prompt"] = (
+                    "The /minehost-beastmode toggle just ran. Beast Mode is now OFF.\n\n"
+                    "Display EXACTLY this and nothing else:\n"
+                    "🛑 BEAST MODE: OFF\n"
+                    "Beast Mode deactivated. Claude Code returning to normal behaviour.\n\n"
+                    "CRITICAL: Do NOT run bm-state.sh. Do NOT read any files. "
+                    "Do NOT modify any state. The hook already handled everything. Just display the message above and stop."
+                )
                 print(json.dumps(hook_input))
                 return
 
@@ -198,11 +205,14 @@ def main() -> None:
             write_state(new_state)
 
             hook_input["prompt"] = (
-                "Beast Mode is now ON.\n"
-                "Display exactly: 🔥 BEAST MODE: ON ⚡ Effort: MAX\n"
-                "Then STOP completely. Do not touch any files. Do not start any task. "
-                "Do not analyze the codebase. Do not read any project files. "
-                "Wait silently for the user's next message."
+                "The /minehost-beastmode toggle just ran. Beast Mode is now ON.\n\n"
+                "Display EXACTLY this and nothing else:\n"
+                "🔥 BEAST MODE: ON\n"
+                "⚡ Effort: MAX\n"
+                "Beast Mode is active. Waiting for your task.\n\n"
+                "CRITICAL: Do NOT run bm-state.sh. Do NOT read any files. "
+                "Do NOT start any task. Do NOT analyze the codebase. "
+                "The hook already handled everything. Just display the message above and wait silently."
             )
             print(json.dumps(hook_input))
             return
