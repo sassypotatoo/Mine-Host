@@ -184,7 +184,7 @@ def main() -> None:
                 new_state["phase"] = "IDLE"
                 write_state(new_state)
 
-                hook_input["prompt"] = "🛑 BEAST MODE: OFF"
+                hook_input["prompt"] = "🛑 BEAST MODE: OFF (control command; Claude must not start/continue any work)"
                 print(json.dumps(hook_input))
                 return
 
@@ -197,7 +197,7 @@ def main() -> None:
             new_state["phase"] = "IDLE"
             write_state(new_state)
 
-            hook_input["prompt"] = "🔥 BEAST MODE: ON"
+            hook_input["prompt"] = "🔥 BEAST MODE: ON -- CONTROL COMMAND: Claude must not initiate any work, tasks, or changes. Await further instructions."
             print(json.dumps(hook_input))
             return
 
