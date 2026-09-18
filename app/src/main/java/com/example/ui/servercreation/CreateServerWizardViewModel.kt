@@ -283,7 +283,7 @@ class CreateServerWizardViewModel(application: Application) : AndroidViewModel(a
         if (edition != ServerEdition.BEDROCK) return@combine emptyList<BedrockVersionOption>()
 
         // Aggregate all Bedrock versions across all engines
-        data class AggEntry(val version: String, val engines: MutableSet<String>, val hasAuto: Boolean, val recommended: Boolean, var summary: String?)
+        data class AggEntry(val version: String, val engines: MutableSet<String>, val hasAuto: Boolean, var recommended: Boolean, var summary: String?)
 
         val aggregated = mutableMapOf<String, AggEntry>()
 
