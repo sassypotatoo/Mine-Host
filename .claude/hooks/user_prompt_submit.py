@@ -179,9 +179,11 @@ def main() -> None:
                 new_state["beastModeEnabled"] = False
                 new_state["currentTask"] = ""
                 new_state["taskBranch"] = ""
+                new_state["objectives"] = []
                 new_state["currentObjectiveId"] = None
                 new_state["workflowStatus"] = "IDLE"
                 new_state["phase"] = "IDLE"
+                new_state["gitBranch"] = ""
                 write_state(new_state)
 
                 hook_input["prompt"] = (
@@ -199,9 +201,11 @@ def main() -> None:
             new_state["beastModeEnabled"] = True
             new_state["currentTask"] = ""
             new_state["taskBranch"] = ""
+            new_state["objectives"] = []
             new_state["currentObjectiveId"] = None
             new_state["workflowStatus"] = "IDLE"
             new_state["phase"] = "IDLE"
+            new_state["gitBranch"] = ""
             write_state(new_state)
 
             hook_input["prompt"] = (
