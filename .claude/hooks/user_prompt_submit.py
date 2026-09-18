@@ -163,7 +163,13 @@ def main() -> None:
         # `/minehost-beastmode` is the master ON/OFF switch.
         # `/minehost-autonomous` is a legacy alias for the same persistent toggle.
         # No task-start semantics are allowed here; normal user messages are the tasks.
-        toggle_match = re.match(r'^/(minehost-beastmode)(?::minehost-beastmode)?\s*$', stripped)
+        toggle_cmds = {
+            "/minehost-beastmode",
+            "/minehost-autonomous",
+            "/minehost-beastmode:minehost-beastmode",
+            "/minehost-autonomous:minehost-autonomous",
+        }
+        toggle_match = stripped in toggle_cmds
         if toggle_match:
             was_on = state.get("beastModeEnabled", False)
 
