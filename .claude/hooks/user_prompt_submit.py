@@ -197,7 +197,13 @@ def main() -> None:
             new_state["phase"] = "IDLE"
             write_state(new_state)
 
-            hook_input["prompt"] = "🔥 BEAST MODE: ON -- CONTROL COMMAND: Claude must not initiate any work, tasks, or changes. Await further instructions."
+            hook_input["prompt"] = (
+                "Beast Mode is now ON.\n"
+                "Display exactly: 🔥 BEAST MODE: ON ⚡ Effort: MAX\n"
+                "Then STOP completely. Do not touch any files. Do not start any task. "
+                "Do not analyze the codebase. Do not read any project files. "
+                "Wait silently for the user's next message."
+            )
             print(json.dumps(hook_input))
             return
 
