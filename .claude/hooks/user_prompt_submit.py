@@ -139,6 +139,11 @@ def build_context_block(state: dict) -> str:
         "  ./tools/bm-state.sh task-resume",
         "  ./tools/bm-state.sh task-cancel",
         "",
+        "STRICT MODE (skills/plugins/MCP): If a suitable Skill/Plugin/MCP exists for the action you're about to take, invoke it first.",
+        "Prefer superpowers:subagent-driven-development for implementations and superpowers:systematic-debugging for debugging.",
+        "Only fall back to direct Bash/Read/Edit/Write when no Skill/MCP applies; then explain why briefly.",
+        "About MCP: use only MCP that already exists in this session; otherwise do not attempt to add one mid-task.",
+        "Follow v4 workflow docs: .claude/CLAUDE_V4_WORKFLOW.md and .claude/BM_STATE_CHEAT_SHEET.md.",
         "You are the brain. Classify this message, decide what to do, act.",
         "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━",
         "",
@@ -158,7 +163,13 @@ def main() -> None:
         # `/minehost-beastmode` is the master ON/OFF switch.
         # `/minehost-autonomous` is a legacy alias for the same persistent toggle.
         # No task-start semantics are allowed here; normal user messages are the tasks.
-        toggle_match = re.match(r'^/(minehost-beastmode)(?::minehost-beastmode)?\s*$', stripped)
+        toggle_cmds = {
+            "/minehost-beastmode",
+            "/minehost-autonomous",
+            "/minehost-beastmode:minehost-beastmode",
+            "/minehost-autonomous:minehost-autonomous",
+        }
+        toggle_match = stripped in toggle_cmds
         if toggle_match:
             was_on = state.get("beastModeEnabled", False)
 
