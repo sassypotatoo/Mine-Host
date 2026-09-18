@@ -151,6 +151,18 @@ class CreateServerWizardViewModel(application: Application) : AndroidViewModel(a
         }
     }
 
+    private fun compareVersions(v1: String, v2: String): Int {
+        val parts1 = v1.split('.').mapNotNull { it.toIntOrNull() }
+        val parts2 = v2.split('.').mapNotNull { it.toIntOrNull() }
+        val length = maxOf(parts1.size, parts2.size)
+        for (i in 0 until length) {
+            val p1 = parts1.getOrElse(i) { 0 }
+            val p2 = parts2.getOrElse(i) { 0 }
+            if (p1 != p2) return p1.compareTo(p2)
+        }
+        return 0
+    }
+
     /**
      * Check if a specific engine supports a given Bedrock version.
      * Used in the ENGINE step to filter templates by selected version.
@@ -164,7 +176,16 @@ class CreateServerWizardViewModel(application: Application) : AndroidViewModel(a
                     v.supportedBedrockVersions.contains(version) ||
                         v.recommendedBedrockVersion == version
                 com.example.server.version.CompatibilityMode.MULTI_VERSION ->
-                    version == "AUTO" || v.supportedBedrockVersions.contains(version)
+                    if (version == "AUTO") {
+                        // For AUTO, we require that the version has either a supported list or a range
+                        !v.supportedBedrockVersions.isEmpty() || v.minimumSupportedBedrockVersion != null || v.maximumSupportedBedrockVersion != null
+                    } else {
+                        // For specific version, check if it's in the supported list or in the range
+                        val inList = v.supportedBedrockVersions.isNotEmpty() && v.supportedBedrockVersions.contains(version)
+                        val inRange = (v.minimumSupportedBedrockVersion == null || compareVersions(version, v.minimumSupportedBedrockVersion) >= 0) &&
+                                (v.maximumSupportedBedrockVersion == null || compareVersions(version, v.maximumSupportedBedrockVersion) <= 0)
+                        inList || inRange
+                    }
                 else -> false
             }
         }
@@ -274,12 +295,18 @@ class CreateServerWizardViewModel(application: Application) : AndroidViewModel(a
             when (v.compatibilityMode) {
                 com.example.server.version.CompatibilityMode.SINGLE_VERSION -> {
                     val bv = v.recommendedBedrockVersion ?: v.supportedBedrockVersions.firstOrNull() ?: continue
-                    val entry = aggregated.getOrPut(bv) { AggEntry(bv, mutableSetOf(), false, bv == "1.26.30", null) }
+                    val entry = aggregated.getOrPut(bv) { AggEntry(bv, mutableSetOf(), false, false, null) }
                     entry.engines.add(v.engineId)
+                    if (v.recommended) {
+                        entry.recommended = true
+                    }
                 }
                 com.example.server.version.CompatibilityMode.MULTI_VERSION -> {
-                    val entry = aggregated.getOrPut("AUTO") { AggEntry("AUTO", mutableSetOf(), true, true, v.compatibilitySummary) }
+                    val entry = aggregated.getOrPut("AUTO") { AggEntry("AUTO", mutableSetOf(), true, false, v.compatibilitySummary) }
                     entry.engines.add(v.engineId)
+                    if (v.recommended) {
+                        entry.recommended = true
+                    }
                     if (v.supportedBedrockVersions.isEmpty() && v.minimumSupportedBedrockVersion != null && v.maximumSupportedBedrockVersion != null) {
                         entry.summary = entry.summary ?: v.compatibilitySummary
                     }
