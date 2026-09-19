@@ -11,7 +11,6 @@ import com.example.server.destroyForciblyCompat
 import com.example.server.waitForCompat
 import java.io.File
 import java.util.concurrent.TimeUnit
-import kotlin.System
 
 object JavaRuntimeManager {
     private const val TAG = "JavaRuntimeManager"
@@ -693,10 +692,4 @@ object JavaRuntimeManager {
         )
     }
 
-    companion object {
-        // Initialize caches
-        init {
-            // No initialization needed for the maps
-        }
-    }
 }
