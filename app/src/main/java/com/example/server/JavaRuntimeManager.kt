@@ -11,6 +11,7 @@ import com.example.server.destroyForciblyCompat
 import com.example.server.waitForCompat
 import java.io.File
 import java.util.concurrent.TimeUnit
+import kotlin.System
 
 object JavaRuntimeManager {
     private const val TAG = "JavaRuntimeManager"
@@ -23,6 +24,10 @@ object JavaRuntimeManager {
     private const val ENV_LIBJLI_PATH = "MINEHOST_LIBJLI_PATH"
 
     private val installationMutexes = mutableMapOf<Int, Mutex>()
+
+    // Caches for check results to avoid redundant work
+    private val preparationCheckCache = mutableMapOf<Int, Pair<Long, RuntimePreparationResult>>()
+    private val CACHE_VALIDITY_MS = 10_000L // 10 seconds
 
     val SUPPORTED_RUNTIME_MAJORS = setOf(17, 21, 25)
 
@@ -189,22 +194,28 @@ object JavaRuntimeManager {
         onProgress: (String) -> Unit
     ): RuntimePreparationResult {
         val mutex = getMutexFor(javaMajor)
-        if (mutex.isLocked) {
-            onProgress("[Runtime] Java $javaMajor preparation is already in progress.")
-        }
-
         return mutex.withLock {
+            // First, check the cache for a recent preparation result
+            val now = System.currentTimeMillis()
+            val cached = preparationCheckCache[javaMajor]
+            if (cached != null && (now - cached.first) < CACHE_VALIDITY_MS) {
+                onProgress("[Runtime] Using cached preparation result for Java $javaMajor.")
+                return cached.second
+            }
+
             if (javaMajor !in SUPPORTED_RUNTIME_MAJORS) {
-                return@withLock RuntimePreparationResult.Unsupported(
+                val result = RuntimePreparationResult.Unsupported(
                     requiredJavaMajor = javaMajor,
                     message = "Java $javaMajor is not supported."
                 )
+                preparationCheckCache[javaMajor] = now to result
+                return@withLock result
             }
 
             val integrity = verifyRuntimeIntegrity(context, javaMajor)
             if (integrity is RuntimeIntegrityResult.Valid) {
                 val launcher = getPackagedLauncher(context) ?: findJavaExecutable(integrity.runtimeHome)
-                
+
                 if (launcher != null) {
                     onProgress("[Runtime] Validating Java $javaMajor execution...")
 
@@ -222,12 +233,14 @@ object JavaRuntimeManager {
                             ?: "version check passed"
                         onProgress("[Runtime] Java $javaMajor verified: $firstLine")
 
-                        return@withLock RuntimePreparationResult.Ready(
+                        val result = RuntimePreparationResult.Ready(
                             runtimeHome = integrity.runtimeHome,
                             launcherFile = launcher,
                             javaMajor = javaMajor,
                             runtimeFingerprint = integrity.runtimeFingerprint
                         )
+                        preparationCheckCache[javaMajor] = now to result
+                        return@withLock result
                     }
 
                     onProgress(
@@ -237,14 +250,17 @@ object JavaRuntimeManager {
                 } else {
                     onProgress("[Runtime] No launcher or java binary found for Java $javaMajor. Reinstalling.")
                 }
+            } else {
+                onProgress("Java runtime (v$javaMajor) not found or broken. Downloading...")
             }
 
-            onProgress("Java runtime (v$javaMajor) not found or broken. Downloading...")
-            JavaRuntimeInstaller.installRuntime(
+            val result = JavaRuntimeInstaller.installRuntime(
                 context = context,
                 javaMajor = javaMajor,
                 onProgress = onProgress
             )
+            preparationCheckCache[javaMajor] = now to result
+            return@withLock result
         }
     }
 
@@ -370,7 +386,7 @@ object JavaRuntimeManager {
         require(javaArguments.size <= 256) {
             "Too many Java launcher arguments: ${javaArguments.size}"
         }
-        require(javaArguments.none { it.indexOf('\u0000') >= 0 }) {
+        require(javaArguments.none { it.indexOf(' ') >= 0 }) {
             "Java arguments must not contain NUL characters."
         }
 
@@ -490,7 +506,7 @@ object JavaRuntimeManager {
         if (!launcherFile.isFile || launcherFile.length() <= 0L) {
             val packageInfo = context.packageManager.getPackageInfo(context.packageName, 0)
             val applicationInfo = context.applicationInfo
-            
+
             return@withContext JavaValidationResult(
                 success = false,
                 exitCode = -1,
@@ -505,17 +521,17 @@ object JavaRuntimeManager {
                     appendLine("Is Real File: ${launcherFile.isFile}")
                     appendLine("File Size: ${launcherFile.length()}")
                     appendLine("Supported ABIs: ${android.os.Build.SUPPORTED_ABIS.joinToString()}")
-                    
+
                     val libDir = File(applicationInfo.nativeLibraryDir)
                     if (libDir.exists() && libDir.isDirectory) {
                         appendLine("Contents of nativeLibraryDir:")
-                        libDir.listFiles()?.forEach { 
+                        libDir.listFiles()?.forEach {
                             appendLine("  - ${it.name} (${it.length()} bytes)")
                         } ?: appendLine("  (directory is empty or inaccessible)")
                     } else {
                         appendLine("Native Library Dir does not exist or is not a directory.")
                     }
-                    
+
                     append("APK packaging must use extractNativeLibs=true and useLegacyPackaging=true.")
                 },
                 command = conceptualCommand,
@@ -675,5 +691,12 @@ object JavaRuntimeManager {
             launcherFile = launcher,
             commandArgs = command
         )
+    }
+
+    companion object {
+        // Initialize caches
+        init {
+            // No initialization needed for the maps
+        }
     }
 }
