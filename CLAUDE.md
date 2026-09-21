@@ -22,3 +22,5 @@ No fake state, no PRoot/Termux dependency in the product, protected systems stay
 State file: `.claude/beastmode_state.json` — read on every session start.
 If `beastModeEnabled` is true: run `./tools/bm-state.sh status`, then continue from current objective.
 Toggle: `/minehost-beastmode`
+
+**Beast Mode capability-check rule (standing):** Before any Write/Edit tool use in Beast Mode, you MUST first perform capability discovery by running `claude plugin list --json` and `claude mcp list`, then touch `~/.claude/.cap_check_done` to signal completion. The PreToolUse hook will block Write/Edit until this check is done. After completing a workflow or task, the Stop hook resets this requirement for the next task.

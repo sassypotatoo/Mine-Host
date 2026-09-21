@@ -112,7 +112,7 @@ def build_context_block(state: dict) -> str:
 
     lines = [
         "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━",
-        "🔥 BEAST MODE ACTIVE",
+        "🔥 BEAST MODE CONTEXT (read this, then act on the request above) — supporting info, not the primary thing to respond to.",
         "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━",
         f"Task    : {task}",
         f"Phase   : {phase}  |  Status: {status}",
@@ -124,7 +124,7 @@ def build_context_block(state: dict) -> str:
         f"  {obj_summary}",
         "",
         "All Objectives:",
-        obj_list,
+        f"{obj_list}",
         "",
         "State commands (call via Bash tool):",
         "  ./tools/bm-state.sh status",
@@ -197,7 +197,15 @@ def main() -> None:
             new_state["phase"] = "IDLE"
             write_state(new_state)
 
-            hook_input["prompt"] = "🔥 BEAST MODE: ON"
+            hook_input["prompt"] = (
+                "🔥 BEAST MODE: Effort: MAX\n\n"
+                "Beast Mode now active. Every subsequent message include full project state make informed decisions.\n\n"
+                "What now:\n"
+                "1. task set state, run:./tools/bm-state.sh status\n"
+                "2. task set, wait user's next message task.\n"
+                "3. NOT say 'Beast Mode ON' again. Beast Mode environment. You brain. Act whatever comes next.\n\n"
+                "Ready. Waiting first task."
+            )
             print(json.dumps(hook_input))
             return
 
@@ -206,10 +214,43 @@ def main() -> None:
             sys.exit(0)
 
         # ── Beast Mode ON — inject full context, Claude decides everything ──
-        context = build_context_block(state)
-        hook_input["prompt"] = context + prompt
-        print(json.dumps(hook_input))
+        # Task first so Claude responds to the user's request, not the injected header.
+        # Move capability instruction immediately after user's task
+        capability_block = (
+            "⚡ CAPABILITY CHECK REQUIRED BEFORE CODING: If a suitable Skill/Plugin/MCP exists for the action you're about to take, invoke it first. "
+            "Prefer superpowers:subagent-driven-development for implementations and superpowers:systematic-debugging for debugging. "
+            "Only fall back to direct Bash/Read/Edit/Write when no Skill/MCP applies; then explain why briefly. "
+            "About MCP: use only MCP that already exists in this session; otherwise do not attempt to add one mid-task. "
+            "Follow v4 workflow docs: .claude/CLAUDE_V4_WORKFLOW.md and .claude/BM_STATE_CHEAT_SHEET.md. "
+            "You are the brain. Classify this message, decide what to do, act."
+        )
 
+        if state.get("workflowStatus") == "COMPLETE":
+            # Inject STOP block instead of context when workflow is complete
+            stop_block = (
+                "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
+                "🛑 BEAST MODE STOP: Workflow complete. No further action required.\n"
+                "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
+            )
+            hook_input["prompt"] = (
+                prompt
+                + "\n\n"
+                + capability_block
+                + "\n\n"
+                + stop_block
+            )
+        else:
+            context = build_context_block(state)
+            hook_input["prompt"] = (
+                prompt
+                + "\n\n"
+                + capability_block
+                + "\n\n"
+                + "[BEAST MODE CONTEXT — read and then act on the request above]"
+                + "\n\n"
+                + context
+            )
+        print(json.dumps(hook_input))
         return
 
 
