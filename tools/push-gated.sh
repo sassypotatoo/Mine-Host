@@ -1,4 +1,4 @@
-#!/usr/bin/env bash
+#!/data/data/com.termux/files/usr/bin/bash
 #
 # push-gated.sh — deterministic, non-forcing push gate for the autonomous loop.
 #
