@@ -34,30 +34,20 @@ object EngineCompatibilityValidator {
         } else if (version.compatibilityMode == CompatibilityMode.MULTI_VERSION) {
             val requested = profile.bedrockVersion
             if (requested == "AUTO") {
-                if (version.supportedBedrockVersions.isEmpty() && 
-                    version.minimumSupportedBedrockVersion == null && 
+                if (version.supportedBedrockVersions.isEmpty() &&
+                    version.minimumSupportedBedrockVersion == null &&
                     version.maximumSupportedBedrockVersion == null) {
                     issues.add("This multi-version build lacks verified compatibility information for automatic selection.")
                 }
             } else {
-                val supported = version.supportedBedrockVersions
-                val min = version.minimumSupportedBedrockVersion
-                val max = version.maximumSupportedBedrockVersion
-
-                val inList = supported.isNotEmpty() && supported.contains(requested)
-                val inRange = (min == null || compareVersions(requested, min) >= 0) &&
-                             (max == null || compareVersions(requested, max) <= 0)
-                
-                if (!inList) {
-                    if (min != null && compareVersions(requested, min) < 0) {
-                        issues.add("Minecraft version $requested is too old. Minimum: $min")
+                if (version.supportedBedrockVersions.isNotEmpty()) {
+                    val inList = version.supportedBedrockVersions.contains(requested)
+                    if (!inList) {
+                        issues.add("Selected Minecraft version ($requested) is not in the supported list for this engine build.")
                     }
-                    if (max != null && compareVersions(requested, max) > 0) {
-                        issues.add("Minecraft version $requested is too new. Maximum: $max")
-                    }
-                    if (supported.isNotEmpty() && min == null && max == null) {
-                        issues.add("Minecraft version $requested is not in the verified support list for this build.")
-                    }
+                } else {
+                    // No specific versions, only a range -> we cannot guarantee a specific version when run
+                    issues.add("This engine build does not support specific version selection. Please use 'AUTO' for the Minecraft version.")
                 }
             }
         } else {
