@@ -91,7 +91,14 @@ object JavaRuntimeInstaller {
                 val integrity = JavaRuntimeManager().verifyRuntimeIntegrity(context, javaMajor)
                 if (integrity is RuntimeIntegrityResult.Valid) {
                     onProgress("[Runtime] Valid runtime already present in ${finalDir.absolutePath}")
-                    val launcher = JavaRuntimeManager.getPackagedLauncher(context) ?: JavaRuntimeManager.findJavaExecutable(integrity.runtimeHome)
+                    val launcher = JavaRuntimeManager.getPackagedLauncher(context)
+                            ?: JavaRuntimeManager.findJavaExecutable(integrity.runtimeHome)
+                    if (launcher == null) {
+                        return@withContext RuntimePreparationResult.Failure(
+                                stage = "launcher",
+                                message = "No Java launcher or binary found for Java runtime at ${integrity.runtimeHome.absolutePath}"
+                        )
+                    }
                     return@withContext RuntimePreparationResult.Ready(
                         runtimeHome = integrity.runtimeHome,
                         launcherFile = launcher,
