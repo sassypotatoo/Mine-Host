@@ -27,6 +27,7 @@ import java.util.concurrent.ConcurrentHashMap
 import java.util.jar.JarFile
 import java.util.zip.ZipInputStream
 import java.util.zip.ZipEntry
+import kotlin.random.Random
 
 enum class ArtifactResolutionPolicy {
     PINNED,
@@ -1292,7 +1293,7 @@ object Downloader {
                 if (attempt > 0) {
                     val baseDelay = (Math.pow(2.0, attempt.toDouble()).toLong() * 1000L)
                     // Add jitter to prevent thundering herd: ±10% of base delay
-                    val jitter = (baseDelay * 0.1).toLong() * (-1 + 2 * kotlin.random.Random.nextDouble())
+                    val jitter = (baseDelay * 0.1 * (-1 + 2 * kotlin.random.Random.nextDouble())).toLong()
                     val backoff = (baseDelay + jitter).coerceAtMost(10_000L).coerceAtLeast(0L)
                     onProgress("Retrying $name download (${attempt + 1}/3) in ${backoff / 1000}s...")
                     delay(backoff)

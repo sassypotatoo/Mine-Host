@@ -1,4 +1,4 @@
-#!/usr/bin/env bash
+#!/data/data/com.termux/files/usr/bin/bash
 #
 # ci-state-update.sh — record a finished CI run into the Beast Mode state
 # file (.claude/beastmode_state.json) and advance the turn-based loop.

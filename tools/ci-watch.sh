@@ -1,4 +1,4 @@
-#!/usr/bin/env bash
+#!/data/data/com.termux/files/usr/bin/bash
 #
 # ci-watch.sh — progress-aware GitHub Actions watchdog for the MineHost loop.
 #
