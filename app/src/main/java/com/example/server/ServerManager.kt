@@ -455,7 +455,7 @@ class ServerManager(
                 levelType = profile.levelType,
                 maxPlayers = profile.maxPlayers,
                 motd = profile.name,
-                worldAdapterEnabled = profile.worldAdapterEnabled,
+                worldAdapterEnabled = false,
             )
 
             val engine = ServerFactory.createEngine(

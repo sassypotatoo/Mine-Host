@@ -1,0 +1,422 @@
+{
+  ".claude/BEAST_MODE_CHECKLIST.md": {
+    "mtime": 1789487430.0759895,
+    "seen": 1790208884.4916875,
+    "ast_hash": "f196baac584312794d2aa0dd285afc7a",
+    "semantic_hash": ""
+  },
+  ".claude/BEAST_MODE_V4_ARCHITECTURE.md": {
+    "mtime": 1789419288.2319338,
+    "seen": 1790208884.4917164,
+    "ast_hash": "71d082e0c1e5adb4d5888b412b6d4151",
+    "semantic_hash": ""
+  },
+  ".claude/BEAST_MODE_V4_AUDIT.md": {
+    "mtime": 1789329141.0879984,
+    "seen": 1790208884.4917278,
+    "ast_hash": "fb42b4f7ee38a888df021ace9059f199",
+    "semantic_hash": ""
+  },
+  ".claude/BEAST_MODE_V4_COMPLETION_SUMMARY.md": {
+    "mtime": 1789419288.2319338,
+    "seen": 1790208884.4917378,
+    "ast_hash": "18090571ad8128c628a31aa0ee2876bd",
+    "semantic_hash": ""
+  },
+  ".claude/BEAST_MODE_V4_PHASES.md": {
+    "mtime": 1789335181.091994,
+    "seen": 1790208884.4917467,
+    "ast_hash": "8a1fb5598f95366e7bc4e9ae34e18969",
+    "semantic_hash": ""
+  },
+  ".claude/BEAST_MODE_V4_READY.md": {
+    "mtime": 1789419288.2359338,
+    "seen": 1790208884.4917545,
+    "ast_hash": "a098a61030cbb6a8d23948698c25a227",
+    "semantic_hash": ""
+  },
+  ".claude/BEAST_MODE_V4_TEST.md": {
+    "mtime": 1789487379.8439896,
+    "seen": 1790208884.4917645,
+    "ast_hash": "44d430f566b46dd37075c1d7111ffc0a",
+    "semantic_hash": ""
+  },
+  ".claude/BEAST_MODE_V4_TRANSITION.md": {
+    "mtime": 1789329141.0879984,
+    "seen": 1790208884.491773,
+    "ast_hash": "1fdebc4819eff57870776fa4a68e2c23",
+    "semantic_hash": ""
+  },
+  ".claude/BM_STATE_CHEAT_SHEET.md": {
+    "mtime": 1789329141.0879984,
+    "seen": 1790208884.4917812,
+    "ast_hash": "b8854d36db5f7dea29f521971dc9d8f4",
+    "semantic_hash": ""
+  },
+  ".claude/CI_FAILURE_DIAGNOSIS.md": {
+    "mtime": 1789329141.0879984,
+    "seen": 1790208884.491789,
+    "ast_hash": "510e16ed4c78849877f997e320ca6c13",
+    "semantic_hash": ""
+  },
+  ".claude/CLAUDE_V4_WORKFLOW.md": {
+    "mtime": 1789487538.4479895,
+    "seen": 1790208884.4917974,
+    "ast_hash": "24b0a1006e7fd9cbb6d6ada7fd638c5a",
+    "semantic_hash": ""
+  },
+  ".claude/Progress.md": {
+    "mtime": 1789240476.0,
+    "seen": 1790208884.4918065,
+    "ast_hash": "3e42e10a34f2cf853befb74d7df09f12",
+    "semantic_hash": ""
+  },
+  ".claude/commands/minehost-beastmode.md": {
+    "mtime": 1790027694.4813282,
+    "seen": 1790208884.4918146,
+    "ast_hash": "19e0874eade84ab6bcebf3d677d4bac5",
+    "semantic_hash": ""
+  },
+  ".claude/scripts-v3-archive/Brain.md": {
+    "mtime": 1789329141.0879984,
+    "seen": 1790208884.4918225,
+    "ast_hash": "73170266f69f451dc9acec5d93fe5a7c",
+    "semantic_hash": ""
+  },
+  ".claude/scripts-v3-archive/README.md": {
+    "mtime": 1789329141.0879984,
+    "seen": 1790208884.4918308,
+    "ast_hash": "38677fe464eca5c5257b4e4680e0f04a",
+    "semantic_hash": ""
+  },
+  ".claude/skills/minehost-beastmode/README.md": {
+    "mtime": 1789419288.227934,
+    "seen": 1790208884.4918385,
+    "ast_hash": "76776774de3cf0d7d6e4f9ea75b3cdbc",
+    "semantic_hash": ""
+  },
+  ".claude/skills/minehost-beastmode/SKILL.md": {
+    "mtime": 1789487231.4039898,
+    "seen": 1790208884.4918468,
+    "ast_hash": "0569d2d69e9caf3e23fb3440dc4f43f5",
+    "semantic_hash": ""
+  },
+  ".github/workflows/android.yml": {
+    "mtime": 1789240476.0,
+    "seen": 1790208884.4918554,
+    "ast_hash": "5d7bf30fde439c91dc27c9ec456c64b9",
+    "semantic_hash": ""
+  },
+  "AUDIT_REPORT.md": {
+    "mtime": 1789240476.0,
+    "seen": 1790208884.4918633,
+    "ast_hash": "cb4add2f30664187ffd3d138711a33b8",
+    "semantic_hash": ""
+  },
+  "CI_FAILURE_DIAGNOSIS.md": {
+    "mtime": 1789329141.0919983,
+    "seen": 1790208884.491872,
+    "ast_hash": "56a5cd129b7a3b981e28370f8c45426a",
+    "semantic_hash": ""
+  },
+  "CLAUDE.md": {
+    "mtime": 1790028890.5773275,
+    "seen": 1790208884.49188,
+    "ast_hash": "6b500fc79d5711fa3639d62e42e45665",
+    "semantic_hash": ""
+  },
+  "DEVICE_TEST_CHECKLIST.txt": {
+    "mtime": 1789240476.0,
+    "seen": 1790208884.4918876,
+    "ast_hash": "28cba2744e29ca22f67add8171c2e919",
+    "semantic_hash": ""
+  },
+  "MineHost_MASTER_PROJECT_CONTEXT.md": {
+    "mtime": 1789240476.0,
+    "seen": 1790208884.4918973,
+    "ast_hash": "3a280bf2724220f658531eb53626e1ce",
+    "semantic_hash": ""
+  },
+  "PATCH_REPORT.md": {
+    "mtime": 1789240476.0,
+    "seen": 1790208884.4919055,
+    "ast_hash": "eac48e71961ba303b9e7131790b715fe",
+    "semantic_hash": ""
+  },
+  "README.md": {
+    "mtime": 1789240476.0,
+    "seen": 1790208884.4919138,
+    "ast_hash": "0b29b0e058ece2fa5565b8dbf8258233",
+    "semantic_hash": ""
+  },
+  "WORLD_ADAPTER_STATUS.md": {
+    "mtime": 1789240476.0,
+    "seen": 1790208884.491922,
+    "ast_hash": "2b14ac1aa7e0e1c84e70f163765f960b",
+    "semantic_hash": ""
+  },
+  "app/applet/DEVICE_TEST_CHECKLIST.txt": {
+    "mtime": 1789240476.0,
+    "seen": 1790208884.49193,
+    "ast_hash": "bac6c751bae5bc727beb969cbd056017",
+    "semantic_hash": ""
+  },
+  "app/applet/README.md": {
+    "mtime": 1789240476.0,
+    "seen": 1790208884.4919379,
+    "ast_hash": "21d50e0e91bd26e92b67288c608c2f18",
+    "semantic_hash": ""
+  },
+  "app/src/main/cpp/minehost_jvm_launcher/CMakeLists.txt": {
+    "mtime": 1789240476.0,
+    "seen": 1790208884.491946,
+    "ast_hash": "8a252ef89bcba773ddbbbc53d6e58fde",
+    "semantic_hash": ""
+  },
+  "docs/superpowers/plans/2026-09-18-bedrock-versioning.md": {
+    "mtime": 1789942180.461338,
+    "seen": 1790208884.491954,
+    "ast_hash": "31b6a20f1b4b7566e5c49fa216771ef8",
+    "semantic_hash": ""
+  },
+  "docs/superpowers/plans/2026-09-18-world-adapter-off-completion.md": {
+    "mtime": 1789942180.465338,
+    "seen": 1790208884.4919627,
+    "ast_hash": "792d5deea261e92a38c18dd17869f803",
+    "semantic_hash": ""
+  },
+  "docs/superpowers/plans/2026-09-18-world-adapter-off-verification.md": {
+    "mtime": 1789942180.465338,
+    "seen": 1790208884.4919705,
+    "ast_hash": "e5b55f9eecd0bc10f2d675dd3a8c2624",
+    "semantic_hash": ""
+  },
+  "docs/superpowers/plans/2026-09-18-world-adapter-off.md": {
+    "mtime": 1789942180.465338,
+    "seen": 1790208884.4919784,
+    "ast_hash": "96eee3e4e47259dcd5e0c97eac571195",
+    "semantic_hash": ""
+  },
+  "engine-metadata/nukkit-mot/download-sources.md": {
+    "mtime": 1789240476.0,
+    "seen": 1790208884.4919865,
+    "ast_hash": "c02af33a1fc777983aca16815dc5218e",
+    "semantic_hash": ""
+  },
+  "engine-patches/nukkit-mot/1361/UNVERIFIED_PLAN.md": {
+    "mtime": 1789240476.0,
+    "seen": 1790208884.4919944,
+    "ast_hash": "209765436ee72ec931bbb0d65817253a",
+    "semantic_hash": ""
+  },
+  "test.txt": {
+    "mtime": 1789240476.0,
+    "seen": 1790208884.4920025,
+    "ast_hash": "d8e8fca2dc0f896fd7cb4cb0031ba249",
+    "semantic_hash": ""
+  },
+  "app/src/main/res/drawable-nodpi/basics_floating_island.webp": {
+    "mtime": 1789240476.0,
+    "seen": 1790208884.4920106,
+    "ast_hash": "82997010d2e6ec017c34053e694458b9",
+    "semantic_hash": ""
+  },
+  "app/src/main/res/drawable-nodpi/difficulty_easy.webp": {
+    "mtime": 1789240476.0,
+    "seen": 1790208884.4920187,
+    "ast_hash": "5b81bf12e6566dcba6f170a18fac40e0",
+    "semantic_hash": ""
+  },
+  "app/src/main/res/drawable-nodpi/difficulty_hard.webp": {
+    "mtime": 1789240476.0,
+    "seen": 1790208884.4920266,
+    "ast_hash": "ea798ee63ec6f9677ef48e6457c65b31",
+    "semantic_hash": ""
+  },
+  "app/src/main/res/drawable-nodpi/difficulty_normal.webp": {
+    "mtime": 1789240476.0,
+    "seen": 1790208884.492035,
+    "ast_hash": "85480d1ceb3198df1498fb691d8cb097",
+    "semantic_hash": ""
+  },
+  "app/src/main/res/drawable-nodpi/engine_cloudburst_nukkit.webp": {
+    "mtime": 1789240476.0,
+    "seen": 1790208884.492043,
+    "ast_hash": "db6efb9dc803063969e0ba76006fde34",
+    "semantic_hash": ""
+  },
+  "app/src/main/res/drawable-nodpi/engine_nukkit.webp": {
+    "mtime": 1789240476.0,
+    "seen": 1790208884.4920511,
+    "ast_hash": "44017e1594868d5b51f0645222c0213e",
+    "semantic_hash": ""
+  },
+  "app/src/main/res/drawable-nodpi/engine_nukkit_mot.webp": {
+    "mtime": 1789240476.0,
+    "seen": 1790208884.4920592,
+    "ast_hash": "2a7a2a951c4cd52ef4575c90ba22b39d",
+    "semantic_hash": ""
+  },
+  "app/src/main/res/drawable-nodpi/engine_powernukkit.webp": {
+    "mtime": 1789240476.0,
+    "seen": 1790208884.4920714,
+    "ast_hash": "5ff6f6c134d1b109c998e22255031dec",
+    "semantic_hash": ""
+  },
+  "app/src/main/res/drawable-nodpi/engine_powernukkitx.webp": {
+    "mtime": 1789240476.0,
+    "seen": 1790208884.49208,
+    "ast_hash": "a2674b5b850da311af9b5c4869851204",
+    "semantic_hash": ""
+  },
+  "app/src/main/res/drawable-nodpi/network_tunnel.webp": {
+    "mtime": 1789240476.0,
+    "seen": 1790208884.4920878,
+    "ast_hash": "24ff29cc35f09bd886d9a5e945104362",
+    "semantic_hash": ""
+  },
+  "app/src/main/res/drawable-nodpi/performance_balanced.webp": {
+    "mtime": 1789240476.0,
+    "seen": 1790208884.4920962,
+    "ast_hash": "3a65f151d5cfccbd5bd5169931ff4238",
+    "semantic_hash": ""
+  },
+  "app/src/main/res/drawable-nodpi/performance_high.webp": {
+    "mtime": 1789240476.0,
+    "seen": 1790208884.4921048,
+    "ast_hash": "8c01452357d94bf936483cc61cf8a0a9",
+    "semantic_hash": ""
+  },
+  "app/src/main/res/drawable-nodpi/performance_low_resource.webp": {
+    "mtime": 1789240476.0,
+    "seen": 1790208884.4921129,
+    "ast_hash": "88935a5a16b6bfe83b714e4af238c702",
+    "semantic_hash": ""
+  },
+  "app/src/main/res/drawable-nodpi/review_success.webp": {
+    "mtime": 1789240476.0,
+    "seen": 1790208884.4921207,
+    "ast_hash": "9898d0da0f1ba2b7f838433d9615ccf1",
+    "semantic_hash": ""
+  },
+  "app/src/main/res/drawable-nodpi/version_latest_stable.webp": {
+    "mtime": 1789240476.0,
+    "seen": 1790208884.492129,
+    "ast_hash": "e7427cf464314262f27cbd28b0668a3e",
+    "semantic_hash": ""
+  },
+  "app/src/main/res/drawable-nodpi/world_adventure.webp": {
+    "mtime": 1789240476.0,
+    "seen": 1790208884.492137,
+    "ast_hash": "70e6f4e7d6080b7f73501410aba8e7b2",
+    "semantic_hash": ""
+  },
+  "app/src/main/res/drawable-nodpi/world_creative.webp": {
+    "mtime": 1789240476.0,
+    "seen": 1790208884.492145,
+    "ast_hash": "fa108e71abc5d924598d0c91b9b313d9",
+    "semantic_hash": ""
+  },
+  "app/src/main/res/drawable-nodpi/world_flat.webp": {
+    "mtime": 1789240476.0,
+    "seen": 1790208884.4921534,
+    "ast_hash": "381176b75350c30179e9e237fa1aef34",
+    "semantic_hash": ""
+  },
+  "app/src/main/res/drawable-nodpi/world_survival.webp": {
+    "mtime": 1789240476.0,
+    "seen": 1790208884.4921613,
+    "ast_hash": "36626d4927a6a27d57106949d2499588",
+    "semantic_hash": ""
+  },
+  "app/src/main/res/drawable/app_icon_fg_1784469030211.jpg": {
+    "mtime": 1789240476.0,
+    "seen": 1790208884.4921694,
+    "ast_hash": "413d9db88df12ad2a397fcb36f82fc0e",
+    "semantic_hash": ""
+  },
+  "app/src/main/res/drawable/dashboard_hero_1784469064120.jpg": {
+    "mtime": 1789240476.0,
+    "seen": 1790208884.4921775,
+    "ast_hash": "ae8e4856a06902552989f9d22d4ec0f0",
+    "semantic_hash": ""
+  },
+  "app/src/main/res/drawable/minehost_icon_fg_1785601582816.jpg": {
+    "mtime": 1789240476.0,
+    "seen": 1790208884.492186,
+    "ast_hash": "15a0be461ed90bd7a987cd4a66d7b3c1",
+    "semantic_hash": ""
+  },
+  "app/src/main/res/drawable/minehost_icon_fg_1785607531651.jpg": {
+    "mtime": 1789240476.0,
+    "seen": 1790208884.4921947,
+    "ast_hash": "281b01f58e3123390cf38cec0e38e0bd",
+    "semantic_hash": ""
+  },
+  "app/src/main/res/mipmap-hdpi/ic_launcher.webp": {
+    "mtime": 1789240476.0,
+    "seen": 1790208884.4922028,
+    "ast_hash": "01b75f50a48499ac0af670e09677a0bf",
+    "semantic_hash": ""
+  },
+  "app/src/main/res/mipmap-hdpi/ic_launcher_round.webp": {
+    "mtime": 1789240476.0,
+    "seen": 1790208884.4922106,
+    "ast_hash": "a28d52b04be2753cfb57df242a71fbc5",
+    "semantic_hash": ""
+  },
+  "app/src/main/res/mipmap-mdpi/ic_launcher.webp": {
+    "mtime": 1789240476.0,
+    "seen": 1790208884.4922183,
+    "ast_hash": "3e521fc72dc1944518c76d3757a654f1",
+    "semantic_hash": ""
+  },
+  "app/src/main/res/mipmap-mdpi/ic_launcher_round.webp": {
+    "mtime": 1789240476.0,
+    "seen": 1790208884.4922266,
+    "ast_hash": "fe4fe17c3b7cb0ac2f438dca952c26b1",
+    "semantic_hash": ""
+  },
+  "app/src/main/res/mipmap-xhdpi/ic_launcher.webp": {
+    "mtime": 1789240476.0,
+    "seen": 1790208884.4922347,
+    "ast_hash": "d5db31435f410a7293bd200845e64961",
+    "semantic_hash": ""
+  },
+  "app/src/main/res/mipmap-xhdpi/ic_launcher_round.webp": {
+    "mtime": 1789240476.0,
+    "seen": 1790208884.4922423,
+    "ast_hash": "b42944ecf2331d0ef80a251035c6f86c",
+    "semantic_hash": ""
+  },
+  "app/src/main/res/mipmap-xxhdpi/ic_launcher.webp": {
+    "mtime": 1789240476.0,
+    "seen": 1790208884.4922504,
+    "ast_hash": "e443ce556842474ef6080056f2b16c4e",
+    "semantic_hash": ""
+  },
+  "app/src/main/res/mipmap-xxhdpi/ic_launcher_round.webp": {
+    "mtime": 1789240476.0,
+    "seen": 1790208884.4922583,
+    "ast_hash": "11b466294043a950fec49f7cd7ec3755",
+    "semantic_hash": ""
+  },
+  "app/src/main/res/mipmap-xxxhdpi/ic_launcher.webp": {
+    "mtime": 1789240476.0,
+    "seen": 1790208884.4922662,
+    "ast_hash": "55e6173e7de6571d6dd49c4136151467",
+    "semantic_hash": ""
+  },
+  "app/src/main/res/mipmap-xxxhdpi/ic_launcher_round.webp": {
+    "mtime": 1789240476.0,
+    "seen": 1790208884.4922743,
+    "ast_hash": "f8ce10d1f6cc6386a15defbd2a3e83b8",
+    "semantic_hash": ""
+  },
+  "app/src/test/screenshots/minehost-theme.png": {
+    "mtime": 1789240476.0,
+    "seen": 1790208884.4922822,
+    "ast_hash": "610f6c5d401574a3ecfa20684ec99f80",
+    "semantic_hash": ""
+  }
+}

@@ -432,6 +432,11 @@ abstract class BedrockJavaEngineBase(
     }
 
     protected open suspend fun ensurePreparedWorldIdentity(): Boolean {
+        if (!serverConfig.worldAdapterEnabled) {
+            onLog("[WorldIdentity] World adapter disabled — skipping world identity verification.")
+            return true
+        }
+
         val prepared = preparedWorld ?: return false
 
         val worldsRoot = File(serverDir, "worlds").canonicalFile

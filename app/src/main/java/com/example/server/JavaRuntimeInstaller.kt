@@ -5,6 +5,7 @@ import android.system.Os
 import android.util.Log
 import com.example.server.termux.TermuxPackage
 import com.example.server.termux.TermuxPackageResolver
+import com.example.server.version.RuntimeIntegrityResult
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.currentCoroutineContext
@@ -27,10 +28,47 @@ import java.nio.file.Files
 import java.nio.file.StandardCopyOption
 import java.security.MessageDigest
 import java.util.ArrayDeque
+import kotlin.random.Random
 
 object JavaRuntimeInstaller {
     private const val TAG = "JavaRuntimeInstaller"
     private val client = OkHttpClient()
+    private const val TERMUX_DEB_CACHE_TTL_MS = 7L * 24 * 60 * 60 * 1000L // 7 days
+    private const val TERMUX_DEB_CACHE_MAX_SIZE_BYTES = 500L * 1024 * 1024 // 500 MB
+
+    private fun enforceTermuxDebCacheSizeLimit(cacheDir: File) {
+        if (!cacheDir.isDirectory) return
+        val files = cacheDir.listFiles() ?: return
+        // Sort by last modified time (oldest first)
+        val sortedFiles = files.sortedBy { it.lastModified() }
+        var totalSize = 0L
+        for (file in sortedFiles) {
+            totalSize += file.length()
+        }
+        // If total size is already under the limit, do nothing
+        if (totalSize <= TERMUX_DEB_CACHE_MAX_SIZE_BYTES) return
+        // Otherwise, delete oldest files until we are under the limit
+        var deletedSize = 0L
+        for (file in sortedFiles) {
+            if (totalSize - deletedSize <= TERMUX_DEB_CACHE_MAX_SIZE_BYTES) break
+            val fileSize = file.length()
+            if (file.delete()) {
+                deletedSize += fileSize
+            }
+        }
+    }
+
+    private fun cleanupExpiredTermuxDebCache(cacheDir: File) {
+        if (!cacheDir.isDirectory) return
+        val now = System.currentTimeMillis()
+        val files = cacheDir.listFiles() ?: return
+        for (file in files) {
+            // Check if file is older than TTL
+            if (now - file.lastModified() > TERMUX_DEB_CACHE_TTL_MS) {
+                file.delete()
+            }
+        }
+    }
 
     suspend fun installRuntime(
         context: Context,
@@ -45,9 +83,33 @@ object JavaRuntimeInstaller {
         }
 
         val finalDir = JavaRuntimeManager.getRuntimeHome(context, javaMajor)
+        // Early exit if runtime already exists and is valid
+        if (finalDir.exists()) {
+            val metadataFile = File(finalDir, "minehost-runtime-metadata.json")
+            if (metadataFile.exists() && metadataFile.isFile) {
+                // Validate the existing runtime
+                val integrity = JavaRuntimeManager().verifyRuntimeIntegrity(context, javaMajor)
+                if (integrity is RuntimeIntegrityResult.Valid) {
+                    onProgress("[Runtime] Valid runtime already present in ${finalDir.absolutePath}")
+                    val launcher = JavaRuntimeManager.getPackagedLauncher(context) ?: JavaRuntimeManager.findJavaExecutable(integrity.runtimeHome)
+                    return@withContext RuntimePreparationResult.Ready(
+                        runtimeHome = integrity.runtimeHome,
+                        launcherFile = launcher,
+                        javaMajor = javaMajor,
+                        runtimeFingerprint = integrity.runtimeFingerprint
+                    )
+                }
+            }
+        }
+
         val backupDir = File(finalDir.parentFile, "${finalDir.name}.bak")
         val stagingDir = File(context.cacheDir, "java_staging_$javaMajor")
         val cacheDir = File(context.noBackupFilesDir, "termux_deb_cache")
+
+        // Cleanup expired cache entries and enforce cache size limits
+        cleanupExpiredTermuxDebCache(cacheDir)
+        enforceTermuxDebCacheSizeLimit(cacheDir)
+
         JavaRuntimeManager.getPackagedLauncher(context)
 
         // Part 21: Disk space check

@@ -360,9 +360,9 @@ class MineHostCoreFixesTest {
     // ── Phase 7: World Adapter OFF mode ─────────────────────────────────
 
     @Test
-    fun engineServerConfig_worldAdapterEnabled_defaultTrue() {
+    fun engineServerConfig_worldAdapterEnabled_defaultFalse() {
         val config = EngineServerConfig(worldSeed = 0L, worldSeedKnown = true)
-        assertTrue("World adapter should be enabled by default", config.worldAdapterEnabled)
+        assertFalse("World adapter should be disabled by default", config.worldAdapterEnabled)
     }
 
     @Test

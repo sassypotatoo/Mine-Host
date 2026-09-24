@@ -48,6 +48,32 @@ data class VerifiedCachedEngineArtifact(
 object Downloader {
     private val client by lazy { OkHttpClient() }
     private val activeCalls = ConcurrentHashMap<String, Call>()
+    private val DOWNLOAD_CACHE_DIR by lazy {
+        File(System.getProperty("java.io.tmpdir"), "minehost_download_cache").apply { mkdirs() }
+    }
+    private const val MAX_CACHE_SIZE_BYTES = 100L * 1024 * 1024 // 100 MB
+
+    private fun enforceCacheSizeLimit() {
+        if (!DOWNLOAD_CACHE_DIR.isDirectory) return
+        val files = DOWNLOAD_CACHE_DIR.listFiles() ?: return
+        // Sort by last modified time (oldest first)
+        val sortedFiles = files.sortedBy { it.lastModified() }
+        var totalSize = 0L
+        for (file in sortedFiles) {
+            totalSize += file.length()
+        }
+        // If total size is already under the limit, do nothing
+        if (totalSize <= MAX_CACHE_SIZE_BYTES) return
+        // Otherwise, delete oldest files until we are under the limit
+        var deletedSize = 0L
+        for (file in sortedFiles) {
+            if (totalSize - deletedSize <= MAX_CACHE_SIZE_BYTES) break
+            val fileSize = file.length()
+            if (file.delete()) {
+                deletedSize += fileSize
+            }
+        }
+    }
 
     fun cancel(id: String) {
         activeCalls.remove(id)?.cancel()
@@ -664,6 +690,7 @@ object Downloader {
                         return ServerJarDownloadResult.Failure("Verified Paper JAR could not be committed to cache")
                     }
 
+                    enforceCacheSizeLimit()
                     writeResolvedCacheMetadata(context, version, cacheFile, resolvedIdentity, actualSha256)
                     onProgress("[Engine] Paper build #${buildInfo.buildNumber} SHA-256 verified and installed successfully.")
                     return ServerJarDownloadResult.Success(resolvedIdentity)
@@ -994,6 +1021,7 @@ object Downloader {
                             )
                         }
 
+                        enforceCacheSizeLimit()
                         runCatching {
                             resolver.saveLastKnownGood(
                                 context = context,
@@ -1262,7 +1290,10 @@ object Downloader {
         for (attempt in 0..2) {
             try {
                 if (attempt > 0) {
-                    val backoff = (Math.pow(2.0, attempt.toDouble()).toLong() * 1000L).coerceAtMost(10_000L)
+                    val baseDelay = (Math.pow(2.0, attempt.toDouble()).toLong() * 1000L)
+                    // Add jitter to prevent thundering herd: ±10% of base delay
+                    val jitter = (baseDelay * 0.1).toLong() * (-1 + 2 * kotlin.random.Random.nextDouble())
+                    val backoff = (baseDelay + jitter).coerceAtMost(10_000L).coerceAtLeast(0L)
                     onProgress("Retrying $name download (${attempt + 1}/3) in ${backoff / 1000}s...")
                     delay(backoff)
                 } else {
@@ -1271,43 +1302,102 @@ object Downloader {
 
                 partFile.delete()
 
-                val requestBuilder = Request.Builder().url(url).get()
-                for ((headerName, headerValue) in requestHeaders) {
+                val requestBuilder = Request.Builder().url(url)
+
+                // Add conditional HTTP headers if we have cached version info
+                val conditionalCacheFileToUse = File(DOWNLOAD_CACHE_DIR, "${url.md5()}.conditional")
+                val conditionalHeaders = getConditionalHeadersForUrl(conditionalCacheFileToUse)
+                val allHeaders = requestHeaders + conditionalHeaders
+
+                for ((headerName, headerValue) in allHeaders) {
                     if (headerName.isNotBlank() && headerValue.isNotBlank()) {
                         requestBuilder.header(headerName, headerValue)
                     }
                 }
-                val request = requestBuilder.build()
+
+                val request = requestBuilder.get().build()
                 var downloaded = 0L
                 var expectedLength = -1L
 
                 val call = client.newCall(request)
-                operationId?.let { 
-                    activeCalls[it] = call 
+                operationId?.let {
+                    activeCalls[it] = call
                 }
-                
+
                 try {
                     call.execute().use { response ->
                         if (!response.isSuccessful) {
                             val code = response.code
                             val isTerminal = (code == 404 || code == 403)
                             val retryable = !isTerminal && (code == 429 || code >= 500)
-                            
-                            val res = ArtifactDownloadResult.HttpFailure(url, code, retryable)
-                            lastResult = res
-                            
-                            if (isTerminal) {
-                                onProgress("Terminal HTTP failure: $code")
-                                return@withContext lastResult!!
-                            } else if (retryable && attempt < 2) {
-                                val retryAfter = response.header("Retry-After")?.toLongOrNull()
-                                if (retryAfter != null) {
-                                     onProgress("Server requested retry after $retryAfter seconds.")
-                                     delay(retryAfter * 1000L)
+
+                            // Handle 304 Not Modified - reuse cached artifact
+                            if (code == 304) {
+                                onProgress("Server returned 304 Not Modified - using cached artifact")
+                                // Try to find and return the cached artifact
+                                val cachedFile = findCachedArtifactForUrl(url)
+                                if (cachedFile != null && cachedFile.isFile) {
+                                    if (isJar) {
+                                        onProgress("Validating cached JAR integrity...")
+                                        if (!validateGenericJar(cachedFile)) {
+                                            val msg = "Cached file is not a valid JAR"
+                                            onProgress(msg)
+                                            return@withContext ArtifactDownloadResult.ValidationFailure(url, msg)
+                                        }
+                                    }
+                                    // Copy cached file to destination
+                                    if (copyVerifiedArtifact(
+                                            source = cachedFile,
+                                            destination = destination,
+                                            expectedSha256 = sha256(cachedFile) ?: ""
+                                    )) {
+                                        onProgress("Download $name complete (from cache).")
+                                        return@withContext ArtifactDownloadResult.Success(
+                                            file = destination,
+                                            finalUrl = url,
+                                            contentLength = destination.length(),
+                                            manifestMainClass = null
+                                        )
+                                    } else {
+                                        val msg = "Could not copy cached artifact to destination"
+                                        onProgress(msg)
+                                        return@withContext ArtifactDownloadResult.ValidationFailure(url, msg)
+                                    }
+                                } else {
+                                    // No valid cached file found, treat as failure
+                                    val res = ArtifactDownloadResult.HttpFailure(url, code, retryable)
+                                    lastResult = res
+                                    if (isTerminal) {
+                                        onProgress("Terminal HTTP failure: $code")
+                                        return@withContext lastResult!!
+                                    } else if (retryable && attempt < 2) {
+                                        val retryAfter = response.header("Retry-After")?.toLongOrNull()
+                                        if (retryAfter != null) {
+                                             onProgress("Server requested retry after $retryAfter seconds.")
+                                             delay(retryAfter * 1000L)
+                                        }
+                                        throw IOException("HTTP $code")
+                                    } else {
+                                        throw IOException("HTTP $code")
+                                    }
                                 }
-                                throw IOException("HTTP $code")
                             } else {
-                                throw IOException("HTTP $code")
+                                val res = ArtifactDownloadResult.HttpFailure(url, code, retryable)
+                                lastResult = res
+
+                                if (isTerminal) {
+                                    onProgress("Terminal HTTP failure: $code")
+                                    return@withContext lastResult!!
+                                } else if (retryable && attempt < 2) {
+                                    val retryAfter = response.header("Retry-After")?.toLongOrNull()
+                                    if (retryAfter != null) {
+                                         onProgress("Server requested retry after $retryAfter seconds.")
+                                         delay(retryAfter * 1000L)
+                                    }
+                                    throw IOException("HTTP $code")
+                                } else {
+                                    throw IOException("HTTP $code")
+                                }
                             }
                         }
 
@@ -1362,7 +1452,7 @@ object Downloader {
                         }
                     }
                 } finally {
-                    operationId?.let { 
+                    operationId?.let {
                         if (activeCalls[it] == call) {
                             activeCalls.remove(it)
                         }
@@ -1375,7 +1465,7 @@ object Downloader {
                         // Continue to next attempt if not Success
                     }
                 }
-                
+
                 if (lastResult is ArtifactDownloadResult.HttpFailure && !(lastResult as ArtifactDownloadResult.HttpFailure).retryable) {
                     return@withContext lastResult!!
                 }
@@ -1419,6 +1509,8 @@ object Downloader {
                 }
 
                 onProgress("Download $name complete.")
+                // Save ETag and Last-Modified for future conditional requests
+                saveConditionalHeadersForUrl(url, response, destination)
                 return@withContext ArtifactDownloadResult.Success(
                     file = destination,
                     finalUrl = url,
@@ -1439,20 +1531,140 @@ object Downloader {
         return@withContext lastResult ?: ArtifactDownloadResult.NetworkFailure(url, "Unknown error", false)
     }
 
-    fun sha256(file: File): String? {
-        if (!file.isFile) return null
-        return runCatching {
-            val digest = MessageDigest.getInstance("SHA-256")
-            file.inputStream().use { input ->
-                val buffer = ByteArray(64 * 1024)
-                while (true) {
-                    val read = input.read(buffer)
-                    if (read < 0) break
-                    if (read > 0) digest.update(buffer, 0, read)
+    /**
+     * Get conditional HTTP headers (If-None-Match, If-Modified-Since) from the given cache file if it exists
+     */
+    private fun getConditionalHeadersForUrl(cacheFile: File?): Map<String, String> {
+        cacheFile?.takeIf { it.isFile }?.let {
+            return runCatching {
+                val json = JSONObject(it.readText())
+                val headers = hashMapOf<String, String>()
+
+                val etag = json.optString("etag")
+                if (etag.isNotBlank()) {
+                    headers["If-None-Match"] = etag
                 }
+
+                val lastModified = json.optString("lastModified")
+                if (lastModified.isNotBlank()) {
+                    headers["If-Modified-Since"] = lastModified
+                }
+
+                headers.toMap()
+            }.getOrEmpty()
+        }
+        return emptyMap()
+    }
+
+    /**
+     * Save ETag and Last-Modified headers from a response for future conditional requests
+     */
+    private fun saveConditionalHeadersForUrl(url: String, response: okhttp3.Response, destination: File) {
+        try {
+            val headers = hashMapOf<String, String>()
+
+            val etag = response.header("ETag")
+            if (etag != null) {
+                headers["etag"] = etag
             }
-            digest.digest().joinToString("") { "%02x".format(it) }
-        }.getOrNull()
+
+            val lastModified = response.header("Last-Modified")
+            if (lastModified != null) {
+                headers["lastModified"] = lastModified
+            }
+
+            if (headers.isNotEmpty()) {
+                val cacheFile = File(DOWNLOAD_CACHE_DIR, "${url.md5()}.conditional")
+                val map = hashMapOf<String, Any>()
+                map.put("etag", etag)
+                map.put("lastModified", lastModified)
+                map.put("destinationPath", destination.absolutePath)
+                val json = JSONObject(map)
+                cacheFile.writeText(json.toString(2))
+            }
+        } catch (e: Exception) {
+            // Ignore errors in saving conditional headers
+        }
+    }
+
+    /**
+     * Find cached artifact for a URL based on ETag/Last-Modified matching
+     */
+    private fun findCachedArtifactForUrl(url: String): File? {
+        // This is a simplified implementation - in practice we'd need to map URLs to cache files
+        // For now, we'll look for any cached file that matches the URL pattern
+        val cacheDir = File(System.getProperty("java.io.tmpdir"), "minehost_download_cache")
+        if (!cacheDir.isDirectory) return null
+
+        return cacheDir.listFiles()?.firstOrNull { file ->
+            file.name.startsWith(url.md5()) && !file.name.endsWith(".conditional")
+        }?.let { File(cacheDir, it.name) }
+    }
+
+    /**
+     * Simple MD5 hash for URL to use as cache key
+     */
+    private fun String.md5(): String {
+        return runCatching {
+            val digest = MessageDigest.getInstance("MD5")
+            digest.digest(this.toByteArray(Charsets.UTF_8))
+                .joinToString("") { "%02x".format(it) }
+        }.getOrEmpty()
+    }
+
+    fun sha256(file: File): String? {
+        return Sha256Memoizer.getSha256(file)
+    }
+
+    private object Sha256Memoizer {
+        private fun getSidecarFile(file: File): File {
+            return File("${file.absolutePath}.sha256")
+        }
+
+        fun getSha256(file: File): String? {
+            if (!file.isFile) return null
+
+            val sidecar = getSidecarFile(file)
+            if (sidecar.isFile) {
+                return runCatching {
+                    val json = JSONObject(sidecar.readText())
+                    val cachedFileSize = json.getLong("fileSize")
+                    val cachedLastModified = json.getLong("lastModified")
+                    if (cachedFileSize == file.length() && cachedLastModified == file.lastModified()) {
+                        json.getString("sha256")
+                    } else {
+                        null
+                    }
+                }.getOrNull()
+            }
+
+            // If we don't have a valid sidecar, compute and update
+            val computed = computeSha256Internal(file)
+            if (computed != null) {
+                val json = JSONObject().apply {
+                    put("sha256", computed)
+                    put("fileSize", file.length())
+                    put("lastModified", file.lastModified())
+                }
+                sidecar.writeText(json.toString())
+            }
+            return computed
+        }
+
+        private fun computeSha256Internal(file: File): String? {
+            return runCatching {
+                val digest = MessageDigest.getInstance("SHA-256")
+                file.inputStream().use { input ->
+                    val buffer = ByteArray(64 * 1024)
+                    while (true) {
+                        val read = input.read(buffer)
+                        if (read < 0) break
+                        if (read > 0) digest.update(buffer, 0, read)
+                    }
+                }
+                digest.digest().joinToString("") { "%02x".format(it) }
+            }.getOrNull()
+        }
     }
 
     private fun validateGenericJar(file: File): Boolean {
