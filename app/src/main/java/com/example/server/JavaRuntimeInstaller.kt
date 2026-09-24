@@ -88,7 +88,7 @@ object JavaRuntimeInstaller {
             val metadataFile = File(finalDir, "minehost-runtime-metadata.json")
             if (metadataFile.exists() && metadataFile.isFile) {
                 // Validate the existing runtime
-                val integrity = JavaRuntimeManager().verifyRuntimeIntegrity(context, javaMajor)
+                val integrity = JavaRuntimeManager.verifyRuntimeIntegrity(context, javaMajor)
                 if (integrity is RuntimeIntegrityResult.Valid) {
                     onProgress("[Runtime] Valid runtime already present in ${finalDir.absolutePath}")
                     val launcher = JavaRuntimeManager.getPackagedLauncher(context)
