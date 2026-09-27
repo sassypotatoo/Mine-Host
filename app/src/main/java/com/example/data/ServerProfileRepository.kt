@@ -506,7 +506,7 @@ class ServerProfileRepository(
             minecraftVersion = obj.optString("minecraftVersion").takeIf(String::isNotBlank) ?: bedrockVersion,
             resolvedIdentity = if (obj.has("resolvedIdentity") && !obj.isNull("resolvedIdentity")) parseResolvedIdentity(obj.getJSONObject("resolvedIdentity")) else null,
             minecraftEulaAccepted = obj.optBoolean("minecraftEulaAccepted", false),
-            worldAdapterEnabled = obj.optBoolean("worldAdapterEnabled", true),
+            worldAdapterEnabled = obj.optBoolean("worldAdapterEnabled", false),
         )
     }
 

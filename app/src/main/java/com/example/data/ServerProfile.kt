@@ -56,7 +56,7 @@ data class ServerProfile(
     val minecraftVersion: String? = null,
     val resolvedIdentity: ResolvedEngineVersion? = null,
     val minecraftEulaAccepted: Boolean = false,
-    val worldAdapterEnabled: Boolean = true,
+    val worldAdapterEnabled: Boolean = false,
 ) {
     fun toJson(): String {
         val obj = JSONObject().apply {
@@ -131,7 +131,7 @@ data class ServerProfile(
             networkType: ServerNetworkType = ServerNetworkType.BEDROCK_RAKNET_UDP,
             minecraftVersion: String? = null,
             minecraftEulaAccepted: Boolean = false,
-            worldAdapterEnabled: Boolean = true,
+            worldAdapterEnabled: Boolean = false,
         ): ServerProfile {
             val now = System.currentTimeMillis()
             return ServerProfile(

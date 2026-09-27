@@ -114,7 +114,7 @@ data class ServerSettingsState(
     val whitelistEnabled: Boolean = false,
     val autoRestart: Boolean = true,
     val autoBackup: Boolean = false,
-    val worldAdapterEnabled: Boolean = true
+    val worldAdapterEnabled: Boolean = false
 )
 
 data class PlayerSession(
