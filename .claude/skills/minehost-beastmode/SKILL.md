@@ -228,6 +228,7 @@ Beast Mode state is persisted in `.claude/beastmode_state.json` and accessed via
 ## Commands
 
 - `/minehost-beastmode` — Toggle Beast Mode ON/OFF (persistent master toggle). Normal user messages are the tasks.
+- `/minehost-beastmode firebase run` — Explicitly trigger Firebase Test Lab workflow: download latest successful APK (from minehost-debug workflow or any successful APK workflow), submit to Firebase Test Lab with an ARM virtual device, and store results. Requires FIREBASE_TESTLAB_BUCKET environment variable set to a Google Cloud Storage bucket for results.
 - `bm-state read` — Read current work queue and decision history
 - `bm-state write <json>` — Record decisions, progress, and outcomes
 - `push-gated.sh commit <message>` — Safely commit changes (refuses force-push, empty commits)

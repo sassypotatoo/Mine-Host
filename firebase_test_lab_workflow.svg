@@ -1,0 +1,91 @@
+<svg width="800" height="700" xmlns="http://www.w3.org/2000/svg">
+  <style>
+    .step { fill: #e6f3ff; stroke: #0066cc; stroke-width: 2; }
+    .decision { fill: #ffe6e6; stroke: #cc0000; stroke-width: 2; }
+    .text { font-family: sans-serif; font-size: 12px; }
+    .arrow { fill: none; stroke: #333; stroke-width: 2; marker-end: url(#arrowhead); }
+  </style>
+  <defs>
+    <marker id="arrowhead" markerWidth="10" markerHeight="7" refX="10" refY="3.5" orient="auto">
+      <polygon points="0 0, 10 3.5, 0 7" fill="#333" />
+    </marker>
+  </defs>
+
+  <!-- Start -->
+  <rect x="50" y="20" width="100" height="30" class="step" />
+  <text x="100" y="40" class="text" text-anchor="middle">Start</text>
+
+  <!-- Trigger -->
+  <rect x="50" y="70" width="200" height="30" class="step" />
+  <text x="150" y="90" class="text" text-anchor="middle">Trigger: /minehost-beastmode firebase run</text>
+
+  <!-- Check State -->
+  <rect x="50" y="120" width="200" height="30" class="decision" />
+  <text x="150" y="140" class="text" text-anchor="middle">Check Beast Mode State:</text>
+  <text x="150" y="155" class="text" text-anchor="middle">Is Firebase Test Lab allowed?</text>
+
+  <!-- Yes path -->
+  <line x1="150" y1="150" x2="150" y2="180" class="arrow" />
+  <!-- Get Latest Run -->
+  <rect x="50" y="180" width="200" height="30" class="step" />
+  <text x="150" y="200" class="text" text-anchor="middle">Get latest successful GitHub Actions run (with APK artifact)</text>
+
+  <!-- Download APK -->
+  <line x1="150" y1="210" x2="150" y2="240" class="arrow" />
+  <rect x="50" y="240" width="200" height="30" class="step" />
+  <text x="150" y="260" class="text" text-anchor="middle">Download APK artifact</text>
+
+  <!-- Select Device -->
+  <line x1="150" y1="270" x2="150" y2="300" class="arrow" />
+  <rect x="50" y="300" width="200" height="30" class="step" />
+  <text x="150" y="320" class="text" text-anchor="middle">Select compatible non-deprecated ARM virtual device</text>
+
+  <!-- Submit to Test Lab -->
+  <line x1="150" y1="330" x2="150" y2="360" class="arrow" />
+  <rect x="50" y="360" width="200" height="30" class="step" />
+  <text x="150" y="380" class="text" text-anchor="middle">Submit APK to Firebase Test Lab with selected device</text>
+
+  <!-- Wait -->
+  <line x1="150" y1="390" x2="150" y2="420" class="arrow" />
+  <rect x="50" y="420" width="200" height="30" class="step" />
+  <text x="150" y="440" class="text" text-anchor="middle">Wait for test completion</text>
+
+  <!-- Collect Results -->
+  <line x1="150" y1="450" x2="150" y2="480" class="arrow" />
+  <rect x="50" y="480" width="200" height="30" class="step" />
+  <text x="150" y="500" class="text" text-anchor="middle">Collect results: screenshots, video, logs, metadata</text>
+
+  <!-- Store Results -->
+  <line x1="150" y1="510" x2="150" y2="540" class="arrow" />
+  <rect x="50" y="540" width="200" height="30" class="step" />
+  <text x="150" y="560" class="text" text-anchor="middle">Store results in .claude/testlab-results/<runId>/</text>
+
+  <!-- Update State -->
+  <line x1="150" y1="570" x2="150" y2="600" class="arrow" />
+  <rect x="50" y="600" width="200" height="30" class="step" />
+  <text x="150" y="620" class="text" text-anchor="middle">Update Beast Mode state with Test Lab runId and status</text>
+
+  <!-- End -->
+  <line x1="150" y1="630" x2="150" y2="660" class="arrow" />
+  <rect x="50" y="660" width="100" height="30" class="step" />
+  <text x="100" y="680" class="text" text-anchor="middle">End</text>
+
+  <!-- No path -->
+  <line x1="150" y1="150" x2="350" y2="150" class="arrow" />
+  <line x1="350" y1="150" x2="350" y2="200" class="arrow" />
+  <!-- Show Error -->
+  <rect x="250" y="200" width="200" height="30" class="decision" />
+  <text x="350" y="215" class="text" text-anchor="middle">Firebase Test Lab not allowed in current state</text>
+  <text x="350" y="230" class="text" text-anchor="middle">Show error and exit</text>
+  <!-- Connect error path to End -->
+  <line x1="350" y1="230" x2="350" y2="400" class="arrow" />
+  <line x1="350" y1="400" x2="150" y2="400" class="arrow" />
+  <line x1="150" y1="400" x2="150" y2="420" class="arrow" />
+
+  <!-- Note about separation from runtime verification -->
+  <rect x="450" y="100" width="300" height="100" class="step" stroke-dasharray="5,5" />
+  <text x="600" y="120" class="text" text-anchor="middle">Note: Firebase Test Lab verification is</text>
+  <text x="600" y="140" class="text" text-anchor="middle">separate from existing runtime verification.</text>
+  <text x="600" y="160" class="text" text-anchor="middle">Normal Beast Mode runs do not trigger</text>
+  <text x="600" y="180" class="text" text-anchor="middle">Firebase Test Lab automatically.</text>
+</svg>
