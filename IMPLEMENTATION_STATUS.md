@@ -35,10 +35,9 @@
 - 📝 Solution: Update PaperMC to Android-compatible version or provide bionic-compatible libjnidispatch.so
 - 📝 **No MineHost code change required**
 
-### 10. API Retry Mechanism Improvement (Incomplete)
-- ⚠️ Identified but not implemented
-- 📝 Plan: Add jitter to exponential backoff in `downloadFile` to prevent thundering herd
-- 📝 Example: `val jitter = (baseDelay * 0.1).toLong() * (-1 + 2 * Random.nextDouble())`
+### 10. API Retry Mechanism Improvement (Complete)
+- ✅ Implemented jitter to exponential backoff in `downloadFile` to prevent thundering herd
+- 📝 Used exponential backoff (1s, 2s, 4s) with ±10% jitter: `val jitter = (baseDelay * 0.1 * (-1 + 2 * kotlin.random.Random.nextDouble())).toLong()`
 
 ## Verification Notes
 - 🔬 Local build/test unavailable: Termux device lacks JDK/Gradle/adb
