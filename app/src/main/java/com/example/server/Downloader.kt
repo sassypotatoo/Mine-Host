@@ -1319,6 +1319,8 @@ object Downloader {
                 val request = requestBuilder.get().build()
                 var downloaded = 0L
                 var expectedLength = -1L
+                var responseEtag: String? = null
+                var responseLastModified: String? = null
 
                 val call = client.newCall(request)
                 operationId?.let {
@@ -1327,6 +1329,9 @@ object Downloader {
 
                 try {
                     call.execute().use { response ->
+                        // Capture conditional headers for future requests
+                        responseEtag = response.header("ETag")
+                        responseLastModified = response.header("Last-Modified")
                         if (!response.isSuccessful) {
                             val code = response.code
                             val isTerminal = (code == 404 || code == 403)
@@ -1511,7 +1516,13 @@ object Downloader {
 
                 onProgress("Download $name complete.")
                 // Save ETag and Last-Modified for future conditional requests
-                saveConditionalHeadersForUrl(url, response, destination)
+                // (OkHttp Response is scoped to the download block above)
+                saveConditionalHeadersForUrl(
+                    url,
+                    responseEtag,
+                    responseLastModified,
+                    destination
+                )
                 return@withContext ArtifactDownloadResult.Success(
                     file = destination,
                     finalUrl = url,
@@ -1536,8 +1547,8 @@ object Downloader {
      * Get conditional HTTP headers (If-None-Match, If-Modified-Since) from the given cache file if it exists
      */
     private fun getConditionalHeadersForUrl(cacheFile: File?): Map<String, String> {
-        cacheFile?.takeIf { it.isFile }?.let {
-            return runCatching {
+        val map = cacheFile?.takeIf { it.isFile }?.let {
+            runCatching {
                 val json = JSONObject(it.readText())
                 val headers = hashMapOf<String, String>()
 
@@ -1552,24 +1563,29 @@ object Downloader {
                 }
 
                 headers.toMap()
-            }.getOrEmpty()
-        }
-        return emptyMap()
+            }.getOrElse { emptyMap() }
+        } ?: emptyMap()
+        return map
     }
 
     /**
      * Save ETag and Last-Modified headers from a response for future conditional requests
      */
-    private fun saveConditionalHeadersForUrl(url: String, response: okhttp3.Response, destination: File) {
+    private fun saveConditionalHeadersForUrl(
+        url: String,
+        responseEtag: String?,
+        responseLastModified: String?,
+        destination: File,
+    ) {
         try {
             val headers = hashMapOf<String, String>()
 
-            val etag = response.header("ETag")
+            val etag = responseEtag
             if (etag != null) {
                 headers["etag"] = etag
             }
 
-            val lastModified = response.header("Last-Modified")
+            val lastModified = responseLastModified
             if (lastModified != null) {
                 headers["lastModified"] = lastModified
             }
@@ -1610,7 +1626,7 @@ object Downloader {
             val digest = MessageDigest.getInstance("MD5")
             digest.digest(this.toByteArray(Charsets.UTF_8))
                 .joinToString("") { "%02x".format(it) }
-        }.getOrEmpty()
+        }.getOrElse { "" }
     }
 
     fun sha256(file: File): String? {
