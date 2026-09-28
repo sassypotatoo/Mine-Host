@@ -1,0 +1,1 @@
+Capability check passed, write allowed.

@@ -169,8 +169,7 @@ def main() -> None:
             "/minehost-beastmode:minehost-beastmode",
             "/minehost-autonomous:minehost-autonomous",
         }
-        toggle_match = stripped in toggle_cmds
-        if toggle_match:
+        if stripped in toggle_cmds:
             was_on = state.get("beastModeEnabled", False)
 
             new_state = state.copy()
@@ -208,6 +207,14 @@ def main() -> None:
             )
             print(json.dumps(hook_input))
             return
+        elif stripped == "/minehost-beastmode firebase run":
+            # Set Beast Mode on and set currentTask
+            new_state = state.copy()
+            if not new_state.get("beastModeEnabled", False):
+                new_state["beastModeEnabled"] = True
+            new_state["currentTask"] = "Firebase Test Lab run"
+            write_state(new_state)
+            # Fall through to inject context
 
         # ── Beast Mode OFF — pass through untouched ─────────────────────────
         if not state.get("beastModeEnabled", False):
