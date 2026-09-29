@@ -10,8 +10,8 @@ import sys
 from pathlib import Path
 
 # Flag file to indicate capability check completed
-SESSION_DIR = Path(os.environ.get("CLAUDE_SESSION_ID", "/tmp"))
-CAP_CHECK_DONE = SESSION_DIR / ".cap_check_done"
+PROJECT_ROOT = Path(__file__).resolve().parent.parent
+CAP_CHECK_DONE = PROJECT_ROOT / ".cap_check_done"
 
 def main() -> None:
     try:

@@ -1,6 +1,6 @@
 {
   "name": "minehost-beastmode",
-  "description": "Beast Mode v4 workflow orchestration system for MineHost autonomous development. Claude Code is the brain. Manages state, objectives, and verification without competing orchestration.",
+  "description": "Beast Mode v4 workflow orchestration system for MineHost autonomous development. Claude Code is the brain. Manages state, objectives, and verification without competing orchestration. Supports subcommands like `firebase run` to execute Firebase Test Lab workflows.",
   "enabled": true,
   "version": "1.0.0",
   "author": "MineHost Development Team",
@@ -8,10 +8,11 @@
   "commands": [
     {
       "name": "minehost-beastmode",
-      "description": "Toggle Beast Mode v4 ON/OFF (persistent master toggle)",
+      "description": "Toggle Beast Mode v4 ON/OFF (persistent master toggle). When ON, supports subcommands like `firebase run` to execute Firebase Test Lab workflows.",
       "usage": "/minehost-beastmode",
       "examples": [
-        "/minehost-beastmode"
+        "/minehost-beastmode",
+        "/minehost-beastmode firebase run"
       ]
     }
   ],

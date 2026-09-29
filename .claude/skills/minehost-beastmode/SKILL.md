@@ -24,6 +24,23 @@ When you see `BEAST MODE ACTIVE` in your context block:
 
 Key principle: Never claim verification without real evidence. Always use actual Git and CI results.
 
+### Firebase Test Lab Integration
+
+The Beast Mode skill supports a `firebase run` subcommand to execute Firebase Test Lab workflows.
+
+Usage:
+```
+/minehost-beastmode firebase run
+```
+
+This command will:
+- Download the latest successful APK from GitHub Actions
+- Submit it to Firebase Test Lab with an ARM virtual device
+- Store the results in `.claude/testlab-results/<timestamp>/`
+- Update the Beast Mode state with the test run information
+
+Requires the `FIREBASE_TESTLAB_BUCKET` environment variable to be set to a Google Cloud Storage bucket for results.
+
 ## v4 Workflow Documents
 
 When Beast Mode is ON and a work request arrives:

@@ -1,6 +1,6 @@
 # Firebase Test Lab Integration Implementation Plan
 
-> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
+> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [x]`) syntax for tracking.
 
 **Goal:** Integrate Firebase Test Lab into MineHost Beast Mode v4 workflow via an explicit `/minehost-beastmode firebase run` command, downloading the latest successful GitHub Actions APK, testing on Firebase Test Lab, and storing results.
 
@@ -44,11 +44,11 @@
 - Consumes: None
 - Produces: Updated skill that recognizes `/minehost-beastmode firebase run` and delegates to a new tool/script.
 
-- [ ] **Step 1: Write the failing test** (Not applicable for skill documentation; we will verify by manual testing)
-- [ ] **Step 2: Implement the skill update**
+- [x] **Step 1: Write the failing test** (Not applicable for skill documentation; we will verify by manual testing)
+- [x] **Step 2: Implement the skill update**
   - Add a new case in the skill's command handling for `firebase run`.
   - The skill should invoke a new script (e.g., `./tools/run-firebase-test-lab.sh`) when this command is triggered.
-- [ ] **Step 3: Verify the change**
+- [x] **Step 3: Verify the change**
   - Check that the skill correctly routes the command.
   - Ensure no unintended side effects on existing commands.
 
@@ -61,8 +61,8 @@
 - Consumes: None (will read Beast Mode state and GitHub/Firebase environment)
 - Produces: Exits with 0 on success, non-zero on failure; updates Beast Mode state and stores results.
 
-- [ ] **Step 1: Write the failing test** (We'll test by running the script and expecting it to fail initially due to missing logic)
-- [ ] **Step 2: Implement the script**
+- [x] **Step 1: Write the failing test** (We'll test by running the script and expecting it to fail initially due to missing logic)
+- [x] **Step 2: Implement the script**
   1. Parse arguments (expect `run` subcommand).
   2. Read Beast Mode state to check if Firebase Test Lab is allowed (we'll add a flag in state).
   3. If not allowed, output error and exit.
@@ -75,7 +75,7 @@
   10. Store results in `.claude/testlab-results/<runId>/` where `<runId>` is a timestamp or Firebase Test Lab run ID.
   11. Update Beast Mode state (`.claude/beastmode_state.json`) with the Firebase Test Lab run ID and status.
   12. Handle errors and cleanup.
-- [ ] **Step 3: Test the script**
+- [x] **Step 3: Test the script**
   - Run the script in a controlled environment (maybe using a test GitHub repo) to ensure it works.
   - Verify that the APK is downloaded, submitted, and results are stored.
 
@@ -88,8 +88,8 @@
 - Consumes: Current state
 - Produces: Updated state with Firebase Test Lab tracking fields
 
-- [ ] **Step 1: Write the failing test** (We'll check that the script can read and write the new fields)
-- [ ] **Step 2: Update the state structure in the script**
+- [x] **Step 1: Write the failing test** (We'll check that the script can read and write the new fields)
+- [x] **Step 2: Update the state structure in the script**
   - Add fields under a new `firebaseTestLab` object, e.g.:
     ```json
     {
@@ -101,7 +101,7 @@
     }
     ```
   - Ensure the script initializes these fields if they don't exist.
-- [ ] **Step 3: Verify state updates**
+- [x] **Step 3: Verify state updates**
   - After running the Firebase Test Lab script, check that the state file is updated correctly.
 
 ### Task 4: Ensure Safety and Isolation
@@ -113,12 +113,12 @@
 - Consumes: None
 - Produces: A script that does not trigger Firebase Test Lab during normal Beast Mode operations.
 
-- [ ] **Step 1: Write the failing test** (We'll test that normal Beast Mode commands do not invoke the Firebase Test Lab script)
-- [ ] **Step 2: Implement safety checks**
+- [x] **Step 1: Write the failing test** (We'll test that normal Beast Mode commands do not invoke the Firebase Test Lab script)
+- [x] **Step 2: Implement safety checks**
   - The script should only run when explicitly called via the Beast Mode `firebase run` subcommand.
   - Normal Beast Mode commands (e.g., `/minehost-beastmode status`) should not invoke this script.
   - We can achieve this by having the Beast Mode skill only call the script for the `firebase run` command.
-- [ ] **Step 3: Verify isolation**
+- [x] **Step 3: Verify isolation**
   - Run a normal Beast Mode command and confirm that the Firebase Test Lab script is not executed.
 
 ### Task 5: Document and Finalize
@@ -131,8 +131,8 @@
 - Consumes: None
 - Produces: Updated documentation
 
-- [ ] **Step 1: Write the failing test** (We'll verify that the plan is complete and accurate)
-- [ ] **Step 2: Finalize the plan**
+- [x] **Step 1: Write the failing test** (We'll verify that the plan is complete and accurate)
+- [x] **Step 2: Finalize the plan**
   - Ensure all tasks are clearly defined and traceable.
-- [ ] **Step 3: Verify the plan against the spec** (The spec is the user's request in the pasted content)
+- [x] **Step 3: Verify the plan against the spec** (The spec is the user's request in the pasted content)
   - Check that the plan addresses all points in the user's request.

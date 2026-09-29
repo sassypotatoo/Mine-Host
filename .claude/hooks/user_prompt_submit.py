@@ -213,6 +213,7 @@ def main() -> None:
             if not new_state.get("beastModeEnabled", False):
                 new_state["beastModeEnabled"] = True
             new_state["currentTask"] = "Firebase Test Lab run"
+            new_state["workflowStatus"] = "RUNNING"
             write_state(new_state)
             # Fall through to inject context
 
