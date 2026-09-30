@@ -319,10 +319,13 @@ validate_apk() {
 
         # Check sdkVersion from manifest
         if ! echo "$manifest_content" | grep -q "sdkVersion=\"$min_sdk_version\""; then
-            # Note: we are checking for exact match, but we should check for >= $min_sdk_version
-            # For simplicity, we check for the exact value we expect, but ideally we should parse the integer
-            log "APK sdkVersion mismatch. Expected at least: $min_sdk_version"
-            return 1
+            # Extract the actual sdkVersion integer and compare
+            local actual_sdk_version
+            actual_sdk_version=$(echo "$manifest_content" | grep -o 'sdkVersion="[0-9]*"' | cut -d'"' -f2)
+            if [[ -z "$actual_sdk_version" ]] || [[ "$actual_sdk_version" -lt "$min_sdk_version" ]]; then
+                log "APK sdkVersion too low. Expected at least: $min_sdk_version, found: $actual_sdk_version"
+                return 1
+            fi
         fi
     fi
 
@@ -365,16 +368,18 @@ for device in data:
         return 1
     fi
 
-    # Query supported API versions for the selected device and choose the highest (<= 26)
+    # Query supported API versions for the selected device and choose the highest (>= min_sdk_version)
     local api_levels
     api_levels=$(gcloud firebase test android models describe "$device_model" --format='json' 2>/dev/null | \
         python3 -c '
 import sys, json
+import os
+min_sdk_version = int(os.environ.get("APK_MIN_SDK_VERSION", "26"))
 data = json.load(sys.stdin)
 # The supportedApiLevels is a list of integers
 api_levels = data.get("supportedApiLevels", [])
-# Filter for API levels <= 26
-valid_levels = [level for level in api_levels if level <= 26]
+# Filter for API levels >= min_sdk_version
+valid_levels = [level for level in api_levels if level >= min_sdk_version]
 if not valid_levels:
     print("")  # Empty string to indicate failure
 else:
@@ -414,10 +419,10 @@ run_test_lab() {
     log "Submitting APK to Firebase Test Lab with device $device_model and API level $api_level"
     local test_output
     test_output=$(gcloud firebase test android run \
-        --type robo \
+        --type "${TESTLAB_TYPE}" \
         --app "$apk_file" \
-        --device model="$device_model",version="$api_level",locale=en,orientation=portrait \
-        --timeout 300s \
+        --device model="$device_model",version="$api_level",locale="${TESTLAB_LOCALE}",orientation="${TESTLAB_ORIENTATION}" \
+        --timeout "${TESTLAB_TIMEOUT}s" \
         --results-bucket="gs://$bucket" \
         --results-dir=$bucket_path \
         2>&1) || {
