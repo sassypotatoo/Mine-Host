@@ -1,4 +1,4 @@
-#!/data/data/com.termux/files/usr/glibc/bin/bash
+#!/usr/bin/env bash
 # Firebase Test Lab integration for MineHost Beast Mode v4
 
 set -euo pipefail
@@ -9,6 +9,21 @@ PROJECT_ROOT="$(dirname "$TOOLS_DIR")"
 BEAST_MODE_STATE="$PROJECT_ROOT/.claude/beastmode_state.json"
 TMP_APK_DIR="$PROJECT_ROOT/.tmp/firebase-test-lab/apk"
 
+# Configuration via environment variables with defaults
+# APK validation
+: "${APK_PACKAGE_NAME:=com.aistudio.minehost.qweras}"
+: "${APK_NATIVE_ABI:=arm64-v8a}"
+: "${APK_MIN_SDK_VERSION:=26}"
+# Artifact name for GitHub Actions download
+: "${APK_ARTIFACT_NAME:=minehost-debug}"
+# Firebase Test Lab test parameters
+: "${TESTLAB_TYPE:=robo}"
+: "${TESTLAB_LOCALE:=en}"
+: "${TESTLAB_ORIENTATION:=portrait}"
+: "${TESTLAB_TIMEOUT:=120}"
+# gcloud command location (if not in PATH, adjust as needed)
+: "${GCLOUD_CMD:=gcloud}"
+
 # Function to read Beast Mode state
 read_beastmode_state() {
     if [[ -f "$BEAST_MODE_STATE" ]]; then
@@ -18,10 +33,11 @@ read_beastmode_state() {
     fi
 }
 
-# Function to write Beast Mode state
+# Function to write Beast Mode state atomically
 write_beastmode_state() {
     local new_state="$1"
-    echo "$new_state" > "$BEAST_MODE_STATE"
+    local tmp_file="${BEAST_MODE_STATE}.tmp"
+    echo "$new_state" > "$tmp_file" && mv "$tmp_file" "$BEAST_MODE_STATE"
 }
 
 # Function to log (to stderr to avoid contaminating stdout)
@@ -237,9 +253,9 @@ validate_apk() {
 
     # Use aapt to check package, native code, and sdkVersion
     # Note: aapt might not be installed, we can use unzip as fallback to inspect the APK
-    local package_name="com.aistudio.minehost.qweras"
-    local native_abi="arm64-v8a"
-    local min_sdk_version=26
+    local package_name="${APK_PACKAGE_NAME}"
+    local native_abi="${APK_NATIVE_ABI}"
+    local min_sdk_version="${APK_MIN_SDK_VERSION}"
 
     if command -v aapt &> /dev/null; then
         log "Validating APK with aapt"

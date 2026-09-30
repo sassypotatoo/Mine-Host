@@ -215,6 +215,8 @@ def main() -> None:
             new_state["currentTask"] = "Firebase Test Lab run"
             new_state["workflowStatus"] = "RUNNING"
             write_state(new_state)
+            # Update local state to reflect changes
+            state = new_state
             # Fall through to inject context
 
         # ── Beast Mode OFF — pass through untouched ─────────────────────────
