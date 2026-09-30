@@ -1593,8 +1593,8 @@ object Downloader {
             if (headers.isNotEmpty()) {
                 val cacheFile = File(DOWNLOAD_CACHE_DIR, "${url.md5()}.conditional")
                 val map = hashMapOf<String, Any>()
-                map.put("etag", etag)
-                map.put("lastModified", lastModified)
+                if (etag != null) map.put("etag", etag)
+                if (lastModified != null) map.put("lastModified", lastModified)
                 map.put("destinationPath", destination.absolutePath)
                 val json = JSONObject(map)
                 cacheFile.writeText(json.toString(2))

@@ -5,7 +5,7 @@ import android.system.Os
 import android.util.Log
 import com.example.server.termux.TermuxPackage
 import com.example.server.termux.TermuxPackageResolver
-import com.example.server.version.RuntimeIntegrityResult
+import com.example.server.RuntimeIntegrityResult
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.currentCoroutineContext
