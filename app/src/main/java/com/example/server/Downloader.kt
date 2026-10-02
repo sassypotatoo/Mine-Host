@@ -1646,7 +1646,7 @@ object Downloader {
 
             val sidecar = getSidecarFile(file)
             if (sidecar.isFile) {
-                return runCatching {
+                val cached = runCatching {
                     val json = JSONObject(sidecar.readText())
                     val cachedFileSize = json.getLong("fileSize")
                     val cachedLastModified = json.getLong("lastModified")
@@ -1656,17 +1656,22 @@ object Downloader {
                         null
                     }
                 }.getOrNull()
+                if (cached != null) {
+                    return cached
+                }
             }
 
             // If we don't have a valid sidecar, compute and update
             val computed = computeSha256Internal(file)
             if (computed != null) {
-                val json = JSONObject().apply {
-                    put("sha256", computed)
-                    put("fileSize", file.length())
-                    put("lastModified", file.lastModified())
+                runCatching {
+                    val json = JSONObject().apply {
+                        put("sha256", computed)
+                        put("fileSize", file.length())
+                        put("lastModified", file.lastModified())
+                    }
+                    sidecar.writeText(json.toString())
                 }
-                sidecar.writeText(json.toString())
             }
             return computed
         }

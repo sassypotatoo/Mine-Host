@@ -16,5 +16,5 @@ data class EngineServerConfig(
     val levelType: String = "DEFAULT",
     val maxPlayers: Int = 10,
     val motd: String = "A MineHost Java Server",
-    val worldAdapterEnabled: Boolean = false,
+    val worldAdapterEnabled: Boolean = true,
 )
