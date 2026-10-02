@@ -1,4 +1,4 @@
-#!/usr/bin/env bash
+#!/data/data/com.termux/files/usr/glibc/bin/bash
 # Firebase Test Lab integration for MineHost Beast Mode v4
 
 set -euo pipefail
@@ -157,10 +157,17 @@ get_latest_apk_run() {
     log "Fetching latest successful GitHub Actions run with APK artifact"
     # First, try to get a run from the Android CI workflow
     local run_id
-    run_id=$(retry_command 3 gh run list --limit 1 --status success --workflow "Android CI" --json databaseId -q '.[0].databaseId' --branch main) || {
+    run_id=$(retry_command 3 gh run list --limit 1 --status success --workflow "Android CI" --json databaseId --branch main | python3 -c "import json,sys; data=json.load(sys.stdin); print(data[0]['databaseId'] if len(data) > 0 else '')") || {
         log "No successful run found for workflow 'Android CI'. Trying any workflow with APK artifact."
         # Fallback: any successful run that has an APK artifact
-        run_id=$(retry_command 3 gh run list --limit 1 --status success --json databaseId,workflowName,headSha,conclusion,event,name -q '.[] | select(.name | test("^Build.*APK$|^Android.*Build$")) | .databaseId' --branch main) || {
+        run_id=$(retry_command 3 gh run list --limit 1 --status success --json databaseId,workflowName,headSha,conclusion,event,name --branch main | python3 -c "
+import json,sys
+data=json.load(sys.stdin)
+for item in data:
+    if 'name' in item and ('Build.APK' in item['name'] or 'Android.Build' in item['name']):
+        print(item['databaseId'])
+        sys.exit(0)
+        ") || {
             log "No successful run with APK artifact found in any workflow."
             return 1
         }
@@ -175,10 +182,11 @@ get_latest_apk_run() {
 
     # Fetch the commit SHA for this run
     local commit_sha
-    commit_sha=$(retry_command 3 gh api repos/:owner/:repo/actions/runs/$run_id --jq '.head_sha') || {
+    commit_sha=$(retry_command 3 gh api repos/:owner/:repo/actions/runs/$run_id) || {
         log "Failed to get commit SHA for run $run_id"
         return 1
     }
+    commit_sha=$(echo "$commit_sha" | python3 -c "import json,sys; print(json.load(sys.stdin)['head_sha'])")
 
     # Output both run_id and commit_sha as a JSON object for easy parsing
     python3 -c "import json,sys; print(json.dumps({'run_id': sys.argv[1], 'commit_sha': sys.argv[2]}))" "$run_id" "$commit_sha"
@@ -190,16 +198,30 @@ get_apk_artifact_id() {
     local artifact_id
 
     # First, try to get the artifact named "minehost-debug"
-    artifact_id=$(retry_command 3 gh api repos/:owner/:repo/actions/runs/$run_id/artifacts --jq '.artifacts[] | select(.name == \"minehost-debug\") | .id') || {
+    artifact_id=$(retry_command 3 gh api repos/:owner/:repo/actions/runs/$run_id/artifacts) || {
         log "No artifact named 'minehost-debug' found in run $run_id. Trying any APK artifact."
         # Fallback: any APK artifact
-        artifact_id=$(retry_command 3 gh api repos/:owner/:repo/actions/runs/$run_id/artifacts --jq '.artifacts[] | select(.name | test("\\.apk$")) | .id') || {
+        artifact_id=$(retry_command 3 gh api repos/:owner/:repo/actions/runs/$run_id/artifacts) || {
             log "No APK artifact found in run $run_id"
             return 1
         }
         # Take the first line in case of multiple outputs
         artifact_id=$(echo "$artifact_id" | head -n 1)
     }
+    # Now filter the artifact_id using python3 instead of jq
+    artifact_id=$(echo "$artifact_id" | python3 -c "
+import json, sys
+data = json.load(sys.stdin)
+# First, try to get the artifact named 'minehost-debug'
+for artifact in data.get('artifacts', []):
+    if artifact.get('name') == 'minehost-debug':
+        print(artifact.get('id'))
+        sys.exit(0)
+    # Fallback: any APK artifact
+    if artifact.get('name', '').endswith('.apk'):
+        print(artifact.get('id'))
+        sys.exit(0)
+")
 
     if [[ -z "$artifact_id" ]]; then
         log "Failed to retrieve a valid artifact ID for run $run_id"
@@ -523,27 +545,25 @@ update_beastmode_state() {
     local timestamp
     timestamp=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
 
-    # Update the state with the firebaseTestLab object using jq
+    # Update the state with the firebaseTestLab object using python3
     local updated_state
-    updated_state=$(echo "$state_json" | jq --arg runId "$run_id" \
-        --arg artifactId "$artifact_id" \
-        --arg deviceModel "$device_model" \
-        --arg matrixId "$matrix_id" \
-        --arg reportUrl "$report_url" \
-        --arg resultsDir "$results_dir" \
-        --arg timestamp "$timestamp" \
-        --arg status "$status" \
-        --arg commitSha "$commit_sha" \
-        '.firebaseTestLab = (.firebaseTestLab // {}) | .firebaseTestLab.lastRun = {
-            runId: $runId,
-            artifactId: $artifactId,
-            selectedDevice: $deviceModel,
-            resultDirectory: $resultsDir,
-            reportUrl: $reportUrl,
-            timestamp: $timestamp,
-            status: $status,
-            commitSha: $commitSha
-        }')
+    updated_state=$(echo "$state_json" | python3 -c "
+import json, sys
+state = json.load(sys.stdin)
+if 'firebaseTestLab' not in state:
+    state['firebaseTestLab'] = {}
+state['firebaseTestLab']['lastRun'] = {
+    'runId': '$run_id',
+    'artifactId': '$artifact_id',
+    'selectedDevice': '$device_model',
+    'resultDirectory': '$results_dir',
+    'reportUrl': '$report_url',
+    'timestamp': '$timestamp',
+    'status': '$status',
+    'commitSha': '$commit_sha'
+}
+print(json.dumps(state))
+")
 
     # Write the updated state
     write_beastmode_state "$updated_state"
@@ -590,8 +610,8 @@ main() {
     # Parse run_info JSON to get run_id and commit_sha
     local run_id
     local commit_sha
-    run_id=$(echo "$run_info" | jq -r '.run_id')
-    commit_sha=$(echo "$run_info" | jq -r '.commit_sha')
+    run_id=$(echo "$run_info" | python3 -c "import json,sys; print(json.load(sys.stdin)['run_id'])")
+    commit_sha=$(echo "$run_info" | python3 -c "import json,sys; print(json.load(sys.stdin)['commit_sha'])")
 
     log "Found successful run ID: $run_id"
     log "Commit SHA: $commit_sha"
@@ -642,9 +662,9 @@ main() {
 
     # Parse the Firebase info JSON
     local matrix_id report_url results_dir
-    matrix_id=$(echo "$firebase_info" | jq -r '.matrix_id')
-    report_url=$(echo "$firebase_info" | jq -r '.report_url')
-    results_dir=$(echo "$firebase_info" | jq -r '.results_dir')
+    matrix_id=$(echo "$firebase_info" | python3 -c "import json,sys; print(json.load(sys.stdin)['matrix_id'])")
+    report_url=$(echo "$firebase_info" | python3 -c "import json,sys; print(json.load(sys.stdin)['report_url'])")
+    results_dir=$(echo "$firebase_info" | python3 -c "import json,sys; print(json.load(sys.stdin)['results_dir'])")
 
     log "Firebase Test Lab run completed successfully"
     log "Matrix ID: $matrix_id"

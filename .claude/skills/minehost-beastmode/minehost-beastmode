@@ -1,0 +1,23 @@
+#!/data/data/com.termux/files/usr/glibc/bin/bash
+set -euo pipefail
+
+PROJECT_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../../.." && pwd)"
+
+if [[ $# -eq 0 ]]; then
+  # Toggle command: delegate to the existing toggle behavior (which is handled by the hook, but we just output the state)
+  if [[ -f "$PROJECT_ROOT/.claude/bm-state.sh" ]]; then
+    "$PROJECT_ROOT/.claude/bm-state.sh" read
+  else
+    echo "Beast Mode state script not found."
+    exit 1
+  fi
+elif [[ $1 == "firebase" && $2 == "run" ]]; then
+  shift 2
+  exec "$PROJECT_ROOT/tools/run-firebase-test-lab.sh" run "$@"
+else
+  echo "Error: Unknown subcommand '$1'" >&2
+  echo "Usage:" >&2
+  echo "  /minehost-beastmode" >&2
+  echo "  /minehost-beastmode firebase run" >&2
+  exit 1
+fi

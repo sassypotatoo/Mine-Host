@@ -1608,14 +1608,17 @@ object Downloader {
      * Find cached artifact for a URL based on ETag/Last-Modified matching
      */
     private fun findCachedArtifactForUrl(url: String): File? {
-        // This is a simplified implementation - in practice we'd need to map URLs to cache files
-        // For now, we'll look for any cached file that matches the URL pattern
         val cacheDir = File(System.getProperty("java.io.tmpdir"), "minehost_download_cache")
         if (!cacheDir.isDirectory) return null
-
-        return cacheDir.listFiles()?.firstOrNull { file ->
-            file.name.startsWith(url.md5()) && !file.name.endsWith(".conditional")
-        }?.let { File(cacheDir, it.name) }
+        val conditionalFile = File(cacheDir, "${url.md5()}.conditional")
+        if (!conditionalFile.isFile) return null
+        return try {
+            val json = JSONObject(conditionalFile.readText())
+            val destinationPath = json.getString("destinationPath")
+            File(destinationPath).takeIf { it.isFile }
+        } catch (e: Exception) {
+            null
+        }
     }
 
     /**
