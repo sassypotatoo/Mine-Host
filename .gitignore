@@ -20,4 +20,7 @@ minehost-debug-signing.properties
 
 # Claude Code local settings are personal, never commit them
 .claude/settings.local.json
+.claude/testlab-results/
+.claude/.cap_check_done
+graphify-out/
 __pycache__/
