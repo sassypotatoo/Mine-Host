@@ -18,7 +18,14 @@ import tempfile
 from pathlib import Path
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
-STATE_FILE = PROJECT_ROOT / ".claude" / "beastmode_state.json"
+
+
+def get_state_file() -> Path:
+    env_path = os.environ.get("BEAST_MODE_STATE")
+    if env_path:
+        return Path(env_path)
+    return PROJECT_ROOT / ".claude" / "beastmode_state.json"
+
 
 DEFAULT_STATE = {
     "schemaVersion": 1,
@@ -40,9 +47,10 @@ DEFAULT_STATE = {
 
 def read_state() -> dict:
     """Read Beast Mode state. Returns default if missing or corrupt."""
+    state_file = get_state_file()
     try:
-        if STATE_FILE.exists():
-            text = STATE_FILE.read_text().strip()
+        if state_file.exists():
+            text = state_file.read_text().strip()
             if text:
                 return json.loads(text)
     except Exception as e:
@@ -52,16 +60,18 @@ def read_state() -> dict:
 
 def write_state(state: dict) -> None:
     """Atomically write state via unique temp file + replace."""
+    state_file = get_state_file()
     try:
         ts = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
         state["timestamp"] = ts
+        state_file.parent.mkdir(parents=True, exist_ok=True)
         fd, tmp_path = tempfile.mkstemp(
-            dir=STATE_FILE.parent, prefix=STATE_FILE.name + ".", suffix=".tmp"
+            dir=state_file.parent, prefix=state_file.name + ".", suffix=".tmp"
         )
         try:
             with os.fdopen(fd, "w") as f:
                 f.write(json.dumps(state, indent=2) + "\n")
-            Path(tmp_path).replace(STATE_FILE)
+            Path(tmp_path).replace(state_file)
         except Exception:
             try:
                 os.unlink(tmp_path)

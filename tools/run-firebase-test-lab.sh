@@ -201,7 +201,7 @@ validate_prerequisites() {
 # Function to get the latest successful GitHub Actions run with APK artifact
 get_latest_apk_run() {
     local repo="$1"
-    log "Fetching latest successful Android/APK GitHub Actions run for repo: $repo"
+    log "Fetching latest successful Android CI GitHub Actions run for repo: $repo"
 
     # List successful runs on branch main
     local runs_json
@@ -215,26 +215,33 @@ get_latest_apk_run() {
 import json, sys
 try:
     runs = json.load(sys.stdin)
-    if not runs:
+    if not isinstance(runs, list) or not runs:
         sys.exit(1)
 
-    # Must be an Android / APK build workflow that succeeded
+    # Must be the authoritative Android APK build workflow (e.g. 'Android CI')
     for r in runs:
+        if not isinstance(r, dict):
+            continue
         if r.get('conclusion') not in (None, '', 'success'):
             continue
-        w_name = (r.get('workflowName', '') or '').lower()
-        name = (r.get('name', '') or '').lower()
-        if 'android' in w_name or 'build apk' in name or 'android ci' in w_name or 'apk' in name or 'build' in w_name:
-            print(r.get('databaseId'))
-            sys.exit(0)
+        w_name = (r.get('workflowName', '') or '').strip().lower()
+        name = (r.get('name', '') or '').strip().lower()
 
-    # Fail closed: do not select arbitrary unrelated workflows (e.g. docs, website, lint)
+        # Authoritative check: strictly 'Android CI', 'android-ci', or 'android'
+        # Rejects generic keywords like 'build', 'website build', 'docs build', 'third-party apk build', etc.
+        if w_name in ('android ci', 'android-ci', 'android') or name in ('android ci', 'android-ci', 'android'):
+            db_id = r.get('databaseId')
+            if db_id:
+                print(db_id)
+                sys.exit(0)
+
+    # Fail closed: no authoritative Android CI workflow run found
     sys.exit(1)
 except Exception as e:
     sys.stderr.write(f'Run list parse error: {e}\n')
     sys.exit(1)
 ") || {
-        log "No successful Android/APK build runs found on branch main for repo $repo."
+        log "No successful authoritative Android CI workflow runs found on branch main for repo $repo."
         return 1
     }
 
@@ -255,14 +262,16 @@ except Exception as e:
 import json, sys
 try:
     data = json.load(sys.stdin)
-    sha = data.get('head_sha') or data.get('headSha') or ''
-    if not sha:
+    if not isinstance(data, dict):
         sys.exit(1)
-    print(sha)
+    sha = data.get('head_sha') or data.get('headSha') or ''
+    if not sha or not isinstance(sha, str) or len(sha.strip()) < 7:
+        sys.exit(1)
+    print(sha.strip())
 except Exception:
     sys.exit(1)
 ") || {
-        log "Failed to extract commit SHA for run $run_id"
+        log "Failed to extract valid commit SHA for run $run_id"
         return 1
     }
 
@@ -291,23 +300,31 @@ target_name = sys.argv[1].lower()
 try:
     data = json.load(sys.stdin)
     artifacts = data.get('artifacts', [])
-    if not artifacts:
+    if not isinstance(artifacts, list) or not artifacts:
         sys.exit(1)
 
-    # Priority 1: Exact artifact name match
+    # Priority 1: Exact artifact name match (e.g. minehost-debug)
     for a in artifacts:
-        name = (a.get('name') or '').lower()
+        if not isinstance(a, dict):
+            continue
+        name = (a.get('name') or '').lower().strip()
         if name == target_name and not a.get('expired', False):
-            print(a.get('id'))
-            sys.exit(0)
+            art_id = a.get('id')
+            if art_id:
+                print(art_id)
+                sys.exit(0)
 
-    # Priority 2: Name explicitly matching APK artifact conventions (e.g. minehost-debug, app-debug, *.apk)
+    # Priority 2: Name explicitly matching APK artifact conventions (e.g. app-debug, minehost-debug.apk)
     for a in artifacts:
-        name = (a.get('name') or '').lower()
+        if not isinstance(a, dict):
+            continue
+        name = (a.get('name') or '').lower().strip()
         if not a.get('expired', False):
             if name.endswith('.apk') or name == 'app-debug' or 'minehost-debug' in name:
-                print(a.get('id'))
-                sys.exit(0)
+                art_id = a.get('id')
+                if art_id:
+                    print(art_id)
+                    sys.exit(0)
 
     # Fail closed: never fall back to unrelated arbitrary artifacts
     sys.exit(1)
@@ -586,29 +603,51 @@ import sys, json
 
 try:
     data = json.load(sys.stdin)
+    if not isinstance(data, list) or not data:
+        sys.exit(1)
+
+    eligible_candidates = []
     for device in data:
+        if not isinstance(device, dict):
+            continue
+        model_id = device.get('id')
+        if not model_id or not isinstance(model_id, str) or not model_id.strip():
+            continue
+
         # 1. Must be VIRTUAL form factor
         if device.get('formFactor') != 'VIRTUAL':
             continue
-        # 2. Must support exact arm64-v8a ABI
-        abis = device.get('supportedAbis', [])
+
+        # 2. Must explicitly support exact arm64-v8a ABI
+        abis = device.get('supportedAbis')
+        if not abis or not isinstance(abis, list):
+            continue
         if 'arm64-v8a' not in abis:
             continue
-        # 3. Must not be deprecated or disabled or unavailable
+
+        # 3. Must not be deprecated, disabled, or unavailable in tags
         tags = [str(t).lower() for t in (device.get('tags') or [])]
         if any(bad in tags for bad in ('deprecated', 'disabled', 'unavailable')):
             continue
-        # 4. Must be enabled if enabled flag is present
+
+        # 4. Must not be explicitly disabled
         if device.get('enabled') is False:
             continue
 
-        print(device.get('id'))
-        sys.exit(0)
+        eligible_candidates.append(model_id.strip())
+
+    if not eligible_candidates:
+        sys.exit(1)
+
+    # Deterministic selection: sort candidates deterministically and take first
+    eligible_candidates.sort()
+    print(eligible_candidates[0])
+    sys.exit(0)
 except Exception as e:
     sys.stderr.write(f'Model selection parse error: {e}\n')
 sys.exit(1)
 ") || {
-        log "No enabled ARM64 virtual device found in Firebase Test Lab catalog."
+        log "No eligible ARM64 virtual device found in Firebase Test Lab catalog."
         return 1
     }
 
@@ -632,7 +671,11 @@ import sys, json, os
 min_sdk_version = int(os.environ.get('APK_MIN_SDK_VERSION', '26'))
 try:
     data = json.load(sys.stdin)
-    api_levels = data.get('supportedApiLevels', [])
+    if not isinstance(data, dict):
+        sys.exit(1)
+    api_levels = data.get('supportedApiLevels') or data.get('supportedVersionIds') or []
+    if not isinstance(api_levels, list):
+        sys.exit(1)
     valid_levels = []
     for lvl in api_levels:
         try:
@@ -643,6 +686,7 @@ try:
             continue
     if not valid_levels:
         sys.exit(1)
+    # Select highest supported valid API level deterministically
     print(max(valid_levels))
     sys.exit(0)
 except Exception:
@@ -839,6 +883,9 @@ try:
 except Exception:
     state = {}
 
+if not isinstance(state, dict):
+    state = {}
+
 if 'firebaseTestLab' not in state or not isinstance(state['firebaseTestLab'], dict):
     state['firebaseTestLab'] = {}
 
@@ -855,14 +902,18 @@ state['firebaseTestLab']['lastRun'] = {
 }
 state['timestamp'] = ts
 
-# Transition workflowStatus from RUNNING to COMPLETE or FAILED
+# Transition workflowStatus from RUNNING to COMPLETE or FAILED, and reset currentTask to neutral
 if state.get('currentTask') == 'Firebase Test Lab run' or state.get('workflowStatus') == 'RUNNING':
     if status == 'COMPLETED':
         state['workflowStatus'] = 'COMPLETE'
         state['phase'] = 'IDLE'
+        state['currentTask'] = ''
+        state['taskBranch'] = ''
     else:
         state['workflowStatus'] = 'FAILED'
         state['phase'] = 'IDLE'
+        state['currentTask'] = ''
+        state['taskBranch'] = ''
 
 # Ensure physical runtime verification is NOT set to VERIFIED
 if state.get('physicalVerification') == 'VERIFIED':

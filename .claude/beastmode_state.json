@@ -1,13 +1,13 @@
 {
   "schemaVersion": 1,
-  "beastModeEnabled": true,
-  "currentTask": "Firebase Test Lab run",
-  "taskBranch": "main",
+  "beastModeEnabled": false,
+  "currentTask": "",
+  "taskBranch": "",
   "objectives": [],
   "currentObjectiveId": null,
   "phase": "IDLE",
-  "workflowStatus": "RUNNING",
-  "gitBranch": "main",
+  "workflowStatus": "IDLE",
+  "gitBranch": "",
   "lastCiRunUrl": "",
   "lastCommitSha": "",
   "knownIssues": [],
@@ -15,5 +15,5 @@
   "firebaseTestLab": {
     "status": "READY"
   },
-  "timestamp": "2026-10-03T22:25:26Z"
+  "timestamp": ""
 }

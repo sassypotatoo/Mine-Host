@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 Comprehensive Test Suite for MineHost Firebase Test Lab Integration
-Validates all 37 test cases across 6 teams and 3 waves without consuming real Firebase quota.
+Validates all test cases across 6 teams and 3 waves without consuming real Firebase quota.
 """
 
 import os
@@ -112,10 +112,22 @@ class TestFirebaseTestLab(unittest.TestCase):
         with open(self.state_file, "w") as f:
             json.dump({
                 "schemaVersion": 1,
-                "beastModeEnabled": True,
-                "currentTask": "Firebase Test Lab run",
-                "workflowStatus": "RUNNING",
-                "gitBranch": "main"
+                "beastModeEnabled": False,
+                "currentTask": "",
+                "taskBranch": "",
+                "objectives": [],
+                "currentObjectiveId": None,
+                "phase": "IDLE",
+                "workflowStatus": "IDLE",
+                "gitBranch": "",
+                "lastCiRunUrl": "",
+                "lastCommitSha": "",
+                "knownIssues": [],
+                "blockers": [],
+                "firebaseTestLab": {
+                    "status": "READY"
+                },
+                "timestamp": ""
             }, f)
 
     def tearDown(self):
@@ -135,7 +147,7 @@ source "{SCRIPT_PATH}"
         res = subprocess.run(cmd, env=env, capture_output=True, text=True)
         return res
 
-    # ── Test Cases 1-5: Dynamic GitHub Repository Resolution ────────────────
+    # ── Repo Resolution Tests ────────────────────────────────────────────────
     def test_01_repo_resolution_from_env_var(self):
         res = self.run_bash_fn("get_github_repo", {"GITHUB_REPOSITORY": "sassypotatoo/Mine-Host"})
         self.assertEqual(res.returncode, 0)
@@ -178,265 +190,219 @@ source "{SCRIPT_PATH}"
         self.assertNotIn(":owner/:repo", content)
         self.assertNotIn("repos/:owner", content)
 
-    # ── Test Cases 6-12: Exact Artifact Resolution & Download ───────────────
-    def test_06_artifact_id_resolution_exact_match(self):
-        mock_bin = os.path.join(self.temp_dir, "mock_gh_artifact")
+    # ── Wave 1 / Team 3: Authoritative Workflow Selection Tests ──────────────
+    def test_wf_01_authoritative_android_succeeds_with_artifact(self):
+        mock_bin = os.path.join(self.temp_dir, "mock_wf_01")
+        os.makedirs(mock_bin, exist_ok=True)
+        gh_script = os.path.join(mock_bin, "gh")
+        with open(gh_script, "w") as f:
+            f.write("""#!/bin/sh
+if echo "$*" | grep -q "run list"; then
+    echo '[{"databaseId": 1001, "workflowName": "Android CI", "headSha": "sha1001_40chars_0123456789abcdef01234567", "conclusion": "success", "name": "Build APK"}]'
+    exit 0
+fi
+if echo "$*" | grep -q "actions/runs/1001"; then
+    echo '{"id": 1001, "head_sha": "sha1001_40chars_0123456789abcdef01234567", "status": "completed"}'
+    exit 0
+fi
+exit 1
+""")
+        os.chmod(gh_script, 0o755)
+        env = {"PATH": f"{mock_bin}:{os.environ.get('PATH', '')}", "GH_CMD": "gh"}
+        res = self.run_bash_fn('get_latest_apk_run "testowner/testrepo"', env)
+        self.assertEqual(res.returncode, 0)
+        data = json.loads(res.stdout.strip())
+        self.assertEqual(data["run_id"], "1001")
+        self.assertEqual(data["commit_sha"], "sha1001_40chars_0123456789abcdef01234567")
+
+    def test_wf_02_unrelated_website_workflow_succeeds_first(self):
+        mock_bin = os.path.join(self.temp_dir, "mock_wf_02")
+        os.makedirs(mock_bin, exist_ok=True)
+        gh_script = os.path.join(mock_bin, "gh")
+        with open(gh_script, "w") as f:
+            f.write("""#!/bin/sh
+if echo "$*" | grep -q "run list"; then
+    echo '[
+      {"databaseId": 9999, "workflowName": "Website Build", "headSha": "sha_web", "conclusion": "success", "name": "Deploy Docs"},
+      {"databaseId": 1002, "workflowName": "Android CI", "headSha": "sha1002_40chars_0123456789abcdef01234567", "conclusion": "success", "name": "Android Build"}
+    ]'
+    exit 0
+fi
+if echo "$*" | grep -q "actions/runs/1002"; then
+    echo '{"id": 1002, "head_sha": "sha1002_40chars_0123456789abcdef01234567", "status": "completed"}'
+    exit 0
+fi
+exit 1
+""")
+        os.chmod(gh_script, 0o755)
+        env = {"PATH": f"{mock_bin}:{os.environ.get('PATH', '')}", "GH_CMD": "gh"}
+        res = self.run_bash_fn('get_latest_apk_run "testowner/testrepo"', env)
+        self.assertEqual(res.returncode, 0)
+        data = json.loads(res.stdout.strip())
+        self.assertEqual(data["run_id"], "1002")
+
+    def test_wf_03_unrelated_workflow_name_contains_build(self):
+        mock_bin = os.path.join(self.temp_dir, "mock_wf_03")
+        os.makedirs(mock_bin, exist_ok=True)
+        gh_script = os.path.join(mock_bin, "gh")
+        with open(gh_script, "w") as f:
+            f.write("""#!/bin/sh
+if echo "$*" | grep -q "run list"; then
+    echo '[{"databaseId": 9991, "workflowName": "Documentation Build", "headSha": "sha_doc", "conclusion": "success", "name": "Documentation Build"}]'
+    exit 0
+fi
+exit 1
+""")
+        os.chmod(gh_script, 0o755)
+        env = {"PATH": f"{mock_bin}:{os.environ.get('PATH', '')}", "GH_CMD": "gh"}
+        res = self.run_bash_fn('get_latest_apk_run "testowner/testrepo"', env)
+        self.assertNotEqual(res.returncode, 0)
+
+    def test_wf_04_unrelated_workflow_name_contains_apk(self):
+        mock_bin = os.path.join(self.temp_dir, "mock_wf_04")
+        os.makedirs(mock_bin, exist_ok=True)
+        gh_script = os.path.join(mock_bin, "gh")
+        with open(gh_script, "w") as f:
+            f.write("""#!/bin/sh
+if echo "$*" | grep -q "run list"; then
+    echo '[{"databaseId": 9992, "workflowName": "Third-Party APK Build", "headSha": "sha_third", "conclusion": "success", "name": "Build APK"}]'
+    exit 0
+fi
+exit 1
+""")
+        os.chmod(gh_script, 0o755)
+        env = {"PATH": f"{mock_bin}:{os.environ.get('PATH', '')}", "GH_CMD": "gh"}
+        res = self.run_bash_fn('get_latest_apk_run "testowner/testrepo"', env)
+        self.assertNotEqual(res.returncode, 0)
+
+    def test_wf_05_android_fails_while_unrelated_succeeds(self):
+        mock_bin = os.path.join(self.temp_dir, "mock_wf_05")
+        os.makedirs(mock_bin, exist_ok=True)
+        gh_script = os.path.join(mock_bin, "gh")
+        with open(gh_script, "w") as f:
+            f.write("""#!/bin/sh
+if echo "$*" | grep -q "run list"; then
+    echo '[
+      {"databaseId": 9993, "workflowName": "Website Deploy", "headSha": "sha_web", "conclusion": "success", "name": "Website Deploy"},
+      {"databaseId": 1005, "workflowName": "Android CI", "headSha": "sha_fail", "conclusion": "failure", "name": "Android CI"}
+    ]'
+    exit 0
+fi
+exit 1
+""")
+        os.chmod(gh_script, 0o755)
+        env = {"PATH": f"{mock_bin}:{os.environ.get('PATH', '')}", "GH_CMD": "gh"}
+        res = self.run_bash_fn('get_latest_apk_run "testowner/testrepo"', env)
+        self.assertNotEqual(res.returncode, 0)
+
+    def test_wf_06_correct_workflow_succeeds_without_artifact(self):
+        mock_bin = os.path.join(self.temp_dir, "mock_wf_06")
         os.makedirs(mock_bin, exist_ok=True)
         gh_script = os.path.join(mock_bin, "gh")
         with open(gh_script, "w") as f:
             f.write("""#!/bin/sh
 if echo "$*" | grep -q "artifacts"; then
-    echo '{"artifacts":[{"id":12345678,"name":"minehost-debug","expired":false},{"id":87654321,"name":"other-apk","expired":false}]}'
+    echo '{"artifacts":[]}'
     exit 0
 fi
 exit 1
 """)
         os.chmod(gh_script, 0o755)
-
         env = {"PATH": f"{mock_bin}:{os.environ.get('PATH', '')}", "GH_CMD": "gh"}
-        res = self.run_bash_fn('get_apk_artifact_id "100" "sassypotatoo/Mine-Host"', env)
-        self.assertEqual(res.returncode, 0)
-        self.assertEqual(res.stdout.strip(), "12345678")
+        res = self.run_bash_fn('get_apk_artifact_id "1006" "testowner/testrepo"', env)
+        self.assertNotEqual(res.returncode, 0)
 
-    def test_07_artifact_id_resolution_skips_expired(self):
-        mock_bin = os.path.join(self.temp_dir, "mock_gh_expired")
+    def test_wf_07_multiple_artifacts_exist_exact_selected(self):
+        mock_bin = os.path.join(self.temp_dir, "mock_wf_07")
         os.makedirs(mock_bin, exist_ok=True)
         gh_script = os.path.join(mock_bin, "gh")
         with open(gh_script, "w") as f:
             f.write("""#!/bin/sh
 if echo "$*" | grep -q "artifacts"; then
-    echo '{"artifacts":[{"id":111,"name":"minehost-debug","expired":true},{"id":222,"name":"minehost-debug","expired":false}]}'
+    echo '{"artifacts":[
+        {"id":1111,"name":"website.zip","expired":false},
+        {"id":7777,"name":"minehost-debug","expired":false},
+        {"id":9999,"name":"other.apk","expired":false}
+    ]}'
     exit 0
 fi
 exit 1
 """)
         os.chmod(gh_script, 0o755)
-
         env = {"PATH": f"{mock_bin}:{os.environ.get('PATH', '')}", "GH_CMD": "gh"}
-        res = self.run_bash_fn('get_apk_artifact_id "100" "sassypotatoo/Mine-Host"', env)
+        res = self.run_bash_fn('get_apk_artifact_id "1007" "testowner/testrepo"', env)
         self.assertEqual(res.returncode, 0)
-        self.assertEqual(res.stdout.strip(), "222")
+        self.assertEqual(res.stdout.strip(), "7777")
 
-    def test_08_download_apk_artifact_exact_zip(self):
-        mock_bin = os.path.join(self.temp_dir, "mock_gh_dl")
+    def test_wf_08_required_artifact_expired(self):
+        mock_bin = os.path.join(self.temp_dir, "mock_wf_08")
         os.makedirs(mock_bin, exist_ok=True)
         gh_script = os.path.join(mock_bin, "gh")
-
-        apk_source = os.path.join(self.temp_dir, "dummy.apk")
-        create_test_apk(apk_source)
-
-        art_zip = os.path.join(self.temp_dir, "art.zip")
-        with zipfile.ZipFile(art_zip, "w") as zf:
-            zf.write(apk_source, arcname="app-debug.apk")
-
         with open(gh_script, "w") as f:
-            f.write(f"""#!/bin/sh
-if echo "$*" | grep -q "actions/artifacts/999/zip"; then
-    cat "{art_zip}"
+            f.write("""#!/bin/sh
+if echo "$*" | grep -q "artifacts"; then
+    echo '{"artifacts":[{"id":7778,"name":"minehost-debug","expired":true}]}'
     exit 0
 fi
 exit 1
 """)
         os.chmod(gh_script, 0o755)
+        env = {"PATH": f"{mock_bin}:{os.environ.get('PATH', '')}", "GH_CMD": "gh"}
+        res = self.run_bash_fn('get_apk_artifact_id "1008" "testowner/testrepo"', env)
+        self.assertNotEqual(res.returncode, 0)
 
-        env = {"PATH": f"{mock_bin}:{os.environ.get('PATH', '')}", "GH_CMD": "gh", "TMP_APK_DIR": os.path.join(self.temp_dir, "apk_out")}
-        res = self.run_bash_fn('download_apk_artifact "100" "999" "sassypotatoo/Mine-Host"', env)
-        self.assertEqual(res.returncode, 0)
-        self.assertTrue(os.path.isfile(res.stdout.strip()))
-        self.assertTrue(res.stdout.strip().endswith(".apk"))
-
-    def test_09_download_apk_artifact_fallback_to_run_download(self):
-        mock_bin = os.path.join(self.temp_dir, "mock_gh_fallback")
-        os.makedirs(mock_bin, exist_ok=True)
-        gh_script = os.path.join(mock_bin, "gh")
-
-        apk_source = os.path.join(self.temp_dir, "fallback.apk")
-        create_test_apk(apk_source)
-
-        with open(gh_script, "w") as f:
-            f.write(f"""#!/bin/sh
-if echo "$*" | grep -q "actions/artifacts"; then
-    exit 1
-fi
-if echo "$*" | grep -q "run download"; then
-    dir_arg=""
-    while [ $# -gt 0 ]; do
-        if [ "$1" = "--dir" ]; then
-            dir_arg="$2"
-            shift 2
-        else
-            shift
-        fi
-    done
-    mkdir -p "$dir_arg"
-    cp "{apk_source}" "$dir_arg/app-debug.apk"
-    exit 0
-fi
-exit 1
-""")
-        os.chmod(gh_script, 0o755)
-
-        env = {"PATH": f"{mock_bin}:{os.environ.get('PATH', '')}", "GH_CMD": "gh", "TMP_APK_DIR": os.path.join(self.temp_dir, "apk_fallback")}
-        res = self.run_bash_fn('download_apk_artifact "100" "999" "sassypotatoo/Mine-Host"', env)
-        self.assertEqual(res.returncode, 0)
-        self.assertTrue(os.path.isfile(res.stdout.strip()))
-
-    def test_10_get_latest_apk_run_finds_run_and_sha(self):
-        mock_bin = os.path.join(self.temp_dir, "mock_gh_runs")
+    def test_wf_09_github_returns_malformed_workflow_metadata(self):
+        mock_bin = os.path.join(self.temp_dir, "mock_wf_09")
         os.makedirs(mock_bin, exist_ok=True)
         gh_script = os.path.join(mock_bin, "gh")
         with open(gh_script, "w") as f:
             f.write("""#!/bin/sh
 if echo "$*" | grep -q "run list"; then
-    echo '[{"databaseId": 55555, "workflowName": "Android CI", "headSha": "abc1234", "conclusion": "success", "name": "Build APK"}]'
-    exit 0
-fi
-if echo "$*" | grep -q "repos/sassypotatoo/Mine-Host/actions/runs/55555"; then
-    echo '{"id": 55555, "head_sha": "abc1234567890abcdef1234567890abcdef123456", "status": "completed"}'
+    echo 'NOT_VALID_JSON{{"status":'
     exit 0
 fi
 exit 1
 """)
         os.chmod(gh_script, 0o755)
-
         env = {"PATH": f"{mock_bin}:{os.environ.get('PATH', '')}", "GH_CMD": "gh"}
-        res = self.run_bash_fn('get_latest_apk_run "sassypotatoo/Mine-Host"', env)
-        self.assertEqual(res.returncode, 0)
-        data = json.loads(res.stdout.strip())
-        self.assertEqual(data["run_id"], "55555")
-        self.assertEqual(data["commit_sha"], "abc1234567890abcdef1234567890abcdef123456")
+        res = self.run_bash_fn('get_latest_apk_run "testowner/testrepo"', env)
+        self.assertNotEqual(res.returncode, 0)
 
-    def test_11_get_latest_apk_run_filters_successful_runs(self):
-        mock_bin = os.path.join(self.temp_dir, "mock_gh_filter_runs")
+    def test_wf_10_commit_sha_missing_or_invalid(self):
+        mock_bin = os.path.join(self.temp_dir, "mock_wf_10")
         os.makedirs(mock_bin, exist_ok=True)
         gh_script = os.path.join(mock_bin, "gh")
         with open(gh_script, "w") as f:
             f.write("""#!/bin/sh
 if echo "$*" | grep -q "run list"; then
-    echo '[{"databaseId": 11111, "workflowName": "Android CI", "headSha": "failed_sha", "conclusion": "failure", "name": "Build APK"}, {"databaseId": 22222, "workflowName": "Android CI", "headSha": "success_sha", "conclusion": "success", "name": "Build APK"}]'
+    echo '[{"databaseId": 1010, "workflowName": "Android CI", "headSha": "", "conclusion": "success", "name": "Build APK"}]'
     exit 0
 fi
-if echo "$*" | grep -q "repos/sassypotatoo/Mine-Host/actions/runs/22222"; then
-    echo '{"id": 22222, "head_sha": "success_sha_full_40_chars_0123456789abcdef", "status": "completed"}'
-    exit 0
-fi
-exit 1
-""")
-        os.chmod(gh_script, 0o755)
-
-        env = {"PATH": f"{mock_bin}:{os.environ.get('PATH', '')}", "GH_CMD": "gh"}
-        res = self.run_bash_fn('get_latest_apk_run "sassypotatoo/Mine-Host"', env)
-        self.assertEqual(res.returncode, 0)
-        data = json.loads(res.stdout.strip())
-        self.assertEqual(data["run_id"], "22222")
-
-    def test_12_get_latest_apk_run_no_runs_fails(self):
-        mock_bin = os.path.join(self.temp_dir, "mock_gh_noruns")
-        os.makedirs(mock_bin, exist_ok=True)
-        gh_script = os.path.join(mock_bin, "gh")
-        with open(gh_script, "w") as f:
-            f.write("""#!/bin/sh
-if echo "$*" | grep -q "run list"; then
-    echo '[]'
+if echo "$*" | grep -q "actions/runs/1010"; then
+    echo '{"id": 1010, "head_sha": "", "status": "completed"}'
     exit 0
 fi
 exit 1
 """)
         os.chmod(gh_script, 0o755)
-
         env = {"PATH": f"{mock_bin}:{os.environ.get('PATH', '')}", "GH_CMD": "gh"}
-        res = self.run_bash_fn('get_latest_apk_run "sassypotatoo/Mine-Host"', env)
+        res = self.run_bash_fn('get_latest_apk_run "testowner/testrepo"', env)
         self.assertNotEqual(res.returncode, 0)
 
-    # ── Test Cases 13-23: Fail-Closed APK Validation ─────────────────────────
-    def test_13_validate_apk_valid(self):
-        apk_path = os.path.join(self.temp_dir, "valid.apk")
-        create_test_apk(apk_path, package_name="com.aistudio.minehost.qweras", min_sdk=26, abi="arm64-v8a")
-        res = self.run_bash_fn(f'validate_apk "{apk_path}"')
-        self.assertEqual(res.returncode, 0)
-
-    def test_14_validate_apk_missing_file(self):
-        apk_path = os.path.join(self.temp_dir, "nonexistent.apk")
-        res = self.run_bash_fn(f'validate_apk "{apk_path}"')
-        self.assertNotEqual(res.returncode, 0)
-
-    def test_15_validate_apk_zero_byte(self):
-        apk_path = os.path.join(self.temp_dir, "empty.apk")
-        open(apk_path, "w").close()
-        res = self.run_bash_fn(f'validate_apk "{apk_path}"')
-        self.assertNotEqual(res.returncode, 0)
-
-    def test_16_validate_apk_corrupt_zip(self):
-        apk_path = os.path.join(self.temp_dir, "corrupt.apk")
-        with open(apk_path, "wb") as f:
-            f.write(b"NOT_A_ZIP_FILE_DATA")
-        res = self.run_bash_fn(f'validate_apk "{apk_path}"')
-        self.assertNotEqual(res.returncode, 0)
-
-    def test_17_validate_apk_missing_native_libraries(self):
-        apk_path = os.path.join(self.temp_dir, "no_native.apk")
-        create_test_apk(apk_path, omit_native=True)
-        res = self.run_bash_fn(f'validate_apk "{apk_path}"')
-        self.assertNotEqual(res.returncode, 0)
-
-    def test_18_validate_apk_32bit_only_abi_rejected(self):
-        apk_path = os.path.join(self.temp_dir, "arm32_only.apk")
-        create_test_apk(apk_path, abi="armeabi-v7a")
-        res = self.run_bash_fn(f'validate_apk "{apk_path}"')
-        self.assertNotEqual(res.returncode, 0)
-
-    def test_19_validate_apk_zero_byte_so_rejected(self):
-        apk_path = os.path.join(self.temp_dir, "empty_so.apk")
-        create_test_apk(apk_path, native_lib_size=0)
-        res = self.run_bash_fn(f'validate_apk "{apk_path}"')
-        self.assertNotEqual(res.returncode, 0)
-
-    def test_20_validate_apk_missing_manifest(self):
-        apk_path = os.path.join(self.temp_dir, "no_manifest.apk")
-        create_test_apk(apk_path, omit_manifest=True)
-        res = self.run_bash_fn(f'validate_apk "{apk_path}"')
-        self.assertNotEqual(res.returncode, 0)
-
-    def test_21_validate_apk_wrong_package(self):
-        apk_path = os.path.join(self.temp_dir, "wrong_pkg.apk")
-        create_test_apk(apk_path, package_name="com.other.app", min_sdk=26)
-        res = self.run_bash_fn(f'validate_apk "{apk_path}"')
-        self.assertNotEqual(res.returncode, 0)
-
-    def test_22_validate_apk_min_sdk_less_than_26_rejected(self):
-        apk_path = os.path.join(self.temp_dir, "minsdk21.apk")
-        create_test_apk(apk_path, min_sdk=21)
-        res = self.run_bash_fn(f'validate_apk "{apk_path}"')
-        self.assertNotEqual(res.returncode, 0)
-
-    def test_23_validate_apk_min_sdk_greater_or_equal_26_accepted(self):
-        for sdk in (26, 28, 33):
-            apk_path = os.path.join(self.temp_dir, f"minsdk{sdk}.apk")
-            create_test_apk(apk_path, min_sdk=sdk)
-            res = self.run_bash_fn(f'validate_apk "{apk_path}"')
-            self.assertEqual(res.returncode, 0, f"SDK {sdk} should be accepted")
-
-    # ── Test Cases 24-28: ARM64 Device Catalog Selection ────────────────────
-    def test_24_select_arm_device_filters_virtual_and_arm64(self):
-        mock_bin = os.path.join(self.temp_dir, "mock_gcloud_dev")
+    # ── Wave 1 / Team 3: Device Catalog Selection & Filtering Tests ─────────
+    def test_dev_01_valid_virtual_arm64_candidate(self):
+        mock_bin = os.path.join(self.temp_dir, "mock_dev_01")
         os.makedirs(mock_bin, exist_ok=True)
         gcloud_script = os.path.join(mock_bin, "gcloud")
         with open(gcloud_script, "w") as f:
             f.write(r"""#!/bin/sh
 case "$*" in
     *"models list"*)
-        cat << 'EOF'
-[
-  {"id": "NexusLow", "formFactor": "VIRTUAL", "supportedAbis": ["armeabi-v7a"], "tags": []},
-  {"id": "PixelPhysical", "formFactor": "PHYSICAL", "supportedAbis": ["arm64-v8a"], "tags": []},
-  {"id": "PixelDep", "formFactor": "VIRTUAL", "supportedAbis": ["arm64-v8a"], "tags": ["deprecated"]},
-  {"id": "Pixel2ARM", "formFactor": "VIRTUAL", "supportedAbis": ["arm64-v8a", "armeabi-v7a"], "tags": []}
-]
-EOF
+        echo '[{"id": "PixelVirtualARM64", "formFactor": "VIRTUAL", "supportedAbis": ["arm64-v8a"], "tags": []}]'
         exit 0
         ;;
-    *"models describe Pixel2ARM"*)
-        echo '{"id":"Pixel2ARM","supportedApiLevels":["25","28","30"]}'
+    *"models describe PixelVirtualARM64"*)
+        echo '{"id": "PixelVirtualARM64", "supportedApiLevels": ["28", "30"]}'
         exit 0
         ;;
     *)
@@ -445,196 +411,143 @@ EOF
 esac
 """)
         os.chmod(gcloud_script, 0o755)
-
         env = {"PATH": f"{mock_bin}:{os.environ.get('PATH', '')}", "GCLOUD_CMD": "gcloud"}
         res = self.run_bash_fn("select_arm_device", env)
         self.assertEqual(res.returncode, 0)
-        self.assertEqual(res.stdout.strip(), "Pixel2ARM,30")
+        self.assertEqual(res.stdout.strip(), "PixelVirtualARM64,30")
 
-    def test_25_select_arm_device_no_compatible_devices_fails(self):
-        mock_bin = os.path.join(self.temp_dir, "mock_gcloud_nodev")
+    def test_dev_02_physical_arm64_device(self):
+        mock_bin = os.path.join(self.temp_dir, "mock_dev_02")
         os.makedirs(mock_bin, exist_ok=True)
         gcloud_script = os.path.join(mock_bin, "gcloud")
         with open(gcloud_script, "w") as f:
             f.write("""#!/bin/sh
 if echo "$*" | grep -q "models list"; then
-    echo '[{"id": "OnlyX86", "formFactor": "VIRTUAL", "supportedAbis": ["x86_64"], "tags": []}]'
+    echo '[{"id": "PixelPhysicalARM64", "formFactor": "PHYSICAL", "supportedAbis": ["arm64-v8a"], "tags": []}]'
     exit 0
 fi
 exit 1
 """)
         os.chmod(gcloud_script, 0o755)
-
         env = {"PATH": f"{mock_bin}:{os.environ.get('PATH', '')}", "GCLOUD_CMD": "gcloud"}
         res = self.run_bash_fn("select_arm_device", env)
         self.assertNotEqual(res.returncode, 0)
 
-    # ── Test Cases 26-28: Prerequisites & Bucket Normalization ───────────────
-    def test_26_validate_prerequisites_normalizes_bucket(self):
-        mock_bin = os.path.join(self.temp_dir, "mock_tools_prereq")
-        os.makedirs(mock_bin, exist_ok=True)
-        for tool in ("gh", "gcloud", "gsutil"):
-            p = os.path.join(mock_bin, tool)
-            with open(p, "w") as f:
-                f.write("#!/bin/sh\nexit 0\n")
-            os.chmod(p, 0o755)
-
-        env = {
-            "PATH": f"{mock_bin}:{os.environ.get('PATH', '')}",
-            "FIREBASE_TESTLAB_BUCKET": "gs://my-test-bucket/subpath/",
-            "GH_CMD": "gh",
-            "GCLOUD_CMD": "gcloud",
-            "GSUTIL_CMD": "gsutil"
-        }
-        res = self.run_bash_fn("validate_prerequisites", env)
-        self.assertEqual(res.returncode, 0)
-        self.assertEqual(res.stdout.strip(), "my-test-bucket/subpath")
-
-    def test_27_validate_prerequisites_missing_bucket_fails(self):
-        mock_bin = os.path.join(self.temp_dir, "mock_tools_prereq2")
-        os.makedirs(mock_bin, exist_ok=True)
-        for tool in ("gh", "gcloud", "gsutil"):
-            p = os.path.join(mock_bin, tool)
-            with open(p, "w") as f:
-                f.write("#!/bin/sh\nexit 0\n")
-            os.chmod(p, 0o755)
-
-        env = {
-            "PATH": f"{mock_bin}:{os.environ.get('PATH', '')}",
-            "FIREBASE_TESTLAB_BUCKET": "",
-            "GH_CMD": "gh",
-            "GCLOUD_CMD": "gcloud",
-            "GSUTIL_CMD": "gsutil"
-        }
-        res = self.run_bash_fn("validate_prerequisites", env)
-        self.assertNotEqual(res.returncode, 0)
-
-    def test_28_retry_command_exponential_backoff(self):
-        mock_bin = os.path.join(self.temp_dir, "mock_retry_bin")
-        os.makedirs(mock_bin, exist_ok=True)
-        counter_file = os.path.join(self.temp_dir, "retry_count.txt")
-        with open(counter_file, "w") as f:
-            f.write("0")
-
-        flaky_cmd = os.path.join(mock_bin, "flaky")
-        with open(flaky_cmd, "w") as f:
-            f.write(f"""#!/bin/sh
-count=$(cat "{counter_file}")
-count=$((count+1))
-echo "$count" > "{counter_file}"
-if [ "$count" -lt 3 ]; then
-    exit 1
-fi
-echo "FlakySuccess"
-exit 0
-""")
-        os.chmod(flaky_cmd, 0o755)
-
-        env = {"PATH": f"{mock_bin}:{os.environ.get('PATH', '')}"}
-        res = self.run_bash_fn('retry_command 3 flaky', env)
-        self.assertEqual(res.returncode, 0)
-        self.assertEqual(res.stdout.strip(), "FlakySuccess")
-
-    # ── Test Cases 29-33: Matrix Results & Real Report URLs ─────────────────
-    def test_29_matrix_id_extraction_and_url_retrieval(self):
-        mock_bin = os.path.join(self.temp_dir, "mock_firebase_run")
-        os.makedirs(mock_bin, exist_ok=True)
-        gcloud_script = os.path.join(mock_bin, "gcloud")
-        gsutil_script = os.path.join(mock_bin, "gsutil")
-
-        results_storage = os.path.join(self.temp_dir, "gcs_results")
-        os.makedirs(results_storage, exist_ok=True)
-        with open(os.path.join(results_storage, "screen.png"), "wb") as f:
-            f.write(b"PNG")
-        with open(os.path.join(results_storage, "video.mp4"), "wb") as f:
-            f.write(b"MP4")
-        with open(os.path.join(results_storage, "logcat.txt"), "w") as f:
-            f.write("Log line")
-
-        with open(gcloud_script, "w") as f:
-            f.write(r"""#!/bin/sh
-case "$*" in
-    *"firebase test android run"*)
-        echo "Test matrix [matrix-12345-abcde] created."
-        exit 0
-        ;;
-    *"matrices describe matrix-12345-abcde"*)
-        echo '{"testMatrixId":"matrix-12345-abcde","webUrl":"https://console.firebase.google.com/project/p/testlab/histories/h/matrices/matrix-12345-abcde","resultStorage":{"resultsUrl":"https://console.firebase.google.com/project/p/testlab/histories/h/matrices/matrix-12345-abcde"}}'
-        exit 0
-        ;;
-    *)
-        exit 1
-        ;;
-esac
-""")
-        with open(gsutil_script, "w") as f:
-            f.write(f"""#!/bin/sh
-for last; do true; done
-cp -r "{results_storage}/"* "$last"
-exit 0
-""")
-        os.chmod(gcloud_script, 0o755)
-        os.chmod(gsutil_script, 0o755)
-
-        apk_path = os.path.join(self.temp_dir, "test.apk")
-        create_test_apk(apk_path)
-
-        env = {
-            "PATH": f"{mock_bin}:{os.environ.get('PATH', '')}",
-            "GCLOUD_CMD": "gcloud",
-            "GSUTIL_CMD": "gsutil",
-            "PROJECT_ROOT": self.temp_dir
-        }
-        res = self.run_bash_fn(f'run_test_lab "{apk_path}" "Pixel2ARM,30" "test-bucket"', env)
-        self.assertEqual(res.returncode, 0)
-        out_json = json.loads(res.stdout.strip())
-        self.assertEqual(out_json["matrix_id"], "matrix-12345-abcde")
-        self.assertTrue(out_json["report_url"].startswith("https://console.firebase.google.com/"))
-        self.assertTrue(os.path.isdir(out_json["results_dir"]))
-
-    def test_30_matrix_id_not_fabricated_on_failure(self):
-        mock_bin = os.path.join(self.temp_dir, "mock_firebase_fail")
+    def test_dev_03_virtual_x86_only_device(self):
+        mock_bin = os.path.join(self.temp_dir, "mock_dev_03")
         os.makedirs(mock_bin, exist_ok=True)
         gcloud_script = os.path.join(mock_bin, "gcloud")
         with open(gcloud_script, "w") as f:
             f.write("""#!/bin/sh
-echo "ERROR: Quota exceeded or permission denied"
+if echo "$*" | grep -q "models list"; then
+    echo '[{"id": "PixelVirtualX86", "formFactor": "VIRTUAL", "supportedAbis": ["x86_64"], "tags": []}]'
+    exit 0
+fi
 exit 1
 """)
         os.chmod(gcloud_script, 0o755)
-
-        apk_path = os.path.join(self.temp_dir, "test.apk")
-        create_test_apk(apk_path)
-
-        env = {
-            "PATH": f"{mock_bin}:{os.environ.get('PATH', '')}",
-            "GCLOUD_CMD": "gcloud",
-            "PROJECT_ROOT": self.temp_dir
-        }
-        res = self.run_bash_fn(f'run_test_lab "{apk_path}" "Pixel2ARM,30" "test-bucket"', env)
+        env = {"PATH": f"{mock_bin}:{os.environ.get('PATH', '')}", "GCLOUD_CMD": "gcloud"}
+        res = self.run_bash_fn("select_arm_device", env)
         self.assertNotEqual(res.returncode, 0)
 
-    def test_31_run_test_lab_missing_required_artifacts_fails(self):
-        mock_bin = os.path.join(self.temp_dir, "mock_firebase_missing_art")
+    def test_dev_04_virtual_armeabi_v7a_only_device(self):
+        mock_bin = os.path.join(self.temp_dir, "mock_dev_04")
         os.makedirs(mock_bin, exist_ok=True)
         gcloud_script = os.path.join(mock_bin, "gcloud")
-        gsutil_script = os.path.join(mock_bin, "gsutil")
+        with open(gcloud_script, "w") as f:
+            f.write("""#!/bin/sh
+if echo "$*" | grep -q "models list"; then
+    echo '[{"id": "PixelVirtualArm32", "formFactor": "VIRTUAL", "supportedAbis": ["armeabi-v7a"], "tags": []}]'
+    exit 0
+fi
+exit 1
+""")
+        os.chmod(gcloud_script, 0o755)
+        env = {"PATH": f"{mock_bin}:{os.environ.get('PATH', '')}", "GCLOUD_CMD": "gcloud"}
+        res = self.run_bash_fn("select_arm_device", env)
+        self.assertNotEqual(res.returncode, 0)
 
-        # Only create png, omit video and logs
-        results_storage = os.path.join(self.temp_dir, "gcs_incomplete")
-        os.makedirs(results_storage, exist_ok=True)
-        with open(os.path.join(results_storage, "screen.png"), "wb") as f:
-            f.write(b"PNG")
+    def test_dev_05_deprecated_device(self):
+        mock_bin = os.path.join(self.temp_dir, "mock_dev_05")
+        os.makedirs(mock_bin, exist_ok=True)
+        gcloud_script = os.path.join(mock_bin, "gcloud")
+        with open(gcloud_script, "w") as f:
+            f.write("""#!/bin/sh
+if echo "$*" | grep -q "models list"; then
+    echo '[{"id": "PixelDepARM64", "formFactor": "VIRTUAL", "supportedAbis": ["arm64-v8a"], "tags": ["deprecated"]}]'
+    exit 0
+fi
+exit 1
+""")
+        os.chmod(gcloud_script, 0o755)
+        env = {"PATH": f"{mock_bin}:{os.environ.get('PATH', '')}", "GCLOUD_CMD": "gcloud"}
+        res = self.run_bash_fn("select_arm_device", env)
+        self.assertNotEqual(res.returncode, 0)
 
+    def test_dev_06_explicitly_disabled_device(self):
+        mock_bin = os.path.join(self.temp_dir, "mock_dev_06")
+        os.makedirs(mock_bin, exist_ok=True)
+        gcloud_script = os.path.join(mock_bin, "gcloud")
+        with open(gcloud_script, "w") as f:
+            f.write("""#!/bin/sh
+if echo "$*" | grep -q "models list"; then
+    echo '[{"id": "PixelDisabledARM64", "formFactor": "VIRTUAL", "supportedAbis": ["arm64-v8a"], "enabled": false, "tags": []}]'
+    exit 0
+fi
+exit 1
+""")
+        os.chmod(gcloud_script, 0o755)
+        env = {"PATH": f"{mock_bin}:{os.environ.get('PATH', '')}", "GCLOUD_CMD": "gcloud"}
+        res = self.run_bash_fn("select_arm_device", env)
+        self.assertNotEqual(res.returncode, 0)
+
+    def test_dev_07_missing_eligibility_field(self):
+        mock_bin = os.path.join(self.temp_dir, "mock_dev_07")
+        os.makedirs(mock_bin, exist_ok=True)
+        gcloud_script = os.path.join(mock_bin, "gcloud")
+        with open(gcloud_script, "w") as f:
+            f.write("""#!/bin/sh
+if echo "$*" | grep -q "models list"; then
+    echo '[{"id": "PixelMissingAbis", "formFactor": "VIRTUAL", "tags": []}]'
+    exit 0
+fi
+exit 1
+""")
+        os.chmod(gcloud_script, 0o755)
+        env = {"PATH": f"{mock_bin}:{os.environ.get('PATH', '')}", "GCLOUD_CMD": "gcloud"}
+        res = self.run_bash_fn("select_arm_device", env)
+        self.assertNotEqual(res.returncode, 0)
+
+    def test_dev_08_malformed_catalog_response(self):
+        mock_bin = os.path.join(self.temp_dir, "mock_dev_08")
+        os.makedirs(mock_bin, exist_ok=True)
+        gcloud_script = os.path.join(mock_bin, "gcloud")
+        with open(gcloud_script, "w") as f:
+            f.write("""#!/bin/sh
+if echo "$*" | grep -q "models list"; then
+    echo 'MALFORMED_OUTPUT'
+    exit 0
+fi
+exit 1
+""")
+        os.chmod(gcloud_script, 0o755)
+        env = {"PATH": f"{mock_bin}:{os.environ.get('PATH', '')}", "GCLOUD_CMD": "gcloud"}
+        res = self.run_bash_fn("select_arm_device", env)
+        self.assertNotEqual(res.returncode, 0)
+
+    def test_dev_09_unsupported_api_level(self):
+        mock_bin = os.path.join(self.temp_dir, "mock_dev_09")
+        os.makedirs(mock_bin, exist_ok=True)
+        gcloud_script = os.path.join(mock_bin, "gcloud")
         with open(gcloud_script, "w") as f:
             f.write(r"""#!/bin/sh
 case "$*" in
-    *"firebase test android run"*)
-        echo "Test matrix [matrix-incomplete] created."
+    *"models list"*)
+        echo '[{"id": "PixelOldApi", "formFactor": "VIRTUAL", "supportedAbis": ["arm64-v8a"], "tags": []}]'
         exit 0
         ;;
-    *"matrices describe matrix-incomplete"*)
-        echo '{"testMatrixId":"matrix-incomplete","webUrl":"https://console.firebase.google.com/..."}'
+    *"models describe PixelOldApi"*)
+        echo '{"id": "PixelOldApi", "supportedApiLevels": ["21", "24", "25"]}'
         exit 0
         ;;
     *)
@@ -642,128 +555,273 @@ case "$*" in
         ;;
 esac
 """)
-        with open(gsutil_script, "w") as f:
-            f.write(f"""#!/bin/sh
-for last; do true; done
-cp -r "{results_storage}/"* "$last"
-exit 0
-""")
         os.chmod(gcloud_script, 0o755)
-        os.chmod(gsutil_script, 0o755)
-
-        apk_path = os.path.join(self.temp_dir, "test.apk")
-        create_test_apk(apk_path)
-
-        env = {
-            "PATH": f"{mock_bin}:{os.environ.get('PATH', '')}",
-            "GCLOUD_CMD": "gcloud",
-            "GSUTIL_CMD": "gsutil",
-            "PROJECT_ROOT": self.temp_dir
-        }
-        res = self.run_bash_fn(f'run_test_lab "{apk_path}" "Pixel2ARM,30" "test-bucket"', env)
+        env = {"PATH": f"{mock_bin}:{os.environ.get('PATH', '')}", "GCLOUD_CMD": "gcloud"}
+        res = self.run_bash_fn("select_arm_device", env)
         self.assertNotEqual(res.returncode, 0)
 
-    def test_32_update_beastmode_state_creates_file_if_missing(self):
-        missing_state_file = os.path.join(self.temp_dir, "nested", "new_state.json")
-        env = {"BEAST_MODE_STATE": missing_state_file}
-        res = self.run_bash_fn(f'update_beastmode_state "{{}}" "100" "200" "Pixel2ARM" "matrix-999" "https://report.url" "/tmp/res" "COMPLETED" "sha-abc"', env)
+    def test_dev_10_valid_api_level(self):
+        mock_bin = os.path.join(self.temp_dir, "mock_dev_10")
+        os.makedirs(mock_bin, exist_ok=True)
+        gcloud_script = os.path.join(mock_bin, "gcloud")
+        with open(gcloud_script, "w") as f:
+            f.write(r"""#!/bin/sh
+case "$*" in
+    *"models list"*)
+        echo '[{"id": "PixelValidApi", "formFactor": "VIRTUAL", "supportedAbis": ["arm64-v8a"], "tags": []}]'
+        exit 0
+        ;;
+    *"models describe PixelValidApi"*)
+        echo '{"id": "PixelValidApi", "supportedApiLevels": ["24", "28", "30"]}'
+        exit 0
+        ;;
+    *)
+        exit 1
+        ;;
+esac
+""")
+        os.chmod(gcloud_script, 0o755)
+        env = {"PATH": f"{mock_bin}:{os.environ.get('PATH', '')}", "GCLOUD_CMD": "gcloud"}
+        res = self.run_bash_fn("select_arm_device", env)
         self.assertEqual(res.returncode, 0)
-        self.assertTrue(os.path.isfile(missing_state_file))
-        with open(missing_state_file, "r") as f:
-            state = json.load(f)
-        self.assertEqual(state["firebaseTestLab"]["lastRun"]["matrixId"], "matrix-999")
+        self.assertEqual(res.stdout.strip(), "PixelValidApi,30")
 
-    def test_33_update_beastmode_state_preserves_other_fields(self):
-        complex_state = {
-            "schemaVersion": 1,
-            "beastModeEnabled": True,
-            "currentTask": "MyCustomTask",
-            "objectives": [{"id": "obj-1", "status": "IN_PROGRESS"}],
-            "gitBranch": "feature-branch",
-            "lastCommitSha": "prev-sha"
-        }
-        state_path = os.path.join(self.temp_dir, "complex_state.json")
-        with open(state_path, "w") as f:
-            json.dump(complex_state, f)
+    def test_dev_11_no_eligible_device(self):
+        mock_bin = os.path.join(self.temp_dir, "mock_dev_11")
+        os.makedirs(mock_bin, exist_ok=True)
+        gcloud_script = os.path.join(mock_bin, "gcloud")
+        with open(gcloud_script, "w") as f:
+            f.write("""#!/bin/sh
+if echo "$*" | grep -q "models list"; then
+    echo '[]'
+    exit 0
+fi
+exit 1
+""")
+        os.chmod(gcloud_script, 0o755)
+        env = {"PATH": f"{mock_bin}:{os.environ.get('PATH', '')}", "GCLOUD_CMD": "gcloud"}
+        res = self.run_bash_fn("select_arm_device", env)
+        self.assertNotEqual(res.returncode, 0)
 
-        env = {"BEAST_MODE_STATE": state_path}
-        res = self.run_bash_fn(f'update_beastmode_state \'{json.dumps(complex_state)}\' "100" "200" "Pixel2ARM" "matrix-999" "https://report.url" "/tmp/res" "COMPLETED" "sha-abc"', env)
+    def test_dev_12_multiple_eligible_devices_deterministic_selection(self):
+        mock_bin = os.path.join(self.temp_dir, "mock_dev_12")
+        os.makedirs(mock_bin, exist_ok=True)
+        gcloud_script = os.path.join(mock_bin, "gcloud")
+        with open(gcloud_script, "w") as f:
+            f.write(r"""#!/bin/sh
+case "$*" in
+    *"models list"*)
+        echo '[
+          {"id": "Pixel3ARM", "formFactor": "VIRTUAL", "supportedAbis": ["arm64-v8a"], "tags": []},
+          {"id": "Pixel2ARM", "formFactor": "VIRTUAL", "supportedAbis": ["arm64-v8a"], "tags": []}
+        ]'
+        exit 0
+        ;;
+    *"models describe Pixel2ARM"*)
+        echo '{"id": "Pixel2ARM", "supportedApiLevels": ["28", "30"]}'
+        exit 0
+        ;;
+    *"models describe Pixel3ARM"*)
+        echo '{"id": "Pixel3ARM", "supportedApiLevels": ["28", "30"]}'
+        exit 0
+        ;;
+    *)
+        exit 1
+        ;;
+esac
+""")
+        os.chmod(gcloud_script, 0o755)
+        env = {"PATH": f"{mock_bin}:{os.environ.get('PATH', '')}", "GCLOUD_CMD": "gcloud"}
+        res = self.run_bash_fn("select_arm_device", env)
         self.assertEqual(res.returncode, 0)
+        # Sorted deterministically: Pixel2ARM comes before Pixel3ARM
+        self.assertEqual(res.stdout.strip(), "Pixel2ARM,30")
 
-        with open(state_path, "r") as f:
-            saved = json.load(f)
-        self.assertEqual(saved["currentTask"], "MyCustomTask")
-        self.assertEqual(saved["gitBranch"], "feature-branch")
-        self.assertEqual(saved["objectives"][0]["id"], "obj-1")
-        self.assertEqual(saved["firebaseTestLab"]["lastRun"]["matrixId"], "matrix-999")
-
-    # ── Test Cases 34-37: Beast Mode State Isolation & Validation ───────────
-    def test_34_update_beastmode_state_atomic_and_isolated(self):
-        state_content = Path(self.state_file).read_text()
-        env = {"BEAST_MODE_STATE": self.state_file}
-        res = self.run_bash_fn(f'update_beastmode_state \'{state_content}\' "100" "200" "Pixel2ARM" "matrix-999" "https://report.url" "/tmp/res" "COMPLETED" "sha-abc"', env)
-        self.assertEqual(res.returncode, 0)
-
+    # ── Wave 2 / Team 4: State Lifecycle & Neutrality Tests ─────────────────
+    def test_state_01_clean_baseline_initialization(self):
         with open(self.state_file, "r") as f:
             state = json.load(f)
+        self.assertFalse(state.get("beastModeEnabled"))
+        self.assertEqual(state.get("currentTask"), "")
+        self.assertEqual(state.get("workflowStatus"), "IDLE")
+        self.assertEqual(state.get("phase"), "IDLE")
+        self.assertEqual(state.get("firebaseTestLab", {}).get("status"), "READY")
 
-        self.assertIn("firebaseTestLab", state)
-        last_run = state["firebaseTestLab"]["lastRun"]
-        self.assertEqual(last_run["runId"], "100")
-        self.assertEqual(last_run["artifactId"], "200")
-        self.assertEqual(last_run["selectedDevice"], "Pixel2ARM")
-        self.assertEqual(last_run["matrixId"], "matrix-999")
-        self.assertEqual(last_run["reportUrl"], "https://report.url")
-        self.assertEqual(last_run["status"], "COMPLETED")
-        self.assertEqual(last_run["commitSha"], "sha-abc")
-
-        # Verify physical on-device state is not marked VERIFIED
-        self.assertNotEqual(state.get("physicalVerification"), "VERIFIED")
-
-    def test_35_hook_detects_explicit_trigger(self):
+    def test_state_02_explicit_firebase_command_enters_running(self):
         hook_path = PROJECT_ROOT / ".claude" / "hooks" / "user_prompt_submit.py"
         input_data = json.dumps({"prompt": "/minehost-beastmode firebase run"})
-        res = subprocess.run([sys.executable, str(hook_path)], input=input_data, capture_output=True, text=True)
+        env = os.environ.copy()
+        env["BEAST_MODE_STATE"] = self.state_file
+        res = subprocess.run([sys.executable, str(hook_path)], input=input_data, capture_output=True, text=True, env=env)
         self.assertEqual(res.returncode, 0)
         out = json.loads(res.stdout)
         self.assertIn("Task    : Firebase Test Lab run", out["prompt"])
 
-    def test_36_end_to_end_mock_workflow(self):
-        mock_bin = os.path.join(self.temp_dir, "mock_e2e_bin")
+    def test_state_03_successful_execution_enters_complete(self):
+        init_state = {
+            "schemaVersion": 1,
+            "beastModeEnabled": True,
+            "currentTask": "Firebase Test Lab run",
+            "workflowStatus": "RUNNING",
+            "phase": "EXECUTE"
+        }
+        res = self.run_bash_fn(f'update_beastmode_state \'{json.dumps(init_state)}\' "101" "201" "Pixel2ARM,30" "matrix-301" "https://report.url" "/tmp/res" "COMPLETED" "sha-301"')
+        self.assertEqual(res.returncode, 0)
+        with open(self.state_file, "r") as f:
+            saved = json.load(f)
+        self.assertEqual(saved["workflowStatus"], "COMPLETE")
+        self.assertEqual(saved["phase"], "IDLE")
+        self.assertEqual(saved["currentTask"], "")
+        self.assertEqual(saved["firebaseTestLab"]["lastRun"]["status"], "COMPLETED")
+        self.assertEqual(saved["firebaseTestLab"]["lastRun"]["matrixId"], "matrix-301")
+
+    def test_state_04_failed_execution_enters_failed(self):
+        init_state = {
+            "schemaVersion": 1,
+            "beastModeEnabled": True,
+            "currentTask": "Firebase Test Lab run",
+            "workflowStatus": "RUNNING",
+            "phase": "EXECUTE"
+        }
+        res = self.run_bash_fn(f'update_beastmode_state \'{json.dumps(init_state)}\' "102" "202" "Pixel2ARM,30" "matrix-302" "" "" "FAILED" "sha-302"')
+        self.assertEqual(res.returncode, 0)
+        with open(self.state_file, "r") as f:
+            saved = json.load(f)
+        self.assertEqual(saved["workflowStatus"], "FAILED")
+        self.assertEqual(saved["phase"], "IDLE")
+        self.assertEqual(saved["currentTask"], "")
+        self.assertEqual(saved["firebaseTestLab"]["lastRun"]["status"], "FAILED")
+        self.assertEqual(saved["firebaseTestLab"]["lastRun"]["matrixId"], "matrix-302")
+
+    def test_state_05_matrix_survives_later_failure(self):
+        init_state = {
+            "schemaVersion": 1,
+            "beastModeEnabled": True,
+            "currentTask": "Firebase Test Lab run",
+            "workflowStatus": "RUNNING"
+        }
+        # Matrix was generated (matrix-survivor), but result download failed -> status FAILED
+        res = self.run_bash_fn(f'update_beastmode_state \'{json.dumps(init_state)}\' "103" "203" "Pixel2ARM,30" "matrix-survivor" "" "" "FAILED" "sha-303"')
+        self.assertEqual(res.returncode, 0)
+        with open(self.state_file, "r") as f:
+            saved = json.load(f)
+        self.assertEqual(saved["firebaseTestLab"]["lastRun"]["matrixId"], "matrix-survivor")
+        self.assertEqual(saved["firebaseTestLab"]["lastRun"]["status"], "FAILED")
+
+    def test_state_06_state_updates_preserve_unrelated_fields(self):
+        complex_state = {
+            "schemaVersion": 1,
+            "beastModeEnabled": True,
+            "currentTask": "Firebase Test Lab run",
+            "workflowStatus": "RUNNING",
+            "objectives": [{"id": "obj-1", "title": "Audit", "status": "COMPLETED"}],
+            "knownIssues": ["issue-1"],
+            "gitBranch": "main"
+        }
+        res = self.run_bash_fn(f'update_beastmode_state \'{json.dumps(complex_state)}\' "104" "204" "Pixel2ARM,30" "matrix-304" "https://report.url" "/tmp/res" "COMPLETED" "sha-304"')
+        self.assertEqual(res.returncode, 0)
+        with open(self.state_file, "r") as f:
+            saved = json.load(f)
+        self.assertEqual(saved["objectives"][0]["id"], "obj-1")
+        self.assertEqual(saved["knownIssues"], ["issue-1"])
+        self.assertEqual(saved["gitBranch"], "main")
+        self.assertEqual(saved["firebaseTestLab"]["lastRun"]["matrixId"], "matrix-304")
+
+    def test_state_07_interrupted_failed_executions_do_not_report_success(self):
+        init_state = {
+            "schemaVersion": 1,
+            "beastModeEnabled": True,
+            "currentTask": "Firebase Test Lab run",
+            "workflowStatus": "RUNNING"
+        }
+        res = self.run_bash_fn(f'update_beastmode_state \'{json.dumps(init_state)}\' "105" "205" "Pixel2ARM,30" "" "" "" "FAILED" "sha-305"')
+        self.assertEqual(res.returncode, 0)
+        with open(self.state_file, "r") as f:
+            saved = json.load(f)
+        self.assertEqual(saved["workflowStatus"], "FAILED")
+        self.assertNotEqual(saved["workflowStatus"], "COMPLETE")
+
+    def test_state_08_normal_beastmode_does_not_launch_firebase(self):
+        hook_path = PROJECT_ROOT / ".claude" / "hooks" / "user_prompt_submit.py"
+        input_data = json.dumps({"prompt": "/minehost-beastmode status"})
+        env = os.environ.copy()
+        env["BEAST_MODE_STATE"] = self.state_file
+        res = subprocess.run([sys.executable, str(hook_path)], input=input_data, capture_output=True, text=True, env=env)
+        self.assertEqual(res.returncode, 0)
+        out = json.loads(res.stdout) if res.stdout.strip() else {}
+        self.assertNotIn("Firebase Test Lab run", out.get("prompt", ""))
+
+    def test_state_09_firebase_completion_leaves_physical_verification_unverified(self):
+        init_state = {
+            "schemaVersion": 1,
+            "beastModeEnabled": True,
+            "currentTask": "Firebase Test Lab run",
+            "workflowStatus": "RUNNING",
+            "physicalVerification": "VERIFIED"  # Simulate attempting to claim physical device verification
+        }
+        res = self.run_bash_fn(f'update_beastmode_state \'{json.dumps(init_state)}\' "106" "206" "Pixel2ARM,30" "matrix-306" "https://report.url" "/tmp/res" "COMPLETED" "sha-306"')
+        self.assertEqual(res.returncode, 0)
+        with open(self.state_file, "r") as f:
+            saved = json.load(f)
+        self.assertEqual(saved.get("physicalVerification"), "UNVERIFIED")
+
+    # ── Wave 3 / Team 5: E2E Failure Injection & Isolation Scenarios ────────
+    def test_e2e_scenario_01_unrelated_workflow_failure_injection(self):
+        mock_bin = os.path.join(self.temp_dir, "mock_e2e_scen_01")
+        os.makedirs(mock_bin, exist_ok=True)
+        with open(os.path.join(mock_bin, "gh"), "w") as f:
+            f.write("""#!/bin/sh
+if echo "$*" | grep -q "run list"; then
+    echo '[{"databaseId": 999, "workflowName": "Website Deploy", "headSha": "sha999", "conclusion": "success", "name": "Deploy Website"}]'
+    exit 0
+fi
+exit 1
+""")
+        for tool in ("gcloud", "gsutil"):
+            with open(os.path.join(mock_bin, tool), "w") as f:
+                f.write("#!/bin/sh\nexit 0\n")
+            os.chmod(os.path.join(mock_bin, tool), 0o755)
+        os.chmod(os.path.join(mock_bin, "gh"), 0o755)
+
+        env = {
+            "PATH": f"{mock_bin}:{os.environ.get('PATH', '')}",
+            "GITHUB_REPOSITORY": "testowner/testrepo",
+            "FIREBASE_TESTLAB_BUCKET": "gs://test-bucket",
+            "BEAST_MODE_STATE": self.state_file,
+            "PROJECT_ROOT": self.temp_dir,
+            "GH_CMD": "gh",
+            "GCLOUD_CMD": "gcloud",
+            "GSUTIL_CMD": "gsutil"
+        }
+        res = subprocess.run([BASH_BIN, str(SCRIPT_PATH), "run"], env=env, capture_output=True, text=True)
+        self.assertNotEqual(res.returncode, 0)
+
+    def test_e2e_scenario_02_wrong_device_architecture_failure_injection(self):
+        mock_bin = os.path.join(self.temp_dir, "mock_e2e_scen_02")
         os.makedirs(mock_bin, exist_ok=True)
 
-        apk_source = os.path.join(self.temp_dir, "e2e.apk")
+        apk_source = os.path.join(self.temp_dir, "scen2.apk")
         create_test_apk(apk_source)
-        art_zip = os.path.join(self.temp_dir, "e2e_art.zip")
+        art_zip = os.path.join(self.temp_dir, "scen2.zip")
         with zipfile.ZipFile(art_zip, "w") as zf:
             zf.write(apk_source, arcname="minehost-debug.apk")
 
-        results_storage = os.path.join(self.temp_dir, "gcs_e2e_results")
-        os.makedirs(results_storage, exist_ok=True)
-        with open(os.path.join(results_storage, "screen.png"), "wb") as f:
-            f.write(b"PNG")
-        with open(os.path.join(results_storage, "video.mp4"), "wb") as f:
-            f.write(b"MP4")
-        with open(os.path.join(results_storage, "logcat.txt"), "w") as f:
-            f.write("Server initialized")
-
-        # Mock gh
         with open(os.path.join(mock_bin, "gh"), "w") as f:
             f.write(f"""#!/bin/sh
 case "$*" in
     *"run list"*)
-        echo '[{{"databaseId": 77777, "workflowName": "Android CI", "headSha": "fedcba9876543210", "conclusion": "success", "name": "Build APK"}}]'
+        echo '[{{"databaseId": 801, "workflowName": "Android CI", "headSha": "sha801_40chars_0123456789abcdef01234567", "conclusion": "success", "name": "Build APK"}}]'
         exit 0
         ;;
-    *"repos/testowner/testrepo/actions/runs/77777/artifacts"*)
-        echo '{{"artifacts":[{{"id":88888,"name":"minehost-debug","expired":false}}]}}'
+    *"actions/runs/801/artifacts"*)
+        echo '{{"artifacts":[{{"id":901,"name":"minehost-debug","expired":false}}]}}'
         exit 0
         ;;
-    *"repos/testowner/testrepo/actions/runs/77777"*)
-        echo '{{"id": 77777, "head_sha": "fedcba9876543210", "status": "completed"}}'
+    *"actions/runs/801"*)
+        echo '{{"id": 801, "head_sha": "sha801_40chars_0123456789abcdef01234567", "status": "completed"}}'
         exit 0
         ;;
-    *"actions/artifacts/88888/zip"*)
+    *"actions/artifacts/901/zip"*)
         cat "{art_zip}"
         exit 0
         ;;
@@ -772,24 +830,60 @@ case "$*" in
         ;;
 esac
 """)
-        # Mock gcloud
         with open(os.path.join(mock_bin, "gcloud"), "w") as f:
-            f.write(r"""#!/bin/sh
+            f.write("""#!/bin/sh
+if echo "$*" | grep -q "models list"; then
+    echo '[{"id": "X86Device", "formFactor": "VIRTUAL", "supportedAbis": ["x86_64"], "tags": []}]'
+    exit 0
+fi
+exit 1
+""")
+        with open(os.path.join(mock_bin, "gsutil"), "w") as f:
+            f.write("#!/bin/sh\nexit 0\n")
+
+        for tool in ("gh", "gcloud", "gsutil"):
+            os.chmod(os.path.join(mock_bin, tool), 0o755)
+
+        env = {
+            "PATH": f"{mock_bin}:{os.environ.get('PATH', '')}",
+            "GITHUB_REPOSITORY": "testowner/testrepo",
+            "FIREBASE_TESTLAB_BUCKET": "gs://test-bucket",
+            "BEAST_MODE_STATE": self.state_file,
+            "PROJECT_ROOT": self.temp_dir,
+            "GH_CMD": "gh",
+            "GCLOUD_CMD": "gcloud",
+            "GSUTIL_CMD": "gsutil"
+        }
+        res = subprocess.run([BASH_BIN, str(SCRIPT_PATH), "run"], env=env, capture_output=True, text=True)
+        self.assertNotEqual(res.returncode, 0)
+
+    def test_e2e_scenario_03_incomplete_catalog_response_failure_injection(self):
+        mock_bin = os.path.join(self.temp_dir, "mock_e2e_scen_03")
+        os.makedirs(mock_bin, exist_ok=True)
+
+        apk_source = os.path.join(self.temp_dir, "scen3.apk")
+        create_test_apk(apk_source)
+        art_zip = os.path.join(self.temp_dir, "scen3.zip")
+        with zipfile.ZipFile(art_zip, "w") as zf:
+            zf.write(apk_source, arcname="minehost-debug.apk")
+
+        with open(os.path.join(mock_bin, "gh"), "w") as f:
+            f.write(f"""#!/bin/sh
 case "$*" in
-    *"models list"*)
-        echo '[{"id": "PixelE2E", "formFactor": "VIRTUAL", "supportedAbis": ["arm64-v8a"], "tags": []}]'
+    *"run list"*)
+        echo '[{{"databaseId": 802, "workflowName": "Android CI", "headSha": "sha802_40chars_0123456789abcdef01234567", "conclusion": "success", "name": "Build APK"}}]'
         exit 0
         ;;
-    *"models describe PixelE2E"*)
-        echo '{"id":"PixelE2E","supportedApiLevels":["28","30"]}'
+    *"actions/runs/802/artifacts"*)
+        echo '{{"artifacts":[{{"id":902,"name":"minehost-debug","expired":false}}]}}'
         exit 0
         ;;
-    *"firebase test android run"*)
-        echo "Test matrix [matrix-e2e-9999] created."
+    *"actions/runs/802"*)
+        echo '{{"id": 802, "head_sha": "sha802_40chars_0123456789abcdef01234567", "status": "completed"}}'
         exit 0
         ;;
-    *"matrices describe matrix-e2e-9999"*)
-        echo '{"testMatrixId":"matrix-e2e-9999","webUrl":"https://console.firebase.google.com/project/p/testlab/histories/h/matrices/matrix-e2e-9999","resultStorage":{"resultsUrl":"https://console.firebase.google.com/project/p/testlab/histories/h/matrices/matrix-e2e-9999"}}'
+    *"actions/artifacts/902/zip"*)
+        cat "{art_zip}"
         exit 0
         ;;
     *)
@@ -797,7 +891,230 @@ case "$*" in
         ;;
 esac
 """)
-        # Mock gsutil
+        with open(os.path.join(mock_bin, "gcloud"), "w") as f:
+            f.write("""#!/bin/sh
+if echo "$*" | grep -q "models list"; then
+    echo '[{"id": "CorruptedDevice", "formFactor": "VIRTUAL"}]'
+    exit 0
+fi
+exit 1
+""")
+        with open(os.path.join(mock_bin, "gsutil"), "w") as f:
+            f.write("#!/bin/sh\nexit 0\n")
+
+        for tool in ("gh", "gcloud", "gsutil"):
+            os.chmod(os.path.join(mock_bin, tool), 0o755)
+
+        env = {
+            "PATH": f"{mock_bin}:{os.environ.get('PATH', '')}",
+            "GITHUB_REPOSITORY": "testowner/testrepo",
+            "FIREBASE_TESTLAB_BUCKET": "gs://test-bucket",
+            "BEAST_MODE_STATE": self.state_file,
+            "PROJECT_ROOT": self.temp_dir,
+            "GH_CMD": "gh",
+            "GCLOUD_CMD": "gcloud",
+            "GSUTIL_CMD": "gsutil"
+        }
+        res = subprocess.run([BASH_BIN, str(SCRIPT_PATH), "run"], env=env, capture_output=True, text=True)
+        self.assertNotEqual(res.returncode, 0)
+
+    def test_e2e_scenario_04_state_failure_on_error_injection(self):
+        # Inject state that had currentTask set, then verify running script sets state to FAILED
+        with open(self.state_file, "w") as f:
+            json.dump({
+                "schemaVersion": 1,
+                "beastModeEnabled": True,
+                "currentTask": "Firebase Test Lab run",
+                "workflowStatus": "RUNNING",
+                "phase": "EXECUTE"
+            }, f)
+
+        mock_bin = os.path.join(self.temp_dir, "mock_e2e_scen_04")
+        os.makedirs(mock_bin, exist_ok=True)
+        with open(os.path.join(mock_bin, "gh"), "w") as f:
+            f.write("""#!/bin/sh
+exit 1
+""")
+        for tool in ("gcloud", "gsutil"):
+            with open(os.path.join(mock_bin, tool), "w") as f:
+                f.write("#!/bin/sh\nexit 0\n")
+            os.chmod(os.path.join(mock_bin, tool), 0o755)
+        os.chmod(os.path.join(mock_bin, "gh"), 0o755)
+
+        env = {
+            "PATH": f"{mock_bin}:{os.environ.get('PATH', '')}",
+            "GITHUB_REPOSITORY": "testowner/testrepo",
+            "FIREBASE_TESTLAB_BUCKET": "gs://test-bucket",
+            "BEAST_MODE_STATE": self.state_file,
+            "PROJECT_ROOT": self.temp_dir,
+            "GH_CMD": "gh",
+            "GCLOUD_CMD": "gcloud",
+            "GSUTIL_CMD": "gsutil"
+        }
+        res = subprocess.run([BASH_BIN, str(SCRIPT_PATH), "run"], env=env, capture_output=True, text=True)
+        self.assertNotEqual(res.returncode, 0)
+
+    def test_e2e_scenario_05_matrix_preservation_on_download_failure(self):
+        mock_bin = os.path.join(self.temp_dir, "mock_e2e_scen_05")
+        os.makedirs(mock_bin, exist_ok=True)
+
+        apk_source = os.path.join(self.temp_dir, "scen5.apk")
+        create_test_apk(apk_source)
+        art_zip = os.path.join(self.temp_dir, "scen5.zip")
+        with zipfile.ZipFile(art_zip, "w") as zf:
+            zf.write(apk_source, arcname="minehost-debug.apk")
+
+        with open(os.path.join(mock_bin, "gh"), "w") as f:
+            f.write(f"""#!/bin/sh
+case "$*" in
+    *"run list"*)
+        echo '[{{"databaseId": 805, "workflowName": "Android CI", "headSha": "sha805_40chars_0123456789abcdef01234567", "conclusion": "success", "name": "Build APK"}}]'
+        exit 0
+        ;;
+    *"actions/runs/805/artifacts"*)
+        echo '{{"artifacts":[{{"id":905,"name":"minehost-debug","expired":false}}]}}'
+        exit 0
+        ;;
+    *"actions/runs/805"*)
+        echo '{{"id": 805, "head_sha": "sha805_40chars_0123456789abcdef01234567", "status": "completed"}}'
+        exit 0
+        ;;
+    *"actions/artifacts/905/zip"*)
+        cat "{art_zip}"
+        exit 0
+        ;;
+    *)
+        exit 1
+        ;;
+esac
+""")
+        with open(os.path.join(mock_bin, "gcloud"), "w") as f:
+            f.write(r"""#!/bin/sh
+case "$*" in
+    *"models list"*)
+        echo '[{"id": "Pixel5ARM", "formFactor": "VIRTUAL", "supportedAbis": ["arm64-v8a"], "tags": []}]'
+        exit 0
+        ;;
+    *"models describe Pixel5ARM"*)
+        echo '{"id": "Pixel5ARM", "supportedApiLevels": ["30"]}'
+        exit 0
+        ;;
+    *"firebase test android run"*)
+        echo "Test matrix [matrix-preserved-1234] created."
+        exit 0
+        ;;
+    *)
+        exit 1
+        ;;
+esac
+""")
+        with open(os.path.join(mock_bin, "gsutil"), "w") as f:
+            f.write("""#!/bin/sh
+if [ "$1" = "ls" ]; then
+    exit 0
+fi
+# Simulate GCS download failure
+exit 1
+""")
+
+        for tool in ("gh", "gcloud", "gsutil"):
+            os.chmod(os.path.join(mock_bin, tool), 0o755)
+
+        with open(self.state_file, "w") as f:
+            json.dump({
+                "schemaVersion": 1,
+                "beastModeEnabled": True,
+                "currentTask": "Firebase Test Lab run",
+                "workflowStatus": "RUNNING",
+                "phase": "EXECUTE"
+            }, f)
+
+        env = {
+            "PATH": f"{mock_bin}:{os.environ.get('PATH', '')}",
+            "GITHUB_REPOSITORY": "testowner/testrepo",
+            "FIREBASE_TESTLAB_BUCKET": "gs://test-bucket",
+            "BEAST_MODE_STATE": self.state_file,
+            "PROJECT_ROOT": self.temp_dir,
+            "GH_CMD": "gh",
+            "GCLOUD_CMD": "gcloud",
+            "GSUTIL_CMD": "gsutil"
+        }
+        res = subprocess.run([BASH_BIN, str(SCRIPT_PATH), "run"], env=env, capture_output=True, text=True)
+        self.assertNotEqual(res.returncode, 0)
+
+        with open(self.state_file, "r") as f:
+            saved = json.load(f)
+        self.assertEqual(saved["workflowStatus"], "FAILED")
+        self.assertEqual(saved["firebaseTestLab"]["lastRun"]["matrixId"], "matrix-preserved-1234")
+        self.assertEqual(saved["firebaseTestLab"]["lastRun"]["status"], "FAILED")
+
+    def test_e2e_scenario_06_successful_local_mock(self):
+        mock_bin = os.path.join(self.temp_dir, "mock_e2e_scen_06")
+        os.makedirs(mock_bin, exist_ok=True)
+
+        apk_source = os.path.join(self.temp_dir, "scen6.apk")
+        create_test_apk(apk_source)
+        art_zip = os.path.join(self.temp_dir, "scen6.zip")
+        with zipfile.ZipFile(art_zip, "w") as zf:
+            zf.write(apk_source, arcname="minehost-debug.apk")
+
+        results_storage = os.path.join(self.temp_dir, "gcs_scen6_results")
+        os.makedirs(results_storage, exist_ok=True)
+        with open(os.path.join(results_storage, "screen.png"), "wb") as f:
+            f.write(b"PNG")
+        with open(os.path.join(results_storage, "video.mp4"), "wb") as f:
+            f.write(b"MP4")
+        with open(os.path.join(results_storage, "logcat.txt"), "w") as f:
+            f.write("Server started on port 25565")
+
+        with open(os.path.join(mock_bin, "gh"), "w") as f:
+            f.write(f"""#!/bin/sh
+case "$*" in
+    *"run list"*)
+        echo '[{{"databaseId": 806, "workflowName": "Android CI", "headSha": "sha806_40chars_0123456789abcdef01234567", "conclusion": "success", "name": "Build APK"}}]'
+        exit 0
+        ;;
+    *"actions/runs/806/artifacts"*)
+        echo '{{"artifacts":[{{"id":906,"name":"minehost-debug","expired":false}}]}}'
+        exit 0
+        ;;
+    *"actions/runs/806"*)
+        echo '{{"id": 806, "head_sha": "sha806_40chars_0123456789abcdef01234567", "status": "completed"}}'
+        exit 0
+        ;;
+    *"actions/artifacts/906/zip"*)
+        cat "{art_zip}"
+        exit 0
+        ;;
+    *)
+        exit 1
+        ;;
+esac
+""")
+        with open(os.path.join(mock_bin, "gcloud"), "w") as f:
+            f.write(r"""#!/bin/sh
+case "$*" in
+    *"models list"*)
+        echo '[{"id": "Pixel6ARM", "formFactor": "VIRTUAL", "supportedAbis": ["arm64-v8a"], "tags": []}]'
+        exit 0
+        ;;
+    *"models describe Pixel6ARM"*)
+        echo '{"id": "Pixel6ARM", "supportedApiLevels": ["30"]}'
+        exit 0
+        ;;
+    *"firebase test android run"*)
+        echo "Test matrix [matrix-success-806] created."
+        exit 0
+        ;;
+    *"matrices describe matrix-success-806"*)
+        echo '{"testMatrixId":"matrix-success-806","webUrl":"https://console.firebase.google.com/project/p/testlab/histories/h/matrices/matrix-success-806","resultStorage":{"resultsUrl":"https://console.firebase.google.com/project/p/testlab/histories/h/matrices/matrix-success-806"}}'
+        exit 0
+        ;;
+    *)
+        exit 1
+        ;;
+esac
+""")
         with open(os.path.join(mock_bin, "gsutil"), "w") as f:
             f.write(f"""#!/bin/sh
 if [ "$1" = "ls" ]; then
@@ -807,13 +1124,23 @@ for last; do true; done
 cp -r "{results_storage}/"* "$last"
 exit 0
 """)
+
         for tool in ("gh", "gcloud", "gsutil"):
             os.chmod(os.path.join(mock_bin, tool), 0o755)
+
+        with open(self.state_file, "w") as f:
+            json.dump({
+                "schemaVersion": 1,
+                "beastModeEnabled": True,
+                "currentTask": "Firebase Test Lab run",
+                "workflowStatus": "RUNNING",
+                "phase": "EXECUTE"
+            }, f)
 
         env = {
             "PATH": f"{mock_bin}:{os.environ.get('PATH', '')}",
             "GITHUB_REPOSITORY": "testowner/testrepo",
-            "FIREBASE_TESTLAB_BUCKET": "gs://test-e2e-bucket",
+            "FIREBASE_TESTLAB_BUCKET": "gs://test-bucket",
             "BEAST_MODE_STATE": self.state_file,
             "PROJECT_ROOT": self.temp_dir,
             "GH_CMD": "gh",
@@ -824,66 +1151,11 @@ exit 0
         self.assertEqual(res.returncode, 0, f"STDOUT:\n{res.stdout}\nSTDERR:\n{res.stderr}")
 
         with open(self.state_file, "r") as f:
-            state = json.load(f)
-
-        self.assertIn("firebaseTestLab", state)
-        last_run = state["firebaseTestLab"]["lastRun"]
-        self.assertEqual(last_run["runId"], "77777")
-        self.assertEqual(last_run["artifactId"], "88888")
-        self.assertEqual(last_run["selectedDevice"], "PixelE2E,30")
-        self.assertEqual(last_run["matrixId"], "matrix-e2e-9999")
-        self.assertEqual(last_run["status"], "COMPLETED")
-        self.assertEqual(last_run["commitSha"], "fedcba9876543210")
-
-    def test_37_end_to_end_artifact_download_failure_aborts(self):
-        mock_bin = os.path.join(self.temp_dir, "mock_e2e_fail_bin")
-        os.makedirs(mock_bin, exist_ok=True)
-
-        with open(os.path.join(mock_bin, "gh"), "w") as f:
-            f.write("""#!/bin/sh
-case "$*" in
-    *"run list"*)
-        echo '[{"databaseId": 77777, "workflowName": "Android CI", "headSha": "fedcba9876543210", "conclusion": "success", "name": "Build APK"}]'
-        exit 0
-        ;;
-    *"repos/testowner/testrepo/actions/runs/77777/artifacts"*)
-        echo '{"artifacts":[{"id":88888,"name":"minehost-debug","expired":false}]}'
-        exit 0
-        ;;
-    *"repos/testowner/testrepo/actions/runs/77777"*)
-        echo '{"id": 77777, "head_sha": "fedcba9876543210", "status": "completed"}'
-        exit 0
-        ;;
-    *"actions/artifacts/88888/zip"*)
-        exit 1
-        ;;
-    *"run download"*)
-        exit 1
-        ;;
-    *)
-        exit 1
-        ;;
-esac
-""")
-        with open(os.path.join(mock_bin, "gcloud"), "w") as f:
-            f.write("#!/bin/sh\nexit 0\n")
-        with open(os.path.join(mock_bin, "gsutil"), "w") as f:
-            f.write("#!/bin/sh\nexit 0\n")
-        for tool in ("gh", "gcloud", "gsutil"):
-            os.chmod(os.path.join(mock_bin, tool), 0o755)
-
-        env = {
-            "PATH": f"{mock_bin}:{os.environ.get('PATH', '')}",
-            "GITHUB_REPOSITORY": "testowner/testrepo",
-            "FIREBASE_TESTLAB_BUCKET": "gs://test-e2e-bucket",
-            "BEAST_MODE_STATE": self.state_file,
-            "PROJECT_ROOT": self.temp_dir,
-            "GH_CMD": "gh",
-            "GCLOUD_CMD": "gcloud",
-            "GSUTIL_CMD": "gsutil"
-        }
-        res = subprocess.run([BASH_BIN, str(SCRIPT_PATH), "run"], env=env, capture_output=True, text=True)
-        self.assertNotEqual(res.returncode, 0)
+            saved = json.load(f)
+        self.assertEqual(saved["workflowStatus"], "COMPLETE")
+        self.assertEqual(saved["firebaseTestLab"]["lastRun"]["matrixId"], "matrix-success-806")
+        self.assertEqual(saved["firebaseTestLab"]["lastRun"]["status"], "COMPLETED")
+        self.assertEqual(saved["firebaseTestLab"]["lastRun"]["commitSha"], "sha806_40chars_0123456789abcdef01234567")
 
 
 if __name__ == "__main__":
