@@ -201,11 +201,11 @@ validate_prerequisites() {
 # Function to get the latest successful GitHub Actions run with APK artifact
 get_latest_apk_run() {
     local repo="$1"
-    log "Fetching latest successful GitHub Actions run for repo: $repo"
+    log "Fetching latest successful Android/APK GitHub Actions run for repo: $repo"
 
     # List successful runs on branch main
     local runs_json
-    runs_json=$(retry_command 3 "$GH_CMD" run list --repo "$repo" --limit 20 --status success --branch main --json databaseId,workflowName,headSha,conclusion,name) || {
+    runs_json=$(retry_command 3 "$GH_CMD" run list --repo "$repo" --limit 30 --status success --branch main --json databaseId,workflowName,headSha,conclusion,name) || {
         log "Failed to list workflow runs for repo $repo"
         return 1
     }
@@ -217,26 +217,24 @@ try:
     runs = json.load(sys.stdin)
     if not runs:
         sys.exit(1)
-    # Prefer Android CI or runs indicating Android / APK build
+
+    # Must be an Android / APK build workflow that succeeded
     for r in runs:
         if r.get('conclusion') not in (None, '', 'success'):
             continue
-        w_name = r.get('workflowName', '') or ''
-        name = r.get('name', '') or ''
-        if 'Android CI' in w_name or 'Build APK' in name or 'Build' in w_name:
+        w_name = (r.get('workflowName', '') or '').lower()
+        name = (r.get('name', '') or '').lower()
+        if 'android' in w_name or 'build apk' in name or 'android ci' in w_name or 'apk' in name or 'build' in w_name:
             print(r.get('databaseId'))
             sys.exit(0)
-    # Otherwise select first successful run
-    for r in runs:
-        if r.get('conclusion') in (None, '', 'success'):
-            print(r.get('databaseId'))
-            sys.exit(0)
+
+    # Fail closed: do not select arbitrary unrelated workflows (e.g. docs, website, lint)
     sys.exit(1)
 except Exception as e:
     sys.stderr.write(f'Run list parse error: {e}\n')
     sys.exit(1)
 ") || {
-        log "No successful runs found on branch main for repo $repo."
+        log "No successful Android/APK build runs found on branch main for repo $repo."
         return 1
     }
 
@@ -278,7 +276,7 @@ get_apk_artifact_id() {
     local repo="$2"
     local target_name="${APK_ARTIFACT_NAME}"
 
-    log "Querying artifacts for run $run_id in $repo (looking for '$target_name' or APK)"
+    log "Querying artifacts for run $run_id in $repo (looking for exact artifact '$target_name')"
 
     local artifacts_json
     artifacts_json=$(retry_command 3 "$GH_CMD" api "repos/$repo/actions/runs/$run_id/artifacts") || {
@@ -289,7 +287,7 @@ get_apk_artifact_id() {
     local artifact_id
     artifact_id=$(echo "$artifacts_json" | python3 -c "
 import json, sys
-target_name = sys.argv[1]
+target_name = sys.argv[1].lower()
 try:
     data = json.load(sys.stdin)
     artifacts = data.get('artifacts', [])
@@ -298,22 +296,21 @@ try:
 
     # Priority 1: Exact artifact name match
     for a in artifacts:
-        if a.get('name') == target_name and not a.get('expired', False):
+        name = (a.get('name') or '').lower()
+        if name == target_name and not a.get('expired', False):
             print(a.get('id'))
             sys.exit(0)
 
-    # Priority 2: Name ending in .apk or containing apk/debug
+    # Priority 2: Name explicitly matching APK artifact conventions (e.g. minehost-debug, app-debug, *.apk)
     for a in artifacts:
         name = (a.get('name') or '').lower()
-        if (name.endswith('.apk') or 'apk' in name or 'debug' in name) and not a.get('expired', False):
-            print(a.get('id'))
-            sys.exit(0)
+        if not a.get('expired', False):
+            if name.endswith('.apk') or name == 'app-debug' or 'minehost-debug' in name:
+                print(a.get('id'))
+                sys.exit(0)
 
-    # Priority 3: First non-expired artifact
-    non_expired = [a for a in artifacts if not a.get('expired', False)]
-    if non_expired:
-        print(non_expired[0].get('id'))
-        sys.exit(0)
+    # Fail closed: never fall back to unrelated arbitrary artifacts
+    sys.exit(1)
 except Exception as e:
     sys.stderr.write(f'Artifact ID parsing error: {e}\n')
 sys.exit(1)
@@ -337,7 +334,7 @@ download_apk_artifact() {
     local repo="$3"
     local apk_dir="$TMP_APK_DIR"
 
-    log "Downloading artifact ID $artifact_id from run $run_id in $repo"
+    log "Downloading exact artifact ID $artifact_id from run $run_id in $repo"
     rm -rf "$apk_dir"
     mkdir -p "$apk_dir"
 
@@ -352,12 +349,17 @@ download_apk_artifact() {
         fi
     fi
 
-    # Strategy 2: Fallback to gh run download with specific artifact name or run
+    # Strategy 2: Fallback to gh run download with specific artifact name ONLY
     if [[ "$download_success" != "true" ]]; then
-        if "$GH_CMD" run download "$run_id" --repo "$repo" --dir "$apk_dir" --name "${APK_ARTIFACT_NAME}" 2>/dev/null || \
-           "$GH_CMD" run download "$run_id" --repo "$repo" --dir "$apk_dir" 2>/dev/null; then
+        if "$GH_CMD" run download "$run_id" --repo "$repo" --dir "$apk_dir" --name "${APK_ARTIFACT_NAME}" 2>/dev/null; then
             download_success=true
         fi
+    fi
+
+    # If exact artifact download strategies failed, FAIL CLOSED. Do NOT download arbitrary other artifacts.
+    if [[ "$download_success" != "true" ]]; then
+        log "Exact artifact download failed for artifact ID $artifact_id."
+        return 1
     fi
 
     # Find the .apk file inside apk_dir
@@ -402,7 +404,7 @@ validate_apk() {
 
     log "Validating APK: $apk_file (expected pkg=$package_name, abi=$native_abi, minSdk>=$min_sdk_version)"
 
-    # Pure Python fail-closed validator for ZIP structure, ABI, and binary AndroidManifest.xml
+    # Pure Python fail-closed validator for ZIP structure, exact ABI, and binary AndroidManifest.xml
     python3 - "$apk_file" "$package_name" "$native_abi" "$min_sdk_version" <<'PY_VALIDATE'
 import sys, os, zipfile, struct
 
@@ -421,7 +423,8 @@ except Exception as e:
 
 namelist = zf.namelist()
 
-# 1. Verify Native Libraries (arm64-v8a must be present, fail closed if missing)
+# 1. Verify Native Libraries (exact arm64-v8a must be present, fail closed if missing)
+# Must not accept armeabi-v7a as arm64
 arm64_libs = [name for name in namelist if name.startswith(f"lib/{expected_abi}/") and name.endswith(".so")]
 if not arm64_libs:
     sys.stderr.write(f"APK verification failed: No native libraries found for ABI '{expected_abi}'\n")
@@ -528,12 +531,6 @@ def parse_axml(data):
                                 min_sdk = int(strings[araw_val_idx])
                             except ValueError:
                                 pass
-                            min_sdk = adata
-                        elif araw_val_idx != 0xFFFFFFFF and araw_val_idx < len(strings):
-                            try:
-                                min_sdk = int(strings[araw_val_idx])
-                            except ValueError:
-                                pass
         offset += chunk_size
     return package, min_sdk, strings
 
@@ -543,18 +540,23 @@ except Exception as e:
     sys.stderr.write(f"Binary XML parsing failed: {e}\n")
     sys.exit(1)
 
-# Package name verification
-if pkg != expected_pkg:
-    # If element parser did not pick attribute, check if expected package exists in string pool
-    if expected_pkg not in strings:
-        sys.stderr.write(f"APK verification failed: Package '{expected_pkg}' not found in manifest (found '{pkg}')\n")
-        sys.exit(1)
+# Package name verification: MUST be exact match on manifest package attribute
+if not pkg:
+    sys.stderr.write("APK verification failed: Manifest package attribute missing or unparseable\n")
+    sys.exit(1)
 
-# Min SDK verification
-if min_sdk is not None:
-    if min_sdk < min_sdk_req:
-        sys.stderr.write(f"APK verification failed: minSdkVersion {min_sdk} is less than required {min_sdk_req}\n")
-        sys.exit(1)
+if pkg != expected_pkg:
+    sys.stderr.write(f"APK verification failed: Package '{pkg}' does not match expected '{expected_pkg}'\n")
+    sys.exit(1)
+
+# Min SDK verification: FAIL CLOSED if missing or unparseable
+if min_sdk is None:
+    sys.stderr.write("APK verification failed: minSdkVersion missing or unparseable from uses-sdk in AndroidManifest.xml\n")
+    sys.exit(1)
+
+if min_sdk < min_sdk_req:
+    sys.stderr.write(f"APK verification failed: minSdkVersion {min_sdk} is less than required {min_sdk_req}\n")
+    sys.exit(1)
 
 sys.exit(0)
 PY_VALIDATE
@@ -588,13 +590,13 @@ try:
         # 1. Must be VIRTUAL form factor
         if device.get('formFactor') != 'VIRTUAL':
             continue
-        # 2. Must support exact arm64-v8a ABI (not just armeabi)
+        # 2. Must support exact arm64-v8a ABI
         abis = device.get('supportedAbis', [])
         if 'arm64-v8a' not in abis:
             continue
-        # 3. Must not be deprecated
-        tags = device.get('tags', []) or []
-        if 'deprecated' in tags or 'DEPRECATED' in tags:
+        # 3. Must not be deprecated or disabled or unavailable
+        tags = [str(t).lower() for t in (device.get('tags') or [])]
+        if any(bad in tags for bad in ('deprecated', 'disabled', 'unavailable')):
             continue
         # 4. Must be enabled if enabled flag is present
         if device.get('enabled') is False:
@@ -687,6 +689,27 @@ run_test_lab() {
         --results-dir="$bucket_path" \
         2>&1) || {
         log "Firebase Test Lab submission failed: $test_output"
+        local m_id=""
+        m_id=$(echo "$test_output" | python3 -c "
+import sys, re, json
+text = sys.stdin.read()
+try:
+    data = json.loads(text)
+    m = data.get('testMatrixId') or data.get('matrixId')
+    if m:
+        print(m)
+        sys.exit(0)
+except Exception:
+    pass
+m = re.search(r'(?:Matrix ID:\s*|Test matrix\s*\[|Matrix\s*\[|/testMatrices/)([a-zA-Z0-9_-]+)', text)
+if m:
+    print(m.group(1))
+    sys.exit(0)
+sys.exit(1)
+" 2>/dev/null || true)
+        if [[ -n "$m_id" ]]; then
+            python3 -c "import json, sys; print(json.dumps({'matrix_id': sys.argv[1], 'error': 'submission_failed'}))" "$m_id"
+        fi
         return 1
     }
 
@@ -696,7 +719,6 @@ run_test_lab() {
     matrix_id=$(echo "$test_output" | python3 -c "
 import sys, re, json
 text = sys.stdin.read()
-# Check JSON output first if structured
 try:
     data = json.loads(text)
     m_id = data.get('testMatrixId') or data.get('matrixId')
@@ -706,7 +728,6 @@ try:
 except Exception:
     pass
 
-# Regex search for matrix ID in stdout
 m = re.search(r'(?:Matrix ID:\s*|Test matrix\s*\[|Matrix\s*\[|/testMatrices/)([a-zA-Z0-9_-]+)', text)
 if m:
     print(m.group(1))
@@ -741,6 +762,7 @@ sys.exit(1)
 
     if [[ "$download_ok" != "true" ]]; then
         log "Failed to download results for matrix $matrix_id from gs://$bucket/$bucket_path"
+        python3 -c "import json, sys; print(json.dumps({'matrix_id': sys.argv[1], 'error': 'download_failed'}))" "$matrix_id"
         return 1
     fi
 
@@ -761,6 +783,7 @@ sys.exit(1)
 
     if [[ "$has_images" != "true" || "$has_video" != "true" || "$has_logs" != "true" ]]; then
         log "Missing required test artifacts in $local_results_dir (images=$has_images, video=$has_video, logs=$has_logs)"
+        python3 -c "import json, sys; print(json.dumps({'matrix_id': sys.argv[1], 'error': 'artifacts_incomplete'}))" "$matrix_id"
         return 1
     fi
 
@@ -778,7 +801,10 @@ try:
         data.get('clientInfo', {}).get('details', {}).get('url') or
         ''
     )
-    print(url)
+    if url.startswith('http://') or url.startswith('https://'):
+        print(url)
+    else:
+        print('')
 except Exception:
     print('')
 ")
@@ -820,14 +846,28 @@ state['firebaseTestLab']['lastRun'] = {
     'runId': run_id,
     'artifactId': artifact_id,
     'selectedDevice': device_model,
-    'matrixId': matrix_id,
-    'resultDirectory': results_dir,
-    'reportUrl': report_url,
+    'matrixId': matrix_id if matrix_id else None,
+    'resultDirectory': results_dir if results_dir else None,
+    'reportUrl': report_url if report_url else None,
     'timestamp': ts,
     'status': status,
     'commitSha': commit_sha,
 }
 state['timestamp'] = ts
+
+# Transition workflowStatus from RUNNING to COMPLETE or FAILED
+if state.get('currentTask') == 'Firebase Test Lab run' or state.get('workflowStatus') == 'RUNNING':
+    if status == 'COMPLETED':
+        state['workflowStatus'] = 'COMPLETE'
+        state['phase'] = 'IDLE'
+    else:
+        state['workflowStatus'] = 'FAILED'
+        state['phase'] = 'IDLE'
+
+# Ensure physical runtime verification is NOT set to VERIFIED
+if state.get('physicalVerification') == 'VERIFIED':
+    state['physicalVerification'] = 'UNVERIFIED'
+
 print(json.dumps(state, indent=2))
 PY_STATE
 )
@@ -917,12 +957,19 @@ main() {
     log "Selected device: $device_model_version"
 
     # 7. Run Firebase Test Lab
-    local firebase_info
-    firebase_info=$(run_test_lab "$apk_file" "$device_model_version" "$bucket") || {
+    local firebase_info=""
+    local run_err=0
+    firebase_info=$(run_test_lab "$apk_file" "$device_model_version" "$bucket") || run_err=$?
+
+    if [[ $run_err -ne 0 ]]; then
         log "Firebase Test Lab run failed."
-        update_beastmode_state "$state_json" "$run_id" "$artifact_id" "$device_model_version" "" "" "" "FAILED" "$commit_sha"
+        local preserved_matrix_id=""
+        if [[ -n "$firebase_info" ]]; then
+            preserved_matrix_id=$(echo "$firebase_info" | python3 -c "import json, sys; print(json.load(sys.stdin).get('matrix_id') or '')" 2>/dev/null || true)
+        fi
+        update_beastmode_state "$state_json" "$run_id" "$artifact_id" "$device_model_version" "$preserved_matrix_id" "" "" "FAILED" "$commit_sha"
         exit 1
-    }
+    fi
 
     local matrix_id report_url results_dir
     matrix_id=$(echo "$firebase_info" | python3 -c "import json, sys; print(json.load(sys.stdin)['matrix_id'])")
