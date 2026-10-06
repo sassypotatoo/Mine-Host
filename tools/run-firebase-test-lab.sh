@@ -592,7 +592,7 @@ select_arm_device() {
     log "Selecting compatible ARM virtual device from Firebase Test Lab catalog"
 
     local models_json
-    models_json=$(retry_command 3 "$GCLOUD_CMD" firebase test android models list --filter="formFactor=VIRTUAL" --format='json') || {
+    models_json=$(retry_command 3 "$GCLOUD_CMD" firebase test android models list --filter="form=VIRTUAL" --format='json') || {
         log "Failed to list virtual models from Firebase Test Lab"
         return 1
     }
@@ -615,7 +615,7 @@ try:
             continue
 
         # 1. Must be VIRTUAL form factor
-        if device.get('formFactor') != 'VIRTUAL':
+        if device.get('form') != 'VIRTUAL':
             continue
 
         # 2. Must explicitly support exact arm64-v8a ABI
@@ -673,17 +673,36 @@ try:
     data = json.load(sys.stdin)
     if not isinstance(data, dict):
         sys.exit(1)
-    api_levels = data.get('supportedApiLevels') or data.get('supportedVersionIds') or []
-    if not isinstance(api_levels, list):
+
+    # Check for version metadata structure (required)
+    if 'supportedVersionIds' in data and 'perVersionInfo' in data:
+        version_ids = data['supportedVersionIds']
+        per_version_info = data['perVersionInfo']
+        if not isinstance(version_ids, list) or not isinstance(per_version_info, list):
+            sys.exit(1)
+
+        # Build mapping from versionId to apiLevel
+        version_to_api = {}
+        for info in per_version_info:
+            if isinstance(info, dict):
+                vid = info.get('versionId')
+                api = info.get('apiLevel')
+                if vid is not None and api is not None:
+                    try:
+                        version_to_api[vid] = int(api)
+                    except (ValueError, TypeError):
+                        pass
+
+        valid_levels = []
+        for vid in version_ids:
+            if vid in version_to_api:
+                api_level = version_to_api[vid]
+                if api_level >= min_sdk_version:
+                    valid_levels.append(api_level)
+    else:
+        # Missing required version metadata
         sys.exit(1)
-    valid_levels = []
-    for lvl in api_levels:
-        try:
-            val = int(lvl)
-            if val >= min_sdk_version:
-                valid_levels.append(val)
-        except (ValueError, TypeError):
-            continue
+
     if not valid_levels:
         sys.exit(1)
     # Select highest supported valid API level deterministically

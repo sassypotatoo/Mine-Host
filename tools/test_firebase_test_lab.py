@@ -398,11 +398,11 @@ exit 1
             f.write(r"""#!/bin/sh
 case "$*" in
     *"models list"*)
-        echo '[{"id": "PixelVirtualARM64", "formFactor": "VIRTUAL", "supportedAbis": ["arm64-v8a"], "tags": []}]'
+        echo '[{"id": "PixelVirtualARM64", "form": "VIRTUAL", "formFactor": "PHONE", "supportedAbis": ["arm64-v8a"], "tags": [], "perVersionInfo": [{"versionId": "v30", "apiLevel": 30, "deviceCapacity": "DEVICE_CAPACITY_HIGH"}]}]'
         exit 0
         ;;
     *"models describe PixelVirtualARM64"*)
-        echo '{"id": "PixelVirtualARM64", "supportedApiLevels": ["28", "30"]}'
+        echo '{"id": "PixelVirtualARM64", "supportedVersionIds": ["v28", "v30"], "perVersionInfo": [{"versionId": "v28", "apiLevel": 28}, {"versionId": "v30", "apiLevel": 30}]}'
         exit 0
         ;;
     *)
@@ -568,11 +568,11 @@ esac
             f.write(r"""#!/bin/sh
 case "$*" in
     *"models list"*)
-        echo '[{"id": "PixelValidApi", "formFactor": "VIRTUAL", "supportedAbis": ["arm64-v8a"], "tags": []}]'
+        echo '[{"id": "PixelValidApi", "form": "VIRTUAL", "formFactor": "PHONE", "supportedAbis": ["arm64-v8a"], "tags": [], "perVersionInfo": [{"versionId": "30", "apiLevel": 30, "deviceCapacity": "DEVICE_CAPACITY_HIGH"}]}]'
         exit 0
         ;;
     *"models describe PixelValidApi"*)
-        echo '{"id": "PixelValidApi", "supportedApiLevels": ["24", "28", "30"]}'
+        echo '{"id": "PixelValidApi", "supportedVersionIds": ["v24", "v28", "v30"], "perVersionInfo": [{"versionId": "v24", "apiLevel": 24}, {"versionId": "v28", "apiLevel": 28}, {"versionId": "v30", "apiLevel": 30}]}'
         exit 0
         ;;
     *)
@@ -612,17 +612,17 @@ exit 1
 case "$*" in
     *"models list"*)
         echo '[
-          {"id": "Pixel3ARM", "formFactor": "VIRTUAL", "supportedAbis": ["arm64-v8a"], "tags": []},
-          {"id": "Pixel2ARM", "formFactor": "VIRTUAL", "supportedAbis": ["arm64-v8a"], "tags": []}
+          {"id": "Pixel3ARM", "form": "VIRTUAL", "formFactor": "PHONE", "supportedAbis": ["arm64-v8a"], "tags": []},
+          {"id": "Pixel2ARM", "form": "VIRTUAL", "formFactor": "PHONE", "supportedAbis": ["arm64-v8a"], "tags": []}
         ]'
         exit 0
         ;;
     *"models describe Pixel2ARM"*)
-        echo '{"id": "Pixel2ARM", "supportedApiLevels": ["28", "30"]}'
+        echo '{"id": "Pixel2ARM", "supportedVersionIds": ["v28", "v30"], "perVersionInfo": [{"versionId": "v28", "apiLevel": 28}, {"versionId": "v30", "apiLevel": 30}]}'
         exit 0
         ;;
     *"models describe Pixel3ARM"*)
-        echo '{"id": "Pixel3ARM", "supportedApiLevels": ["28", "30"]}'
+        echo '{"id": "Pixel3ARM", "supportedVersionIds": ["v28", "v30"], "perVersionInfo": [{"versionId": "v28", "apiLevel": 28}, {"versionId": "v30", "apiLevel": 30}]}'
         exit 0
         ;;
     *)
@@ -992,11 +992,11 @@ esac
             f.write(r"""#!/bin/sh
 case "$*" in
     *"models list"*)
-        echo '[{"id": "Pixel5ARM", "formFactor": "VIRTUAL", "supportedAbis": ["arm64-v8a"], "tags": []}]'
+        echo '[{"id": "Pixel5ARM", "form": "VIRTUAL", "formFactor": "PHONE", "supportedAbis": ["arm64-v8a"], "tags": [], "perVersionInfo": [{"versionId": "30", "deviceCapacity": "DEVICE_CAPACITY_HIGH"}]}]'
         exit 0
         ;;
     *"models describe Pixel5ARM"*)
-        echo '{"id": "Pixel5ARM", "supportedApiLevels": ["30"]}'
+        echo '{"id": "Pixel5ARM", "supportedVersionIds": ["30"], "perVersionInfo": [{"versionId": "30", "apiLevel": 30}]}'
         exit 0
         ;;
     *"firebase test android run"*)
@@ -1040,10 +1040,13 @@ exit 1
             "GSUTIL_CMD": "gsutil"
         }
         res = subprocess.run([BASH_BIN, str(SCRIPT_PATH), "run"], env=env, capture_output=True, text=True)
+        print("STDOUT:", res.stdout)
+        print("STDERR:", res.stderr)
         self.assertNotEqual(res.returncode, 0)
 
         with open(self.state_file, "r") as f:
             saved = json.load(f)
+        print("DEBUG: state after script run:", saved)
         self.assertEqual(saved["workflowStatus"], "FAILED")
         self.assertEqual(saved["firebaseTestLab"]["lastRun"]["matrixId"], "matrix-preserved-1234")
         self.assertEqual(saved["firebaseTestLab"]["lastRun"]["status"], "FAILED")
@@ -1095,11 +1098,11 @@ esac
             f.write(r"""#!/bin/sh
 case "$*" in
     *"models list"*)
-        echo '[{"id": "Pixel6ARM", "formFactor": "VIRTUAL", "supportedAbis": ["arm64-v8a"], "tags": []}]'
+        echo '[{"id": "Pixel6ARM", "form": "VIRTUAL", "formFactor": "PHONE", "supportedAbis": ["arm64-v8a"], "tags": [], "perVersionInfo": [{"versionId": "30", "deviceCapacity": "DEVICE_CAPACITY_HIGH"}]}]'
         exit 0
         ;;
     *"models describe Pixel6ARM"*)
-        echo '{"id": "Pixel6ARM", "supportedApiLevels": ["30"]}'
+        echo '{"id": "Pixel6ARM", "supportedVersionIds": ["30"], "perVersionInfo": [{"versionId": "30", "apiLevel": 30}]}'
         exit 0
         ;;
     *"firebase test android run"*)
