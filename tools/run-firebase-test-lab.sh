@@ -348,42 +348,61 @@ download_apk_artifact() {
     # Strategy 1: Download exact artifact ZIP via GitHub API endpoint
     local zip_file="$apk_dir/artifact_${artifact_id}.zip"
     if "$GH_CMD" api "repos/$repo/actions/artifacts/$artifact_id/zip" > "$zip_file" 2>/dev/null && [[ -s "$zip_file" ]]; then
-        if python3 -c "import zipfile, sys; zipfile.ZipFile(sys.argv[1]).extractall(sys.argv[2])" "$zip_file" "$apk_dir" 2>/dev/null; then
+        local extracted_apk
+        extracted_apk=$(python3 - "$zip_file" "$apk_dir" <<'PY_EXTRACT'
+import sys, os, zipfile
+
+zip_path = sys.argv[1]
+target_dir = os.path.abspath(sys.argv[2])
+
+try:
+    with zipfile.ZipFile(zip_path, 'r') as zf:
+        infolist = zf.infolist()
+        if not infolist:
+            sys.exit(1)
+
+        apk_members = []
+        for info in infolist:
+            filename = info.filename
+            if os.path.isabs(filename) or filename.startswith('/') or filename.startswith('\\'):
+                sys.exit(1)
+            norm_target = os.path.abspath(os.path.join(target_dir, filename))
+            try:
+                if os.path.commonpath([norm_target, target_dir]) != target_dir:
+                    sys.exit(1)
+            except ValueError:
+                sys.exit(1)
+            if not info.is_dir() and filename.lower().endswith('.apk'):
+                apk_members.append(info)
+
+        if len(apk_members) != 1:
+            # Fail closed: must contain strictly 1 candidate APK
+            sys.exit(1)
+
+        for info in infolist:
+            zf.extract(info, target_dir)
+
+        apk_target_path = os.path.join(target_dir, apk_members[0].filename)
+        if not os.path.isfile(apk_target_path) or os.path.getsize(apk_target_path) == 0:
+            sys.exit(1)
+        print(apk_target_path)
+        sys.exit(0)
+except Exception:
+    sys.exit(1)
+PY_EXTRACT
+        ) || true
+
+        if [[ -n "$extracted_apk" && -f "$extracted_apk" ]]; then
             download_success=true
             rm -f "$zip_file"
+            echo "$extracted_apk"
+            return 0
         fi
     fi
 
     # If exact artifact download strategies failed, FAIL CLOSED. Do NOT download arbitrary other artifacts.
-    if [[ "$download_success" != "true" ]]; then
-        log "Exact artifact download failed for artifact ID $artifact_id."
-        return 1
-    fi
-
-    # Find the .apk file inside apk_dir
-    local apk_file
-    apk_file=$(python3 -c "
-import os, sys
-apk_dir = sys.argv[1]
-found = []
-for root, dirs, files in os.walk(apk_dir):
-    for f in files:
-        if f.endswith('.apk'):
-            full_path = os.path.join(root, f)
-            if os.path.getsize(full_path) > 0:
-                found.append(full_path)
-if found:
-    print(found[0])
-    sys.exit(0)
-sys.exit(1)
-" "$apk_dir" 2>/dev/null || true)
-
-    if [[ -z "$apk_file" || ! -s "$apk_file" ]]; then
-        log "Failed to locate non-empty APK file in downloaded artifact directory $apk_dir"
-        return 1
-    fi
-
-    echo "$apk_file"
+    log "Exact artifact download failed for artifact ID $artifact_id."
+    return 1
 }
 
 # Function to validate the downloaded APK fail-closed
@@ -645,9 +664,12 @@ sys.exit(1)
         return 1
     }
 
-    # Fetch authoritative Android versions catalog if available
-    local versions_json=""
-    versions_json=$("$GCLOUD_CMD" firebase test android versions list --format='json' 2>/dev/null || true)
+    # Fetch authoritative Android versions catalog from Firebase Test Lab
+    local versions_json
+    versions_json=$(retry_command 3 "$GCLOUD_CMD" firebase test android versions list --format='json') || {
+        log "Failed to retrieve authoritative Android versions catalog from Firebase Test Lab"
+        return 1
+    }
 
     local api_level
     api_level=$(python3 - "$model_desc_json" "$versions_json" <<'PY_VERSION_RESOLVE'
@@ -658,74 +680,71 @@ model_desc_raw = sys.argv[1]
 versions_raw = sys.argv[2] if len(sys.argv) > 2 else ""
 
 try:
+    if not model_desc_raw.strip() or not versions_raw.strip():
+        sys.exit(1)
+
     data = json.loads(model_desc_raw)
     if not isinstance(data, dict):
         sys.exit(1)
 
-    # 1. Authoritative version catalog from 'android versions list' if available
+    # 1. Parse authoritative version catalog from 'android versions list'
+    v_list = json.loads(versions_raw)
+    if not isinstance(v_list, list) or not v_list:
+        sys.exit(1)
+
     catalog_versions = {}
-    if versions_raw.strip():
+    for v in v_list:
+        if not isinstance(v, dict):
+            continue
+        v_id = v.get('id')
+        api_val = v.get('apiLevel')
+        if not v_id or api_val is None:
+            continue
         try:
-            v_list = json.loads(versions_raw)
-            if isinstance(v_list, list):
-                for v in v_list:
-                    if not isinstance(v, dict):
-                        continue
-                    v_id = v.get('id')
-                    api_val = v.get('apiLevel')
-                    if not v_id or api_val is None:
-                        continue
+            api_int = int(api_val)
+        except (ValueError, TypeError):
+            continue
+        v_tags = [str(t).lower() for t in (v.get('tags') or [])]
+        if any(bad in v_tags for bad in ('deprecated', 'disabled', 'unavailable')):
+            continue
+        vid_key = str(v_id).strip()
+        if not vid_key:
+            continue
+        if vid_key in catalog_versions and catalog_versions[vid_key] != api_int:
+            # Duplicate contradictory catalog version metadata -> fail closed
+            sys.exit(1)
+        catalog_versions[vid_key] = api_int
+
+    if not catalog_versions:
+        sys.exit(1)
+
+    # Check for conflicting perVersionInfo metadata if present
+    per_version_info = data.get('perVersionInfo')
+    if isinstance(per_version_info, list):
+        for pvi in per_version_info:
+            if isinstance(pvi, dict):
+                pvi_vid = str(pvi.get('versionId') or '').strip()
+                pvi_api = pvi.get('apiLevel')
+                if pvi_vid and pvi_api is not None:
                     try:
-                        api_int = int(api_val)
+                        pvi_api_int = int(pvi_api)
+                        if pvi_vid in catalog_versions and catalog_versions[pvi_vid] != pvi_api_int:
+                            # Conflicting apiLevel between perVersionInfo and authoritative catalog
+                            sys.exit(1)
                     except (ValueError, TypeError):
-                        continue
-                    v_tags = [str(t).lower() for t in (v.get('tags') or [])]
-                    if any(bad in v_tags for bad in ('deprecated', 'disabled', 'unavailable')):
-                        continue
-                    catalog_versions[str(v_id)] = api_int
-        except Exception:
-            pass
+                        sys.exit(1)
 
     # 2. Extract supportedVersionIds from model description (required)
     version_ids = data.get('supportedVersionIds')
     if not isinstance(version_ids, list) or not version_ids:
         sys.exit(1)
 
-    # 3. Extract perVersionInfo from model description if present
-    per_version_info = data.get('perVersionInfo')
-    per_version_map = {}
-    if isinstance(per_version_info, list):
-        for info in per_version_info:
-            if isinstance(info, dict):
-                vid = info.get('versionId')
-                api = info.get('apiLevel')
-                if vid is not None and api is not None:
-                    try:
-                        per_version_map[str(vid)] = int(api)
-                    except (ValueError, TypeError):
-                        pass
-
-    # 4. Resolve authoritative version-to-api mapping
-    version_to_api = {}
-    if catalog_versions:
-        version_to_api.update(catalog_versions)
-    if per_version_map:
-        for vid, api in per_version_map.items():
-            if vid not in version_to_api:
-                version_to_api[vid] = api
-            elif version_to_api[vid] != api:
-                # Conflicting version metadata -> fail closed
-                sys.exit(1)
-
-    if not version_to_api:
-        # Missing required version metadata -> fail closed (never guess raw versionId as API level)
-        sys.exit(1)
-
+    # 3. Match supportedVersionIds strictly against authoritative catalog
     valid_candidates = []
     for vid in version_ids:
-        vid_str = str(vid)
-        if vid_str in version_to_api:
-            api_level = version_to_api[vid_str]
+        vid_str = str(vid).strip()
+        if vid_str in catalog_versions:
+            api_level = catalog_versions[vid_str]
             if isinstance(api_level, int) and api_level >= min_sdk_version:
                 valid_candidates.append((api_level, vid_str))
 

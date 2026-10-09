@@ -398,11 +398,15 @@ exit 1
             f.write(r"""#!/bin/sh
 case "$*" in
     *"models list"*)
-        echo '[{"id": "PixelVirtualARM64", "form": "VIRTUAL", "formFactor": "PHONE", "supportedAbis": ["arm64-v8a"], "tags": [], "perVersionInfo": [{"versionId": "v30", "apiLevel": 30, "deviceCapacity": "DEVICE_CAPACITY_HIGH"}]}]'
+        echo '[{"id": "PixelVirtualARM64", "form": "VIRTUAL", "formFactor": "PHONE", "supportedAbis": ["arm64-v8a"], "tags": [], "perVersionInfo": [{"versionId": "v30", "deviceCapacity": "DEVICE_CAPACITY_HIGH"}]}]'
         exit 0
         ;;
     *"models describe PixelVirtualARM64"*)
-        echo '{"id": "PixelVirtualARM64", "supportedVersionIds": ["v28", "v30"], "perVersionInfo": [{"versionId": "v28", "apiLevel": 28}, {"versionId": "v30", "apiLevel": 30}]}'
+        echo '{"id": "PixelVirtualARM64", "supportedVersionIds": ["v28", "v30"], "perVersionInfo": [{"versionId": "v28", "deviceCapacity": "DEVICE_CAPACITY_HIGH"}, {"versionId": "v30", "deviceCapacity": "DEVICE_CAPACITY_HIGH"}]}'
+        exit 0
+        ;;
+    *"versions list"*)
+        echo '[{"id": "v28", "apiLevel": 28, "tags": []}, {"id": "v30", "apiLevel": 30, "tags": ["default"]}]'
         exit 0
         ;;
     *)
@@ -568,11 +572,15 @@ esac
             f.write(r"""#!/bin/sh
 case "$*" in
     *"models list"*)
-        echo '[{"id": "PixelValidApi", "form": "VIRTUAL", "formFactor": "PHONE", "supportedAbis": ["arm64-v8a"], "tags": [], "perVersionInfo": [{"versionId": "30", "apiLevel": 30, "deviceCapacity": "DEVICE_CAPACITY_HIGH"}]}]'
+        echo '[{"id": "PixelValidApi", "form": "VIRTUAL", "formFactor": "PHONE", "supportedAbis": ["arm64-v8a"], "tags": [], "perVersionInfo": [{"versionId": "30", "deviceCapacity": "DEVICE_CAPACITY_HIGH"}]}]'
         exit 0
         ;;
     *"models describe PixelValidApi"*)
-        echo '{"id": "PixelValidApi", "supportedVersionIds": ["v24", "v28", "v30"], "perVersionInfo": [{"versionId": "v24", "apiLevel": 24}, {"versionId": "v28", "apiLevel": 28}, {"versionId": "v30", "apiLevel": 30}]}'
+        echo '{"id": "PixelValidApi", "supportedVersionIds": ["v24", "v28", "v30"], "perVersionInfo": [{"versionId": "v24", "deviceCapacity": "DEVICE_CAPACITY_HIGH"}, {"versionId": "v28", "deviceCapacity": "DEVICE_CAPACITY_HIGH"}, {"versionId": "v30", "deviceCapacity": "DEVICE_CAPACITY_HIGH"}]}'
+        exit 0
+        ;;
+    *"versions list"*)
+        echo '[{"id": "v24", "apiLevel": 24, "tags": []}, {"id": "v28", "apiLevel": 28, "tags": []}, {"id": "v30", "apiLevel": 30, "tags": []}]'
         exit 0
         ;;
     *)
@@ -618,11 +626,15 @@ case "$*" in
         exit 0
         ;;
     *"models describe Pixel2ARM"*)
-        echo '{"id": "Pixel2ARM", "supportedVersionIds": ["v28", "v30"], "perVersionInfo": [{"versionId": "v28", "apiLevel": 28}, {"versionId": "v30", "apiLevel": 30}]}'
+        echo '{"id": "Pixel2ARM", "supportedVersionIds": ["v28", "v30"], "perVersionInfo": [{"versionId": "v28", "deviceCapacity": "DEVICE_CAPACITY_HIGH"}, {"versionId": "v30", "deviceCapacity": "DEVICE_CAPACITY_HIGH"}]}'
         exit 0
         ;;
     *"models describe Pixel3ARM"*)
-        echo '{"id": "Pixel3ARM", "supportedVersionIds": ["v28", "v30"], "perVersionInfo": [{"versionId": "v28", "apiLevel": 28}, {"versionId": "v30", "apiLevel": 30}]}'
+        echo '{"id": "Pixel3ARM", "supportedVersionIds": ["v28", "v30"], "perVersionInfo": [{"versionId": "v28", "deviceCapacity": "DEVICE_CAPACITY_HIGH"}, {"versionId": "v30", "deviceCapacity": "DEVICE_CAPACITY_HIGH"}]}'
+        exit 0
+        ;;
+    *"versions list"*)
+        echo '[{"id": "v28", "apiLevel": 28, "tags": []}, {"id": "v30", "apiLevel": 30, "tags": []}]'
         exit 0
         ;;
     *)
@@ -996,7 +1008,11 @@ case "$*" in
         exit 0
         ;;
     *"models describe Pixel5ARM"*)
-        echo '{"id": "Pixel5ARM", "supportedVersionIds": ["30"], "perVersionInfo": [{"versionId": "30", "apiLevel": 30}]}'
+        echo '{"id": "Pixel5ARM", "supportedVersionIds": ["30"], "perVersionInfo": [{"versionId": "30", "deviceCapacity": "DEVICE_CAPACITY_HIGH"}]}'
+        exit 0
+        ;;
+    *"versions list"*)
+        echo '[{"id": "30", "apiLevel": 30, "tags": ["default"]}]'
         exit 0
         ;;
     *"firebase test android run"*)
@@ -1102,7 +1118,11 @@ case "$*" in
         exit 0
         ;;
     *"models describe Pixel6ARM"*)
-        echo '{"id": "Pixel6ARM", "supportedVersionIds": ["30"], "perVersionInfo": [{"versionId": "30", "apiLevel": 30}]}'
+        echo '{"id": "Pixel6ARM", "supportedVersionIds": ["30"], "perVersionInfo": [{"versionId": "30", "deviceCapacity": "DEVICE_CAPACITY_HIGH"}]}'
+        exit 0
+        ;;
+    *"versions list"*)
+        echo '[{"id": "30", "apiLevel": 30, "tags": ["default"]}]'
         exit 0
         ;;
     *"firebase test android run"*)
@@ -1338,7 +1358,11 @@ case "$*" in
         exit 0
         ;;
     *"models describe Pixel8ARM"*)
-        echo '{"id": "Pixel8ARM", "supportedVersionIds": ["30"], "perVersionInfo": [{"versionId": "30", "apiLevel": 30}]}'
+        echo '{"id": "Pixel8ARM", "supportedVersionIds": ["30"], "perVersionInfo": [{"versionId": "30", "deviceCapacity": "DEVICE_CAPACITY_HIGH"}]}'
+        exit 0
+        ;;
+    *"versions list"*)
+        echo '[{"id": "30", "apiLevel": 30, "tags": ["default"]}]'
         exit 0
         ;;
     *"firebase test android run"*)
