@@ -1160,6 +1160,236 @@ exit 0
         self.assertEqual(saved["firebaseTestLab"]["lastRun"]["status"], "COMPLETED")
         self.assertEqual(saved["firebaseTestLab"]["lastRun"]["commitSha"], "sha806_40chars_0123456789abcdef01234567")
 
+    def test_dev_13_authoritative_versions_list_with_string_version_ids(self):
+        mock_bin = os.path.join(self.temp_dir, "mock_dev_13")
+        os.makedirs(mock_bin, exist_ok=True)
+        gcloud_script = os.path.join(mock_bin, "gcloud")
+        with open(gcloud_script, "w") as f:
+            f.write(r"""#!/bin/sh
+case "$*" in
+    *"models list"*)
+        echo '[{"id": "PixelAuthoritative", "form": "VIRTUAL", "formFactor": "PHONE", "supportedAbis": ["arm64-v8a"], "tags": []}]'
+        exit 0
+        ;;
+    *"models describe PixelAuthoritative"*)
+        echo '{"id": "PixelAuthoritative", "supportedVersionIds": ["Tiramisu", "UpsideDownCake"]}'
+        exit 0
+        ;;
+    *"versions list"*)
+        echo '[
+          {"id": "Tiramisu", "apiLevel": 33, "tags": ["deprecated"]},
+          {"id": "UpsideDownCake", "apiLevel": 34, "tags": ["default"]}
+        ]'
+        exit 0
+        ;;
+    *)
+        exit 1
+        ;;
+esac
+""")
+        os.chmod(gcloud_script, 0o755)
+        env = {"PATH": f"{mock_bin}:{os.environ.get('PATH', '')}", "GCLOUD_CMD": "gcloud"}
+        res = self.run_bash_fn("select_arm_device", env)
+        self.assertEqual(res.returncode, 0)
+        self.assertEqual(res.stdout.strip(), "PixelAuthoritative,34")
+
+    def test_dev_14_conflicting_version_metadata_fails_closed(self):
+        mock_bin = os.path.join(self.temp_dir, "mock_dev_14")
+        os.makedirs(mock_bin, exist_ok=True)
+        gcloud_script = os.path.join(mock_bin, "gcloud")
+        with open(gcloud_script, "w") as f:
+            f.write(r"""#!/bin/sh
+case "$*" in
+    *"models list"*)
+        echo '[{"id": "PixelConflict", "form": "VIRTUAL", "formFactor": "PHONE", "supportedAbis": ["arm64-v8a"], "tags": []}]'
+        exit 0
+        ;;
+    *"models describe PixelConflict"*)
+        echo '{"id": "PixelConflict", "supportedVersionIds": ["v30"], "perVersionInfo": [{"versionId": "v30", "apiLevel": 28}]}'
+        exit 0
+        ;;
+    *"versions list"*)
+        echo '[{"id": "v30", "apiLevel": 30}]'
+        exit 0
+        ;;
+    *)
+        exit 1
+        ;;
+esac
+""")
+        os.chmod(gcloud_script, 0o755)
+        env = {"PATH": f"{mock_bin}:{os.environ.get('PATH', '')}", "GCLOUD_CMD": "gcloud"}
+        res = self.run_bash_fn("select_arm_device", env)
+        self.assertNotEqual(res.returncode, 0)
+
+    def test_dev_15_version_id_not_treatable_as_api_level_fails_closed(self):
+        mock_bin = os.path.join(self.temp_dir, "mock_dev_15")
+        os.makedirs(mock_bin, exist_ok=True)
+        gcloud_script = os.path.join(mock_bin, "gcloud")
+        with open(gcloud_script, "w") as f:
+            f.write(r"""#!/bin/sh
+case "$*" in
+    *"models list"*)
+        echo '[{"id": "PixelNoMeta", "form": "VIRTUAL", "formFactor": "PHONE", "supportedAbis": ["arm64-v8a"], "tags": []}]'
+        exit 0
+        ;;
+    *"models describe PixelNoMeta"*)
+        echo '{"id": "PixelNoMeta", "supportedVersionIds": ["30"]}'
+        exit 0
+        ;;
+    *"versions list"*)
+        echo '[]'
+        exit 0
+        ;;
+    *)
+        exit 1
+        ;;
+esac
+""")
+        os.chmod(gcloud_script, 0o755)
+        env = {"PATH": f"{mock_bin}:{os.environ.get('PATH', '')}", "GCLOUD_CMD": "gcloud"}
+        res = self.run_bash_fn("select_arm_device", env)
+        self.assertNotEqual(res.returncode, 0)
+
+    def test_e2e_scenario_07_early_failure_resets_running_to_failed(self):
+        with open(self.state_file, "w") as f:
+            json.dump({
+                "schemaVersion": 1,
+                "beastModeEnabled": True,
+                "currentTask": "Firebase Test Lab run",
+                "workflowStatus": "RUNNING",
+                "phase": "EXECUTE",
+                "physicalVerification": "VERIFIED"
+            }, f)
+
+        mock_bin = os.path.join(self.temp_dir, "mock_e2e_scen_07")
+        os.makedirs(mock_bin, exist_ok=True)
+        with open(os.path.join(mock_bin, "gh"), "w") as f:
+            f.write("#!/bin/sh\nexit 1\n")
+        os.chmod(os.path.join(mock_bin, "gh"), 0o755)
+
+        for tool in ("gcloud", "gsutil"):
+            with open(os.path.join(mock_bin, tool), "w") as f:
+                f.write("#!/bin/sh\nexit 0\n")
+            os.chmod(os.path.join(mock_bin, tool), 0o755)
+
+        env = {
+            "PATH": f"{mock_bin}:{os.environ.get('PATH', '')}",
+            "GITHUB_REPOSITORY": "testowner/testrepo",
+            "FIREBASE_TESTLAB_BUCKET": "gs://test-bucket",
+            "BEAST_MODE_STATE": self.state_file,
+            "PROJECT_ROOT": self.temp_dir,
+            "GH_CMD": "gh",
+            "GCLOUD_CMD": "gcloud",
+            "GSUTIL_CMD": "gsutil"
+        }
+        res = subprocess.run([BASH_BIN, str(SCRIPT_PATH), "run"], env=env, capture_output=True, text=True)
+        self.assertNotEqual(res.returncode, 0)
+
+        with open(self.state_file, "r") as f:
+            saved = json.load(f)
+        self.assertEqual(saved["workflowStatus"], "FAILED")
+        self.assertEqual(saved["phase"], "IDLE")
+        self.assertEqual(saved["currentTask"], "")
+        self.assertEqual(saved.get("physicalVerification"), "UNVERIFIED")
+
+    def test_e2e_scenario_08_missing_test_artifacts_fails_and_preserves_matrix(self):
+        mock_bin = os.path.join(self.temp_dir, "mock_e2e_scen_08")
+        os.makedirs(mock_bin, exist_ok=True)
+
+        apk_source = os.path.join(self.temp_dir, "scen8.apk")
+        create_test_apk(apk_source)
+        art_zip = os.path.join(self.temp_dir, "scen8.zip")
+        with zipfile.ZipFile(art_zip, "w") as zf:
+            zf.write(apk_source, arcname="minehost-debug.apk")
+
+        empty_results = os.path.join(self.temp_dir, "empty_results")
+        os.makedirs(empty_results, exist_ok=True)
+
+        with open(os.path.join(mock_bin, "gh"), "w") as f:
+            f.write(f"""#!/bin/sh
+case "$*" in
+    *"run list"*)
+        echo '[{{"databaseId": 808, "workflowName": "Android CI", "headSha": "sha808_40chars_0123456789abcdef01234567", "conclusion": "success", "name": "Build APK"}}]'
+        exit 0
+        ;;
+    *"actions/runs/808/artifacts"*)
+        echo '{{"artifacts":[{{"id":908,"name":"minehost-debug","expired":false}}]}}'
+        exit 0
+        ;;
+    *"actions/runs/808"*)
+        echo '{{"id": 808, "head_sha": "sha808_40chars_0123456789abcdef01234567", "status": "completed"}}'
+        exit 0
+        ;;
+    *"actions/artifacts/908/zip"*)
+        cat "{art_zip}"
+        exit 0
+        ;;
+    *)
+        exit 1
+        ;;
+esac
+""")
+        with open(os.path.join(mock_bin, "gcloud"), "w") as f:
+            f.write(r"""#!/bin/sh
+case "$*" in
+    *"models list"*)
+        echo '[{"id": "Pixel8ARM", "form": "VIRTUAL", "formFactor": "PHONE", "supportedAbis": ["arm64-v8a"], "tags": []}]'
+        exit 0
+        ;;
+    *"models describe Pixel8ARM"*)
+        echo '{"id": "Pixel8ARM", "supportedVersionIds": ["30"], "perVersionInfo": [{"versionId": "30", "apiLevel": 30}]}'
+        exit 0
+        ;;
+    *"firebase test android run"*)
+        echo "Test matrix [matrix-incomplete-808] created."
+        exit 0
+        ;;
+    *)
+        exit 1
+        ;;
+esac
+""")
+        with open(os.path.join(mock_bin, "gsutil"), "w") as f:
+            f.write(f"""#!/bin/sh
+if [ "$1" = "ls" ]; then
+    exit 0
+fi
+# Empty results copied -> missing images, video, logs
+exit 0
+""")
+
+        for tool in ("gh", "gcloud", "gsutil"):
+            os.chmod(os.path.join(mock_bin, tool), 0o755)
+
+        with open(self.state_file, "w") as f:
+            json.dump({
+                "schemaVersion": 1,
+                "beastModeEnabled": True,
+                "currentTask": "Firebase Test Lab run",
+                "workflowStatus": "RUNNING",
+                "phase": "EXECUTE"
+            }, f)
+
+        env = {
+            "PATH": f"{mock_bin}:{os.environ.get('PATH', '')}",
+            "GITHUB_REPOSITORY": "testowner/testrepo",
+            "FIREBASE_TESTLAB_BUCKET": "gs://test-bucket",
+            "BEAST_MODE_STATE": self.state_file,
+            "PROJECT_ROOT": self.temp_dir,
+            "GH_CMD": "gh",
+            "GCLOUD_CMD": "gcloud",
+            "GSUTIL_CMD": "gsutil"
+        }
+        res = subprocess.run([BASH_BIN, str(SCRIPT_PATH), "run"], env=env, capture_output=True, text=True)
+        self.assertNotEqual(res.returncode, 0)
+
+        with open(self.state_file, "r") as f:
+            saved = json.load(f)
+        self.assertEqual(saved["workflowStatus"], "FAILED")
+        self.assertEqual(saved["firebaseTestLab"]["lastRun"]["matrixId"], "matrix-incomplete-808")
+        self.assertEqual(saved["firebaseTestLab"]["lastRun"]["status"], "FAILED")
+
 
 if __name__ == "__main__":
     unittest.main(verbosity=2)

@@ -314,19 +314,7 @@ try:
                 print(art_id)
                 sys.exit(0)
 
-    # Priority 2: Name explicitly matching APK artifact conventions (e.g. app-debug, minehost-debug.apk)
-    for a in artifacts:
-        if not isinstance(a, dict):
-            continue
-        name = (a.get('name') or '').lower().strip()
-        if not a.get('expired', False):
-            if name.endswith('.apk') or name == 'app-debug' or 'minehost-debug' in name:
-                art_id = a.get('id')
-                if art_id:
-                    print(art_id)
-                    sys.exit(0)
-
-    # Fail closed: never fall back to unrelated arbitrary artifacts
+    # Fail closed: no exact match found
     sys.exit(1)
 except Exception as e:
     sys.stderr.write(f'Artifact ID parsing error: {e}\n')
@@ -363,13 +351,6 @@ download_apk_artifact() {
         if python3 -c "import zipfile, sys; zipfile.ZipFile(sys.argv[1]).extractall(sys.argv[2])" "$zip_file" "$apk_dir" 2>/dev/null; then
             download_success=true
             rm -f "$zip_file"
-        fi
-    fi
-
-    # Strategy 2: Fallback to gh run download with specific artifact name ONLY
-    if [[ "$download_success" != "true" ]]; then
-        if "$GH_CMD" run download "$run_id" --repo "$repo" --dir "$apk_dir" --name "${APK_ARTIFACT_NAME}" 2>/dev/null; then
-            download_success=true
         fi
     fi
 
@@ -664,53 +645,102 @@ sys.exit(1)
         return 1
     }
 
+    # Fetch authoritative Android versions catalog if available
+    local versions_json=""
+    versions_json=$("$GCLOUD_CMD" firebase test android versions list --format='json' 2>/dev/null || true)
+
     local api_level
-    api_level=$(echo "$model_desc_json" | python3 -c "
+    api_level=$(python3 - "$model_desc_json" "$versions_json" <<'PY_VERSION_RESOLVE'
 import sys, json, os
 
 min_sdk_version = int(os.environ.get('APK_MIN_SDK_VERSION', '26'))
+model_desc_raw = sys.argv[1]
+versions_raw = sys.argv[2] if len(sys.argv) > 2 else ""
+
 try:
-    data = json.load(sys.stdin)
+    data = json.loads(model_desc_raw)
     if not isinstance(data, dict):
         sys.exit(1)
 
-    # Check for version metadata structure (required)
-    if 'supportedVersionIds' in data and 'perVersionInfo' in data:
-        version_ids = data['supportedVersionIds']
-        per_version_info = data['perVersionInfo']
-        if not isinstance(version_ids, list) or not isinstance(per_version_info, list):
-            sys.exit(1)
+    # 1. Authoritative version catalog from 'android versions list' if available
+    catalog_versions = {}
+    if versions_raw.strip():
+        try:
+            v_list = json.loads(versions_raw)
+            if isinstance(v_list, list):
+                for v in v_list:
+                    if not isinstance(v, dict):
+                        continue
+                    v_id = v.get('id')
+                    api_val = v.get('apiLevel')
+                    if not v_id or api_val is None:
+                        continue
+                    try:
+                        api_int = int(api_val)
+                    except (ValueError, TypeError):
+                        continue
+                    v_tags = [str(t).lower() for t in (v.get('tags') or [])]
+                    if any(bad in v_tags for bad in ('deprecated', 'disabled', 'unavailable')):
+                        continue
+                    catalog_versions[str(v_id)] = api_int
+        except Exception:
+            pass
 
-        # Build mapping from versionId to apiLevel
-        version_to_api = {}
+    # 2. Extract supportedVersionIds from model description (required)
+    version_ids = data.get('supportedVersionIds')
+    if not isinstance(version_ids, list) or not version_ids:
+        sys.exit(1)
+
+    # 3. Extract perVersionInfo from model description if present
+    per_version_info = data.get('perVersionInfo')
+    per_version_map = {}
+    if isinstance(per_version_info, list):
         for info in per_version_info:
             if isinstance(info, dict):
                 vid = info.get('versionId')
                 api = info.get('apiLevel')
                 if vid is not None and api is not None:
                     try:
-                        version_to_api[vid] = int(api)
+                        per_version_map[str(vid)] = int(api)
                     except (ValueError, TypeError):
                         pass
 
-        valid_levels = []
-        for vid in version_ids:
-            if vid in version_to_api:
-                api_level = version_to_api[vid]
-                if api_level >= min_sdk_version:
-                    valid_levels.append(api_level)
-    else:
-        # Missing required version metadata
+    # 4. Resolve authoritative version-to-api mapping
+    version_to_api = {}
+    if catalog_versions:
+        version_to_api.update(catalog_versions)
+    if per_version_map:
+        for vid, api in per_version_map.items():
+            if vid not in version_to_api:
+                version_to_api[vid] = api
+            elif version_to_api[vid] != api:
+                # Conflicting version metadata -> fail closed
+                sys.exit(1)
+
+    if not version_to_api:
+        # Missing required version metadata -> fail closed (never guess raw versionId as API level)
         sys.exit(1)
 
-    if not valid_levels:
+    valid_candidates = []
+    for vid in version_ids:
+        vid_str = str(vid)
+        if vid_str in version_to_api:
+            api_level = version_to_api[vid_str]
+            if isinstance(api_level, int) and api_level >= min_sdk_version:
+                valid_candidates.append((api_level, vid_str))
+
+    if not valid_candidates:
         sys.exit(1)
+
     # Select highest supported valid API level deterministically
-    print(max(valid_levels))
+    valid_candidates.sort(key=lambda x: (x[0], x[1]), reverse=True)
+    best_api_level, best_vid = valid_candidates[0]
+    print(best_api_level)
     sys.exit(0)
 except Exception:
     sys.exit(1)
-") || {
+PY_VERSION_RESOLVE
+    ) || {
         log "No supported API level >= ${APK_MIN_SDK_VERSION} found for device $device_model"
         return 1
     }
@@ -945,10 +975,44 @@ PY_STATE
     write_beastmode_state "$updated_state"
 }
 
-# Cleanup function on exit
+# Cleanup and exit handler
 cleanup() {
+    local exit_code=$?
     log "Cleaning up temporary APK directory: $TMP_APK_DIR"
     rm -rf "$TMP_APK_DIR"
+
+    # If exiting with failure, ensure Beast Mode state is never left in RUNNING
+    if [[ $exit_code -ne 0 && -f "$BEAST_MODE_STATE" ]]; then
+        python3 - "$BEAST_MODE_STATE" <<'PY_CLEANUP'
+import sys, json, os, time
+state_file = sys.argv[1]
+try:
+    with open(state_file, 'r') as f:
+        state = json.load(f)
+    if isinstance(state, dict) and (state.get('workflowStatus') == 'RUNNING' or state.get('currentTask') == 'Firebase Test Lab run'):
+        state['workflowStatus'] = 'FAILED'
+        state['phase'] = 'IDLE'
+        state['currentTask'] = ''
+        state['taskBranch'] = ''
+        if 'firebaseTestLab' not in state or not isinstance(state['firebaseTestLab'], dict):
+            state['firebaseTestLab'] = {}
+        if 'lastRun' not in state['firebaseTestLab'] or not isinstance(state['firebaseTestLab']['lastRun'], dict):
+            state['firebaseTestLab']['lastRun'] = {}
+        state['firebaseTestLab']['lastRun']['status'] = 'FAILED'
+        ts = time.strftime('%Y-%m-%dT%H:%M:%SZ', time.gmtime())
+        if not state['firebaseTestLab']['lastRun'].get('timestamp'):
+            state['firebaseTestLab']['lastRun']['timestamp'] = ts
+        state['timestamp'] = ts
+        if state.get('physicalVerification') == 'VERIFIED':
+            state['physicalVerification'] = 'UNVERIFIED'
+        tmp_file = state_file + '.tmp'
+        with open(tmp_file, 'w') as f:
+            json.dump(state, f, indent=2)
+        os.replace(tmp_file, state_file)
+except Exception:
+    pass
+PY_CLEANUP
+    fi
 }
 
 # Main workflow function

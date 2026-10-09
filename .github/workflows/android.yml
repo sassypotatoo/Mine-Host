@@ -51,6 +51,12 @@ jobs:
           ./gradlew :app:compileDebugKotlin :app:compileDebugUnitTestKotlin
           ./gradlew :app:testDebugUnitTest
 
+      - name: Run Firebase Test Lab Regression Tests
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 tools/test_firebase_test_lab.py
+
       - name: Assemble debug APK
         shell: bash
         run: |
