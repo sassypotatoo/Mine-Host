@@ -710,8 +710,8 @@ try:
         vid_key = str(v_id).strip()
         if not vid_key:
             continue
-        if vid_key in catalog_versions and catalog_versions[vid_key] != api_int:
-            # Duplicate contradictory catalog version metadata -> fail closed
+        if vid_key in catalog_versions:
+            # Duplicate version ID in catalog -> fail closed (even if same API level)
             sys.exit(1)
         catalog_versions[vid_key] = api_int
 

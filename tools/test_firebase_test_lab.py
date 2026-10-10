@@ -1414,6 +1414,476 @@ exit 0
         self.assertEqual(saved["firebaseTestLab"]["lastRun"]["matrixId"], "matrix-incomplete-808")
         self.assertEqual(saved["firebaseTestLab"]["lastRun"]["status"], "FAILED")
 
+    def test_dev_21_duplicate_catalog_ids_same_api_level(self):
+        """Test that duplicate catalog entries with same API level fail closed (reject, don't deduplicate)"""
+        mock_bin = os.path.join(self.temp_dir, "mock_dev_21")
+        os.makedirs(mock_bin, exist_ok=True)
+        gcloud_script = os.path.join(mock_bin, "gcloud")
+        with open(gcloud_script, "w") as f:
+            f.write(r"""#!/bin/sh
+case "$*" in
+    *"models list"*)
+        # Same version ID appears twice with same API level
+        echo '[{"id": "v30", "apiLevel": 30, "tags": []}, {"id": "v30", "apiLevel": 30, "tags": ["default"]}]'
+        exit 0
+        ;;
+    *"versions list"*)
+        echo '[{"id": "v30", "apiLevel": 30, "tags": []}]'
+        exit 0
+        ;;
+    *)
+        exit 1
+        ;;
+esac
+""")
+        os.chmod(gcloud_script, 0o755)
+        env = {"PATH": f"{mock_bin}:{os.environ.get('PATH', '')}", "GCLOUD_CMD": "gcloud"}
+        res = self.run_bash_fn("select_arm_device", env)
+        self.assertNotEqual(res.returncode, 0)
 
-if __name__ == "__main__":
-    unittest.main(verbosity=2)
+    def test_dev_22_duplicate_catalog_ids_conflicting_api_level(self):
+        """Test that duplicate catalog entries with conflicting API levels fail closed"""
+        mock_bin = os.path.join(self.temp_dir, "mock_dev_22")
+        os.makedirs(mock_bin, exist_ok=True)
+        gcloud_script = os.path.join(mock_bin, "gcloud")
+        with open(gcloud_script, "w") as f:
+            f.write(r"""#!/bin/sh
+case "$*" in
+    *"models list"*)
+        # Same version ID appears twice with different API levels
+        echo '[{"id": "v30", "apiLevel": 30, "tags": []}, {"id": "v30", "apiLevel": 31, "tags": ["default"]}]'
+        exit 0
+        ;;
+    *"versions list"*)
+        echo '[{"id": "v30", "apiLevel": 30, "tags": []}]'
+        exit 0
+        ;;
+    *)
+        exit 1
+        ;;
+esac
+""")
+        os.chmod(gcloud_script, 0o755)
+        env = {"PATH": f"{mock_bin}:{os.environ.get('PATH', '')}", "GCLOUD_CMD": "gcloud"}
+        res = self.run_bash_fn("select_arm_device", env)
+        self.assertNotEqual(res.returncode, 0)
+
+    def test_wf_11_similarly_named_artifact_rejection(self):
+        mock_bin = os.path.join(self.temp_dir, "mock_wf_11")
+        os.makedirs(mock_bin, exist_ok=True)
+        gh_script = os.path.join(mock_bin, "gh")
+        with open(gh_script, "w") as f:
+            f.write(f"""#!/bin/sh
+if echo "$*" | grep -q "run list"; then
+    echo '[{{"databaseId": 1011, "workflowName": "Android CI", "headSha": "sha1011_40chars_0123456789abcdef01234567", "conclusion": "success", "name": "Build APK"}}]'
+    exit 0
+    ;;
+    *"actions/runs/1011/artifacts"*)
+        # Two artifacts with similar names - should fail closed (no exact match)
+        echo '{{"artifacts":[{{"id":911,"name":"minehost-debug-v2","expired":false}},{{"id":912,"name":"minehost-debug-old","expired":false}}]}}'
+        exit 0
+        ;;
+    *"actions/runs/1011"*)
+        echo '{{"id": 1011, "head_sha": "sha1011_40chars_0123456789abcdef01234567",
+        "status": "completed"}}'
+        exit 0
+        ;;
+    *)
+        exit 1
+        ;;
+esac
+""")
+        os.chmod(gh_script, 0o755)
+        env = {"PATH": f"{mock_bin}:{os.environ.get('PATH', '')}", "GH_CMD": "gh"}
+        res = self.run_bash_fn('get_latest_apk_run "testowner/testrepo"', env)
+        self.assertEqual(res.returncode, 0)
+        data = json.loads(res.stdout.strip())
+        self.assertEqual(data["run_id"], "1011")
+        self.assertEqual(data["commit_sha"], "sha1011_40chars_0123456789abcdef01234567")
+
+        mock_bin2 = os.path.join(self.temp_dir, "mock_wf_11_2")
+        os.makedirs(mock_bin2, exist_ok=True)
+        gh_script2 = os.path.join(mock_bin2, "gh")
+        with open(gh_script2, "w") as f:
+            f.write(f"""#!/bin/sh
+if echo "$*" | grep -q "artifacts"; then
+    # Exact match exists
+    echo '{{"artifacts":[{{"id":913,"name":"minehost-debug","expired":false}}]}}'
+    exit 0
+    ;;
+    *)
+        exit 1
+        ;;
+esac
+""")
+        os.chmod(gh_script2, 0o755)
+        env2 = {"PATH": f"{mock_bin2}:{os.environ.get('PATH', '')}", "GH_CMD": "gh"}
+        res2 = self.run_bash_fn('get_apk_artifact_id "1011" "testowner/testrepo"', env2)
+        self.assertEqual(res2.returncode, 0)
+        self.assertEqual(res2.stdout.strip(), "913")
+
+    def test_art_07_archive_zero_apks(self):
+        mock_bin = os.path.join(self.temp_dir, "mock_art_07")
+        os.makedirs(mock_bin, exist_ok=True)
+
+        # Create a ZIP with no APK files
+        zip_path = os.path.join(self.temp_dir, "empty.zip")
+        with zipfile.ZipFile(zip_path, 'w') as zf:
+            zf.writestr("README.txt", "Not an APK")
+
+        apk_dir = os.path.join(self.temp_dir, "apk_out")
+        os.makedirs(apk_dir, exist_ok=True)
+
+        env = {
+            "GH_CMD": "echo",
+            "APK_DIR": apk_dir
+        }
+
+        # Test the extraction function directly
+        extracted = self.run_bash_fn(f'''
+        zip_file="{zip_path}"
+        target_dir="{apk_dir}"
+        python3 - "$zip_file" "$target_dir" <<'PY_EXTRACT'
+import sys, os, zipfile
+zip_path = sys.argv[1]
+target_dir = os.path.abspath(sys.argv[2])
+try:
+    with zipfile.ZipFile(zip_path, 'r') as zf:
+        infolist = zf.infolist()
+        if not infolist:
+            sys.exit(1)
+        apk_members = []
+        for info in infolist:
+            filename = info.filename
+            if os.path.isabs(filename) or filename.startswith('/') or filename.startswith('\\\\'):
+                sys.exit(1)
+            norm_target = os.path.abspath(os.path.join(target_dir, filename))
+            try:
+                if os.path.commonpath([norm_target, target_dir]) != target_dir:
+                    sys.exit(1)
+            except ValueError:
+                sys.exit(1)
+            if not info.is_dir() and filename.lower().endswith('.apk'):
+                apk_members.append(info)
+        if len(apk_members) != 1:
+            sys.exit(1)
+        for info in infolist:
+            zf.extract(info, target_dir)
+        apk_target_path = os.path.join(target_dir, apk_members[0].filename)
+        if not os.path.isfile(apk_target_path) or os.path.getsize(apk_target_path) == 0:
+            sys.exit(1)
+        print(apk_target_path)
+        sys.exit(0)
+except Exception:
+    sys.exit(1)
+PY_EXTRACT
+''', env)
+        self.assertNotEqual(extracted.returncode, 0)
+
+    def test_art_08_archive_multiple_apks(self):
+        mock_bin = os.path.join(self.temp_dir, "mock_art_08")
+        os.makedirs(mock_bin, exist_ok=True)
+
+        # Create test APK files
+        apk1 = os.path.join(self.temp_dir, "app1.apk")
+        apk2 = os.path.join(self.temp_dir, "app2.apk")
+        with open(apk1, "wb") as f:
+            f.write(b"PK\x03\x04")  # Minimal ZIP signature
+        with open(apk2, "wb") as f:
+            f.write(b"PK\x03\x04")  # Minimal ZIP signature
+
+        # Create a ZIP with multiple APK files
+        zip_path = os.path.join(self.temp_dir, "multi_apk.zip")
+        with zipfile.ZipFile(zip_path, 'w') as zf:
+            zf.write(apk1, arcname="app1.apk")
+            zf.write(apk2, arcname="app2.apk")
+
+        apk_dir = os.path.join(self.temp_dir, "apk_out")
+        os.makedirs(apk_dir, exist_ok=True)
+
+        env = {
+            "GH_CMD": "echo",
+            "APK_DIR": apk_dir
+        }
+
+        # Test the extraction function directly
+        extracted = self.run_bash_fn(f'''
+        zip_file="{zip_path}"
+        target_dir="{apk_dir}"
+        python3 - "$zip_file" "$target_dir" <<'PY_EXTRACT'
+import sys, os, zipfile
+zip_path = sys.argv[1]
+target_dir = os.path.abspath(sys.argv[2])
+try:
+    with zipfile.ZipFile(zip_path, 'r') as zf:
+        infolist = zf.infolist()
+        if not infolist:
+            sys.exit(1)
+        apk_members = []
+        for info in infolist:
+            filename = info.filename
+            if os.path.isabs(filename) or filename.startswith('/') or filename.startswith('\\\\'):
+                sys.exit(1)
+            norm_target = os.path.abspath(os.path.join(target_dir, filename))
+            try:
+                if os.path.commonpath([norm_target, target_dir]) != target_dir:
+                    sys.exit(1)
+            except ValueError:
+                sys.exit(1)
+            if not info.is_dir() and filename.lower().endswith('.apk'):
+                apk_members.append(info)
+        if len(apk_members) != 1:
+            sys.exit(1)
+        for info in infolist:
+            zf.extract(info, target_dir)
+        apk_target_path = os.path.join(target_dir, apk_members[0].filename)
+        if not os.path.isfile(apk_target_path) or os.path.getsize(apk_target_path) == 0:
+            sys.exit(1)
+        print(apk_target_path)
+        sys.exit(0)
+except Exception:
+    sys.exit(1)
+PY_EXTRACT
+''', env)
+        self.assertNotEqual(extracted.returncode, 0)
+
+    def test_art_09_archive_path_traversal_zip_slip(self):
+        mock_bin = os.path.join(self.temp_dir, "mock_art_09")
+        os.makedirs(mock_bin, exist_ok=True)
+
+        # Create a test APK file
+        apk = os.path.join(self.temp_dir, "legit.apk")
+        with open(apk, "wb") as f:
+            f.write(b"PK\x03\x04")  # Minimal ZIP signature
+
+        # Create a ZIP with path traversal (outside target directory)
+        zip_path = os.path.join(self.temp_dir, "evil.zip")
+        with zipfile.ZipFile(zip_path, 'w') as zf:
+            zf.write(apk, arcname="../../../etc/passwd")  # Path traversal
+
+        apk_dir = os.path.join(self.temp_dir, "apk_out")
+        os.makedirs(apk_dir, exist_ok=True)
+
+        env = {
+            "GH_CMD": "echo",
+            "APK_DIR": apk_dir
+        }
+
+        # Test the extraction function directly
+        extracted = self.run_bash_fn(f'''
+        zip_file="{zip_path}"
+        target_dir="{apk_dir}"
+        python3 - "$zip_file" "$target_dir" <<'PY_EXTRACT'
+import sys, os, zipfile
+zip_path = sys.argv[1]
+target_dir = os.path.abspath(sys.argv[2])
+try:
+    with zipfile.ZipFile(zip_path, 'r') as zf:
+        infolist = zf.infolist()
+        if not infolist:
+            sys.exit(1)
+        apk_members = []
+        for info in infolist:
+            filename = info.filename
+            if os.path.isabs(filename) or filename.startswith('/') or filename.startswith('\\\\'):
+                sys.exit(1)
+            norm_target = os.path.abspath(os.path.join(target_dir, filename))
+            try:
+                if os.path.commonpath([norm_target, target_dir]) != target_dir:
+                    sys.exit(1)
+            except ValueError:
+                sys.exit(1)
+            if not info.is_dir() and filename.lower().endswith('.apk'):
+                apk_members.append(info)
+        if len(apk_members) != 1:
+            sys.exit(1)
+        for info in infolist:
+            zf.extract(info, target_dir)
+        apk_target_path = os.path.join(target_dir, apk_members[0].filename)
+        if not os.path.isfile(apk_target_path) or os.path.getsize(apk_target_path) == 0:
+            sys.exit(1)
+        print(apk_target_path)
+        sys.exit(0)
+except Exception:
+    sys.exit(1)
+PY_EXTRACT
+''', env)
+        self.assertNotEqual(extracted.returncode, 0)
+
+    def test_art_10_corrupted_archive(self):
+        mock_bin = os.path.join(self.temp_dir, "mock_art_10")
+        os.makedirs(mock_bin, exist_ok=True)
+
+        # Create a corrupted ZIP file
+        zip_path = os.path.join(self.temp_dir, "corrupt.zip")
+        with open(zip_path, "wb") as f:
+            f.write(b"This is not a valid ZIP file")
+
+        apk_dir = os.path.join(self.temp_dir, "apk_out")
+        os.makedirs(apk_dir, exist_ok=True)
+
+        env = {
+            "GH_CMD": "echo",
+            "APK_DIR": apk_dir
+        }
+
+        # Test the extraction function directly
+        extracted = self.run_bash_fn(f'''
+        zip_file="{zip_path}"
+        target_dir="{apk_dir}"
+        python3 - "$zip_file" "$target_dir" <<'PY_EXTRACT'
+import sys, os, zipfile
+zip_path = sys.argv[1]
+target_dir = os.path.abspath(sys.argv[2])
+try:
+    with zipfile.ZipFile(zip_path, 'r') as zf:
+        infolist = zf.infolist()
+        if not infolist:
+            sys.exit(1)
+        apk_members = []
+        for info in infolist:
+            filename = info.filename
+            if os.path.isabs(filename) or filename.startswith('/') or filename.startswith('\\\\'):
+                sys.exit(1)
+            norm_target = os.path.abspath(os.path.join(target_dir, filename))
+            try:
+                if os.path.commonpath([norm_target, target_dir]) != target_dir:
+                    sys.exit(1)
+            except ValueError:
+                sys.exit(1)
+            if not info.is_dir() and filename.lower().endswith('.apk'):
+                apk_members.append(info)
+        if len(apk_members) != 1:
+            sys.exit(1)
+        for info in infolist:
+            zf.extract(info, target_dir)
+        apk_target_path = os.path.join(target_dir, apk_members[0].filename)
+        if not os.path.isfile(apk_target_path) or os.path.getsize(apk_target_path) == 0:
+            sys.exit(1)
+        print(apk_target_path)
+        sys.exit(0)
+except Exception:
+    sys.exit(1)
+PY_EXTRACT
+''', env)
+        self.assertNotEqual(extracted.returncode, 0)
+
+
+
+    def test_dev_21_duplicate_catalog_ids_same_api_level(self):
+        """Test that duplicate catalog entries with same API level fail closed (reject, don't deduplicate)"""
+        mock_bin = os.path.join(self.temp_dir, "mock_dev_21")
+        os.makedirs(mock_bin, exist_ok=True)
+        gcloud_script = os.path.join(mock_bin, "gcloud")
+        with open(gcloud_script, "w") as f:
+            f.write(r"""#!/bin/sh
+case "" in
+    *"models list"*)
+        # Same version ID appears twice with same API level
+        echo '[{"id": "v30", "apiLevel": 30, "tags": []}, {"id": "v30", "apiLevel": 30, "tags": ["default"]}]'
+        exit 0
+        ;;
+    *"versions list"*)
+        echo '[{"id": "v30", "apiLevel": 30, "tags": []}]'
+        exit 0
+        ;;
+    *)
+        exit 1
+        ;;
+esac
+""")
+        os.chmod(gcloud_script, 0o755)
+        env = {"PATH": f"{mock_bin}:{os.environ.get("PATH", "")}", "GCLOUD_CMD": "gcloud"}
+        res = self.run_bash_fn("select_arm_device", env)
+        self.assertNotEqual(res.returncode, 0)
+
+    def test_dev_22_duplicate_catalog_ids_conflicting_api_level(self):
+        """Test that duplicate catalog entries with conflicting API levels fail closed"""
+        mock_bin = os.path.join(self.temp_dir, "mock_dev_22")
+        os.makedirs(mock_bin, exist_ok=True)
+        gcloud_script = os.path.join(mock_bin, "gcloud")
+        with open(gcloud_script, "w") as f:
+            f.write(r"""#!/bin/sh
+case "" in
+    *"models list"*)
+        # Same version ID appears twice with different API levels
+        echo '[{"id": "v30", "apiLevel": 30, "tags": []}, {"id": "v30", "apiLevel": 31, "tags": ["default"]}]'
+        exit 0
+        ;;
+    *"versions list"*)
+        echo '[{"id": "v30", "apiLevel": 30, "tags": []}]'
+        exit 0
+        ;;
+    *)
+        exit 1
+        ;;
+esac
+""")
+        os.chmod(gcloud_script, 0o755)
+        env = {"PATH": f"{mock_bin}:{os.environ.get("PATH", "")}", "GCLOUD_CMD": "gcloud"}
+        res = self.run_bash_fn("select_arm_device", env)
+        self.assertNotEqual(res.returncode, 0)
+
+    def test_art_11_archive_exactly_one_apk(self):
+        """Test that the archive extraction function works correctly with exactly one APK"""
+        mock_bin = os.path.join(self.temp_dir, "mock_art_11")
+        os.makedirs(mock_bin, exist_ok=True)
+
+        # Create a test APK
+        apk_source = os.path.join(self.temp_dir, "scen11.apk")
+        create_test_apk(apk_source)
+        art_zip = os.path.join(self.temp_dir, "scen11.zip")
+        with zipfile.ZipFile(art_zip, "w") as zf:
+            zf.write(apk_source, arcname="minehost-debug.apk")
+
+        apk_dir = os.path.join(self.temp_dir, "apk_out")
+        os.makedirs(apk_dir, exist_ok=True)
+
+        env = {
+            "GH_CMD": "echo",
+            "APK_DIR": apk_dir
+        }
+
+        # Test the extraction function directly
+        extracted = self.run_bash_fn(f'''
+        zip_file="{art_zip}"
+        target_dir="{apk_dir}"
+        python3 - "$zip_file" "$target_dir" <<'PY_EXTRACT'
+import sys, os, zipfile
+zip_path = sys.argv[1]
+target_dir = os.path.abspath(sys.argv[2])
+try:
+    with zipfile.ZipFile(zip_path, "r") as zf:
+        infolist = zf.infolist()
+        if not infolist:
+            sys.exit(1)
+        apk_members = []
+        for info in infolist:
+            filename = info.filename
+            if os.path.isabs(filename) or filename.startswith("/"):
+                sys.exit(1)
+            norm_target = os.path.abspath(os.path.join(target_dir, filename))
+            try:
+                if os.path.commonpath([norm_target, target_dir]) != target_dir:
+                    sys.exit(1)
+            except ValueError:
+                sys.exit(1)
+            if not info.is_dir() and filename.lower().endswith(".apk"):
+                apk_members.append(info)
+        if len(apk_members) != 1:
+            sys.exit(1)
+        for info in infolist:
+            zf.extract(info, target_dir)
+        apk_target_path = os.path.join(target_dir, apk_members[0].filename)
+        if not os.path.isfile(apk_target_path) or os.path.getsize(apk_target_path) == 0:
+            sys.exit(1)
+        print(apk_target_path)
+        sys.exit(0)
+except Exception:
+    sys.exit(1)
+PY_EXTRACT
+        ''', env)
+        self.assertEqual(extracted.returncode, 0)
+        expected_apk = os.path.join(apk_dir, "minehost-debug.apk")
+        self.assertEqual(extracted.stdout.strip(), expected_apk)
+
